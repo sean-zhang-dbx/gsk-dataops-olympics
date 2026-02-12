@@ -1,0 +1,1001 @@
+drug_name,condition,review,rating,date,useful_count
+Losartan,Nerve Pain,The generic version works just as well for me.,5,2020-01-01,177
+Ibuprofen,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,10,2020-01-01,160
+Acetaminophen,Asthma,This medication has been very effective for me with minimal side effects.,10,2020-01-01,44
+Atorvastatin,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-01-02,157
+Hydrochlorothiazide,Nerve Pain,Excellent medication with very few side effects in my experience.,5,2020-01-02,81
+Ibuprofen,Heart Failure,I experienced some dizziness at first but it went away after a week.,4,2020-01-02,196
+Metoprolol,Fluid Retention,No noticeable improvement after 6 weeks of use.,8,2020-01-03,34
+Amoxicillin,Nerve Pain,I experienced some dizziness at first but it went away after a week.,8,2020-01-03,68
+Prednisone,Chest Pain,This medication has been very effective for me with minimal side effects.,7,2020-01-03,141
+Hydrochlorothiazide,Hypertension,Excellent medication with very few side effects in my experience.,2,2020-01-04,193
+Losartan,Bacterial Infection,Works well in combination with my other medications.,5,2020-01-04,198
+Acetaminophen,Inflammation,Works well in combination with my other medications.,1,2020-01-04,51
+Omeprazole,Chest Pain,This drug changed my life. My symptoms are almost completely gone.,9,2020-01-05,194
+Hydrochlorothiazide,Asthma,I experienced some dizziness at first but it went away after a week.,9,2020-01-05,126
+Amlodipine,Fluid Retention,I have been on this for 3 months now with good results.,8,2020-01-05,166
+Acetaminophen,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-01-06,187
+Amlodipine,Chest Pain,The generic version works just as well for me.,5,2020-01-06,194
+Gabapentin,Nerve Pain,This medication has been very effective for me with minimal side effects.,5,2020-01-06,24
+Amlodipine,Pain,This medication has been very effective for me with minimal side effects.,10,2020-01-07,3
+Sertraline,Asthma,I experienced some dizziness at first but it went away after a week.,6,2020-01-07,49
+Hydrochlorothiazide,Bacterial Infection,Moderate improvement but the cost is quite high.,7,2020-01-07,5
+Atorvastatin,Fluid Retention,Great improvement in my condition since starting this drug.,7,2020-01-08,34
+Metoprolol,GERD,Excellent medication with very few side effects in my experience.,3,2020-01-08,10
+Prednisone,GERD,I experienced some dizziness at first but it went away after a week.,3,2020-01-08,59
+Prednisone,Hypertension,This drug changed my life. My symptoms are almost completely gone.,1,2020-01-09,185
+Levothyroxine,Heart Failure,I have been on this for 3 months now with good results.,8,2020-01-09,34
+Metformin,GERD,Excellent medication with very few side effects in my experience.,5,2020-01-09,16
+Metformin,Type 2 Diabetes,No noticeable improvement after 6 weeks of use.,8,2020-01-10,176
+Sertraline,Bacterial Infection,No noticeable improvement after 6 weeks of use.,5,2020-01-10,25
+Sertraline,Chest Pain,Great improvement in my condition since starting this drug.,5,2020-01-10,95
+Ibuprofen,Chest Pain,Works well in combination with my other medications.,9,2020-01-11,164
+Lisinopril,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,8,2020-01-11,182
+Sertraline,GERD,I experienced some dizziness at first but it went away after a week.,3,2020-01-11,36
+Ibuprofen,GERD,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-01-12,7
+Sertraline,Pain,No noticeable improvement after 6 weeks of use.,9,2020-01-12,121
+Atorvastatin,Pain,The generic version works just as well for me.,5,2020-01-12,147
+Losartan,Chest Pain,Great improvement in my condition since starting this drug.,3,2020-01-13,95
+Lisinopril,Nerve Pain,Works well in combination with my other medications.,5,2020-01-13,36
+Atorvastatin,GERD,This medication has been very effective for me with minimal side effects.,5,2020-01-13,177
+Levothyroxine,Hypothyroidism,"Side effects were too severe, had to switch medications.",3,2020-01-14,107
+Lisinopril,Hypertension,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-01-14,13
+Metformin,Chest Pain,Works well but I have to be careful about timing with meals.,7,2020-01-14,134
+Losartan,Hypertension,No noticeable improvement after 6 weeks of use.,7,2020-01-15,55
+Metformin,Nerve Pain,This medication has been very effective for me with minimal side effects.,3,2020-01-15,139
+Losartan,Nerve Pain,No noticeable improvement after 6 weeks of use.,3,2020-01-15,14
+Prednisone,Asthma,Great improvement in my condition since starting this drug.,1,2020-01-16,8
+Sertraline,Heart Failure,Excellent medication with very few side effects in my experience.,4,2020-01-16,100
+Prednisone,Inflammation,The generic version works just as well for me.,3,2020-01-16,17
+Sertraline,Heart Failure,"Side effects were too severe, had to switch medications.",7,2020-01-17,139
+Sertraline,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,6,2020-01-17,119
+Gabapentin,Depression,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-01-17,15
+Lisinopril,Nerve Pain,"Side effects were too severe, had to switch medications.",3,2020-01-18,85
+Ibuprofen,Depression,This medication has been very effective for me with minimal side effects.,1,2020-01-18,118
+Amlodipine,Depression,I have been on this for 3 months now with good results.,2,2020-01-18,48
+Ibuprofen,Inflammation,This medication has been very effective for me with minimal side effects.,8,2020-01-19,43
+Atorvastatin,Hypertension,I experienced some dizziness at first but it went away after a week.,4,2020-01-19,138
+Amoxicillin,Blood Pressure,This drug changed my life. My symptoms are almost completely gone.,1,2020-01-19,190
+Hydrochlorothiazide,Nerve Pain,I had to adjust the dosage a few times but now it works perfectly.,2,2020-01-20,167
+Losartan,Nerve Pain,Great improvement in my condition since starting this drug.,3,2020-01-20,30
+Metformin,Inflammation,Works well in combination with my other medications.,5,2020-01-20,80
+Amoxicillin,Asthma,No noticeable improvement after 6 weeks of use.,5,2020-01-21,190
+Losartan,Inflammation,I experienced some dizziness at first but it went away after a week.,8,2020-01-21,28
+Sertraline,High Cholesterol,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-01-21,121
+Amoxicillin,Type 2 Diabetes,I have been on this for 3 months now with good results.,5,2020-01-22,78
+Amlodipine,Blood Pressure,This medication has been very effective for me with minimal side effects.,3,2020-01-22,57
+Ibuprofen,GERD,Works well but I have to be careful about timing with meals.,3,2020-01-22,47
+Metoprolol,High Cholesterol,I experienced some dizziness at first but it went away after a week.,7,2020-01-23,3
+Atorvastatin,Heart Failure,Great improvement in my condition since starting this drug.,4,2020-01-23,150
+Omeprazole,Inflammation,I experienced some dizziness at first but it went away after a week.,3,2020-01-23,187
+Prednisone,Asthma,Moderate improvement but the cost is quite high.,1,2020-01-24,149
+Omeprazole,GERD,No noticeable improvement after 6 weeks of use.,8,2020-01-24,121
+Prednisone,High Cholesterol,The generic version works just as well for me.,10,2020-01-24,5
+Amlodipine,Hypothyroidism,Great improvement in my condition since starting this drug.,7,2020-01-25,164
+Levothyroxine,Heart Failure,My doctor recommended this and I am glad they did. Feeling much better.,2,2020-01-25,57
+Prednisone,High Cholesterol,I have been on this for 3 months now with good results.,7,2020-01-25,20
+Levothyroxine,Nerve Pain,This drug changed my life. My symptoms are almost completely gone.,5,2020-01-26,184
+Hydrochlorothiazide,Type 2 Diabetes,Moderate improvement but the cost is quite high.,3,2020-01-26,69
+Metoprolol,Bacterial Infection,No noticeable improvement after 6 weeks of use.,6,2020-01-26,149
+Hydrochlorothiazide,Heart Failure,I experienced some dizziness at first but it went away after a week.,7,2020-01-27,9
+Atorvastatin,Hypertension,I experienced some dizziness at first but it went away after a week.,10,2020-01-27,170
+Lisinopril,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,9,2020-01-27,148
+Prednisone,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,3,2020-01-28,110
+Hydrochlorothiazide,Asthma,The generic version works just as well for me.,5,2020-01-28,187
+Sertraline,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-01-28,65
+Gabapentin,Fluid Retention,The generic version works just as well for me.,9,2020-02-01,172
+Losartan,High Cholesterol,"Side effects were too severe, had to switch medications.",8,2020-02-01,97
+Metformin,Asthma,This medication has been very effective for me with minimal side effects.,9,2020-02-01,134
+Omeprazole,GERD,I have been on this for 3 months now with good results.,5,2020-02-02,6
+Hydrochlorothiazide,Pain,"Side effects were too severe, had to switch medications.",8,2020-02-02,168
+Hydrochlorothiazide,Hypertension,This drug changed my life. My symptoms are almost completely gone.,2,2020-02-02,146
+Metformin,Nerve Pain,Works well but I have to be careful about timing with meals.,10,2020-02-03,145
+Atorvastatin,Hypertension,The generic version works just as well for me.,5,2020-02-03,11
+Metformin,Blood Pressure,This drug changed my life. My symptoms are almost completely gone.,9,2020-02-03,196
+Prednisone,Chest Pain,The generic version works just as well for me.,10,2020-02-04,186
+Levothyroxine,High Cholesterol,Works well in combination with my other medications.,4,2020-02-04,83
+Amlodipine,GERD,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-02-04,130
+Losartan,GERD,I have been on this for 3 months now with good results.,1,2020-02-05,129
+Atorvastatin,Hypertension,"Side effects were too severe, had to switch medications.",10,2020-02-05,135
+Losartan,Heart Failure,Works well but I have to be careful about timing with meals.,7,2020-02-05,47
+Atorvastatin,Pain,Works well in combination with my other medications.,1,2020-02-06,43
+Lisinopril,High Cholesterol,"Side effects were too severe, had to switch medications.",8,2020-02-06,175
+Acetaminophen,High Cholesterol,Works well in combination with my other medications.,1,2020-02-06,91
+Prednisone,Heart Failure,This medication has been very effective for me with minimal side effects.,4,2020-02-07,194
+Amlodipine,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,1,2020-02-07,4
+Hydrochlorothiazide,Fluid Retention,The generic version works just as well for me.,4,2020-02-07,74
+Acetaminophen,Pain,The generic version works just as well for me.,8,2020-02-08,61
+Sertraline,Hypertension,This drug changed my life. My symptoms are almost completely gone.,1,2020-02-08,0
+Hydrochlorothiazide,Fluid Retention,This drug changed my life. My symptoms are almost completely gone.,10,2020-02-08,23
+Lisinopril,GERD,I experienced some dizziness at first but it went away after a week.,7,2020-02-09,0
+Metformin,Depression,Works well in combination with my other medications.,2,2020-02-09,98
+Sertraline,Inflammation,No noticeable improvement after 6 weeks of use.,3,2020-02-09,60
+Atorvastatin,Hypothyroidism,I have been on this for 3 months now with good results.,4,2020-02-10,116
+Acetaminophen,Bacterial Infection,This drug changed my life. My symptoms are almost completely gone.,9,2020-02-10,197
+Sertraline,Pain,I have been on this for 3 months now with good results.,10,2020-02-10,11
+Losartan,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-02-11,76
+Hydrochlorothiazide,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,9,2020-02-11,108
+Gabapentin,GERD,The generic version works just as well for me.,4,2020-02-11,10
+Metformin,Type 2 Diabetes,I had to adjust the dosage a few times but now it works perfectly.,10,2020-02-12,150
+Hydrochlorothiazide,GERD,Moderate improvement but the cost is quite high.,4,2020-02-12,63
+Losartan,Hypertension,I had to adjust the dosage a few times but now it works perfectly.,2,2020-02-12,185
+Amoxicillin,Chest Pain,I have been on this for 3 months now with good results.,2,2020-02-13,24
+Hydrochlorothiazide,Asthma,I experienced some dizziness at first but it went away after a week.,6,2020-02-13,23
+Levothyroxine,Depression,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-02-13,177
+Omeprazole,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-02-14,194
+Sertraline,Inflammation,Works well but I have to be careful about timing with meals.,3,2020-02-14,4
+Amlodipine,Hypothyroidism,Works well but I have to be careful about timing with meals.,1,2020-02-14,17
+Metoprolol,Chest Pain,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-02-15,71
+Losartan,Blood Pressure,This medication has been very effective for me with minimal side effects.,8,2020-02-15,82
+Losartan,Depression,This drug changed my life. My symptoms are almost completely gone.,10,2020-02-15,64
+Omeprazole,Depression,I had to adjust the dosage a few times but now it works perfectly.,5,2020-02-16,103
+Losartan,Nerve Pain,Great improvement in my condition since starting this drug.,1,2020-02-16,24
+Metformin,Fluid Retention,Great improvement in my condition since starting this drug.,5,2020-02-16,164
+Acetaminophen,Type 2 Diabetes,Excellent medication with very few side effects in my experience.,3,2020-02-17,180
+Ibuprofen,Fluid Retention,I had to adjust the dosage a few times but now it works perfectly.,2,2020-02-17,176
+Hydrochlorothiazide,High Cholesterol,I had to adjust the dosage a few times but now it works perfectly.,3,2020-02-17,167
+Amlodipine,Fluid Retention,I have been on this for 3 months now with good results.,10,2020-02-18,196
+Omeprazole,Type 2 Diabetes,Great improvement in my condition since starting this drug.,7,2020-02-18,36
+Metformin,Fluid Retention,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-02-18,17
+Gabapentin,GERD,No noticeable improvement after 6 weeks of use.,6,2020-02-19,34
+Gabapentin,Chest Pain,Excellent medication with very few side effects in my experience.,6,2020-02-19,163
+Amlodipine,Blood Pressure,Works well but I have to be careful about timing with meals.,3,2020-02-19,56
+Metoprolol,Nerve Pain,This medication has been very effective for me with minimal side effects.,1,2020-02-20,75
+Lisinopril,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,2,2020-02-20,197
+Hydrochlorothiazide,High Cholesterol,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-02-20,27
+Hydrochlorothiazide,Hypertension,Moderate improvement but the cost is quite high.,7,2020-02-21,17
+Levothyroxine,High Cholesterol,Excellent medication with very few side effects in my experience.,6,2020-02-21,88
+Sertraline,Type 2 Diabetes,Works well but I have to be careful about timing with meals.,7,2020-02-21,29
+Prednisone,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,8,2020-02-22,154
+Atorvastatin,Chest Pain,This medication has been very effective for me with minimal side effects.,5,2020-02-22,109
+Losartan,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,2,2020-02-22,32
+Hydrochlorothiazide,Chest Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-02-23,117
+Lisinopril,Type 2 Diabetes,I experienced some dizziness at first but it went away after a week.,3,2020-02-23,51
+Prednisone,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,7,2020-02-23,17
+Metoprolol,Hypertension,Great improvement in my condition since starting this drug.,1,2020-02-24,167
+Prednisone,GERD,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-02-24,2
+Gabapentin,Pain,The generic version works just as well for me.,7,2020-02-24,192
+Metoprolol,Chest Pain,Works well in combination with my other medications.,5,2020-02-25,79
+Losartan,Pain,This medication has been very effective for me with minimal side effects.,5,2020-02-25,167
+Atorvastatin,Asthma,Great improvement in my condition since starting this drug.,8,2020-02-25,107
+Amlodipine,Bacterial Infection,Moderate improvement but the cost is quite high.,5,2020-02-26,98
+Amoxicillin,Type 2 Diabetes,I experienced some dizziness at first but it went away after a week.,10,2020-02-26,22
+Metoprolol,Chest Pain,This medication has been very effective for me with minimal side effects.,6,2020-02-26,127
+Acetaminophen,Pain,Excellent medication with very few side effects in my experience.,4,2020-02-27,187
+Omeprazole,Nerve Pain,Works well in combination with my other medications.,3,2020-02-27,66
+Amlodipine,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-02-27,21
+Gabapentin,Blood Pressure,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-02-28,41
+Metoprolol,Inflammation,I experienced some dizziness at first but it went away after a week.,3,2020-02-28,117
+Levothyroxine,High Cholesterol,The generic version works just as well for me.,8,2020-02-28,0
+Hydrochlorothiazide,Blood Pressure,Works well in combination with my other medications.,7,2020-03-01,180
+Ibuprofen,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,6,2020-03-01,178
+Ibuprofen,Blood Pressure,Great improvement in my condition since starting this drug.,3,2020-03-01,70
+Lisinopril,Asthma,This drug changed my life. My symptoms are almost completely gone.,8,2020-03-02,104
+Amoxicillin,Fluid Retention,I have been on this for 3 months now with good results.,9,2020-03-02,69
+Ibuprofen,Depression,Works well but I have to be careful about timing with meals.,8,2020-03-02,119
+Amoxicillin,Hypertension,Moderate improvement but the cost is quite high.,3,2020-03-03,148
+Metformin,Hypothyroidism,"Side effects were too severe, had to switch medications.",6,2020-03-03,3
+Metformin,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,2,2020-03-03,130
+Omeprazole,Fluid Retention,This drug changed my life. My symptoms are almost completely gone.,8,2020-03-04,77
+Atorvastatin,High Cholesterol,"Side effects were too severe, had to switch medications.",6,2020-03-04,69
+Ibuprofen,Chest Pain,Works well but I have to be careful about timing with meals.,1,2020-03-04,78
+Acetaminophen,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,7,2020-03-05,140
+Atorvastatin,Hypertension,Great improvement in my condition since starting this drug.,2,2020-03-05,86
+Ibuprofen,Hypothyroidism,The generic version works just as well for me.,5,2020-03-05,154
+Acetaminophen,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,3,2020-03-06,91
+Omeprazole,Depression,Excellent medication with very few side effects in my experience.,3,2020-03-06,4
+Losartan,Hypothyroidism,No noticeable improvement after 6 weeks of use.,5,2020-03-06,72
+Levothyroxine,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,2,2020-03-07,25
+Levothyroxine,Pain,This drug changed my life. My symptoms are almost completely gone.,8,2020-03-07,198
+Amlodipine,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-03-07,135
+Atorvastatin,Nerve Pain,"Side effects were too severe, had to switch medications.",1,2020-03-08,171
+Losartan,Chest Pain,Works well but I have to be careful about timing with meals.,4,2020-03-08,86
+Levothyroxine,Depression,Excellent medication with very few side effects in my experience.,5,2020-03-08,128
+Amoxicillin,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-03-09,185
+Lisinopril,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-03-09,150
+Ibuprofen,Blood Pressure,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-03-09,103
+Losartan,GERD,Works well in combination with my other medications.,1,2020-03-10,88
+Amoxicillin,Hypertension,Works well in combination with my other medications.,2,2020-03-10,11
+Atorvastatin,Hypertension,Great improvement in my condition since starting this drug.,6,2020-03-10,79
+Amlodipine,Hypothyroidism,No noticeable improvement after 6 weeks of use.,5,2020-03-11,21
+Ibuprofen,Pain,Great improvement in my condition since starting this drug.,4,2020-03-11,7
+Lisinopril,Pain,The generic version works just as well for me.,1,2020-03-11,79
+Sertraline,Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-03-12,1
+Amoxicillin,Chest Pain,I have been on this for 3 months now with good results.,3,2020-03-12,25
+Acetaminophen,Pain,Moderate improvement but the cost is quite high.,9,2020-03-12,98
+Metformin,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",3,2020-03-13,15
+Acetaminophen,Chest Pain,I experienced some dizziness at first but it went away after a week.,10,2020-03-13,114
+Hydrochlorothiazide,Bacterial Infection,This drug changed my life. My symptoms are almost completely gone.,10,2020-03-13,154
+Prednisone,Type 2 Diabetes,I experienced some dizziness at first but it went away after a week.,2,2020-03-14,70
+Metformin,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",5,2020-03-14,121
+Amoxicillin,Hypertension,"Side effects were too severe, had to switch medications.",2,2020-03-14,192
+Acetaminophen,Nerve Pain,No noticeable improvement after 6 weeks of use.,2,2020-03-15,150
+Amoxicillin,Nerve Pain,Excellent medication with very few side effects in my experience.,9,2020-03-15,106
+Metformin,Inflammation,No noticeable improvement after 6 weeks of use.,2,2020-03-15,161
+Ibuprofen,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,3,2020-03-16,194
+Metoprolol,Hypothyroidism,No noticeable improvement after 6 weeks of use.,10,2020-03-16,192
+Metformin,Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-03-16,25
+Sertraline,Hypothyroidism,Works well but I have to be careful about timing with meals.,8,2020-03-17,134
+Metoprolol,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-03-17,160
+Lisinopril,Hypertension,"Side effects were too severe, had to switch medications.",8,2020-03-17,87
+Amlodipine,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-03-18,180
+Lisinopril,Type 2 Diabetes,I have been on this for 3 months now with good results.,3,2020-03-18,142
+Hydrochlorothiazide,Hypothyroidism,Works well in combination with my other medications.,8,2020-03-18,133
+Acetaminophen,Type 2 Diabetes,I have been on this for 3 months now with good results.,3,2020-03-19,199
+Gabapentin,Depression,Excellent medication with very few side effects in my experience.,1,2020-03-19,183
+Amlodipine,Nerve Pain,I experienced some dizziness at first but it went away after a week.,7,2020-03-19,27
+Losartan,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,9,2020-03-20,28
+Ibuprofen,Depression,I have been on this for 3 months now with good results.,3,2020-03-20,33
+Prednisone,Chest Pain,Moderate improvement but the cost is quite high.,10,2020-03-20,194
+Sertraline,Hypothyroidism,The generic version works just as well for me.,5,2020-03-21,123
+Gabapentin,Inflammation,I experienced some dizziness at first but it went away after a week.,9,2020-03-21,50
+Gabapentin,Heart Failure,Works well in combination with my other medications.,4,2020-03-21,10
+Gabapentin,Asthma,The generic version works just as well for me.,9,2020-03-22,27
+Prednisone,Asthma,This medication has been very effective for me with minimal side effects.,3,2020-03-22,73
+Hydrochlorothiazide,Type 2 Diabetes,Moderate improvement but the cost is quite high.,9,2020-03-22,93
+Ibuprofen,Heart Failure,I have been on this for 3 months now with good results.,9,2020-03-23,8
+Metformin,High Cholesterol,Moderate improvement but the cost is quite high.,5,2020-03-23,171
+Amoxicillin,GERD,"Side effects were too severe, had to switch medications.",3,2020-03-23,54
+Prednisone,Blood Pressure,Great improvement in my condition since starting this drug.,3,2020-03-24,31
+Losartan,Depression,This medication has been very effective for me with minimal side effects.,7,2020-03-24,154
+Levothyroxine,Inflammation,The generic version works just as well for me.,9,2020-03-24,90
+Amoxicillin,Nerve Pain,Works well but I have to be careful about timing with meals.,7,2020-03-25,170
+Gabapentin,Type 2 Diabetes,The generic version works just as well for me.,8,2020-03-25,174
+Levothyroxine,Heart Failure,I experienced some dizziness at first but it went away after a week.,7,2020-03-25,158
+Acetaminophen,Hypertension,"Side effects were too severe, had to switch medications.",10,2020-03-26,93
+Acetaminophen,Pain,I had to adjust the dosage a few times but now it works perfectly.,3,2020-03-26,22
+Metoprolol,Type 2 Diabetes,No noticeable improvement after 6 weeks of use.,2,2020-03-26,104
+Prednisone,GERD,Works well in combination with my other medications.,3,2020-03-27,99
+Lisinopril,Type 2 Diabetes,I have been on this for 3 months now with good results.,1,2020-03-27,55
+Amlodipine,Heart Failure,This medication has been very effective for me with minimal side effects.,9,2020-03-27,196
+Omeprazole,Asthma,Excellent medication with very few side effects in my experience.,3,2020-03-28,72
+Amoxicillin,Chest Pain,No noticeable improvement after 6 weeks of use.,2,2020-03-28,158
+Hydrochlorothiazide,Bacterial Infection,"Side effects were too severe, had to switch medications.",10,2020-03-28,35
+Omeprazole,Fluid Retention,Works well in combination with my other medications.,5,2020-04-01,128
+Lisinopril,Chest Pain,This medication has been very effective for me with minimal side effects.,1,2020-04-01,77
+Prednisone,Hypertension,No noticeable improvement after 6 weeks of use.,7,2020-04-01,153
+Ibuprofen,Inflammation,I experienced some dizziness at first but it went away after a week.,1,2020-04-02,80
+Amoxicillin,Chest Pain,This medication has been very effective for me with minimal side effects.,3,2020-04-02,25
+Metoprolol,Asthma,I experienced some dizziness at first but it went away after a week.,7,2020-04-02,121
+Acetaminophen,Heart Failure,Excellent medication with very few side effects in my experience.,9,2020-04-03,99
+Acetaminophen,GERD,The generic version works just as well for me.,4,2020-04-03,59
+Levothyroxine,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,10,2020-04-03,84
+Amlodipine,GERD,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-04-04,23
+Metformin,Heart Failure,This medication has been very effective for me with minimal side effects.,2,2020-04-04,194
+Omeprazole,Asthma,I have been on this for 3 months now with good results.,7,2020-04-04,66
+Ibuprofen,High Cholesterol,I have been on this for 3 months now with good results.,9,2020-04-05,149
+Ibuprofen,Blood Pressure,Works well in combination with my other medications.,2,2020-04-05,81
+Gabapentin,Chest Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-04-05,82
+Acetaminophen,Inflammation,I had to adjust the dosage a few times but now it works perfectly.,2,2020-04-06,35
+Hydrochlorothiazide,Inflammation,I experienced some dizziness at first but it went away after a week.,8,2020-04-06,126
+Metoprolol,Inflammation,I experienced some dizziness at first but it went away after a week.,3,2020-04-06,59
+Sertraline,Heart Failure,Excellent medication with very few side effects in my experience.,10,2020-04-07,127
+Hydrochlorothiazide,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,6,2020-04-07,66
+Atorvastatin,Blood Pressure,Works well in combination with my other medications.,1,2020-04-07,195
+Levothyroxine,Inflammation,This drug changed my life. My symptoms are almost completely gone.,8,2020-04-08,41
+Amlodipine,Pain,The generic version works just as well for me.,1,2020-04-08,39
+Omeprazole,Inflammation,Works well but I have to be careful about timing with meals.,7,2020-04-08,194
+Acetaminophen,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,5,2020-04-09,108
+Ibuprofen,Nerve Pain,I have been on this for 3 months now with good results.,3,2020-04-09,9
+Metoprolol,Hypertension,I have been on this for 3 months now with good results.,2,2020-04-09,6
+Gabapentin,Chest Pain,This medication has been very effective for me with minimal side effects.,9,2020-04-10,118
+Lisinopril,Heart Failure,The generic version works just as well for me.,5,2020-04-10,193
+Levothyroxine,Nerve Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-04-10,123
+Levothyroxine,Pain,This medication has been very effective for me with minimal side effects.,4,2020-04-11,25
+Gabapentin,Heart Failure,Works well but I have to be careful about timing with meals.,4,2020-04-11,135
+Metformin,Inflammation,Great improvement in my condition since starting this drug.,8,2020-04-11,75
+Amoxicillin,Hypertension,Works well in combination with my other medications.,5,2020-04-12,128
+Amoxicillin,Heart Failure,No noticeable improvement after 6 weeks of use.,8,2020-04-12,171
+Atorvastatin,Blood Pressure,This medication has been very effective for me with minimal side effects.,3,2020-04-12,144
+Atorvastatin,Heart Failure,Works well but I have to be careful about timing with meals.,7,2020-04-13,175
+Hydrochlorothiazide,Blood Pressure,Great improvement in my condition since starting this drug.,8,2020-04-13,47
+Hydrochlorothiazide,Fluid Retention,Works well in combination with my other medications.,5,2020-04-13,11
+Gabapentin,Blood Pressure,The generic version works just as well for me.,5,2020-04-14,34
+Metformin,Nerve Pain,Moderate improvement but the cost is quite high.,7,2020-04-14,174
+Amlodipine,High Cholesterol,I have been on this for 3 months now with good results.,2,2020-04-14,180
+Amlodipine,Heart Failure,"Side effects were too severe, had to switch medications.",9,2020-04-15,102
+Gabapentin,Blood Pressure,No noticeable improvement after 6 weeks of use.,3,2020-04-15,91
+Sertraline,High Cholesterol,"Side effects were too severe, had to switch medications.",9,2020-04-15,110
+Acetaminophen,Fluid Retention,Works well in combination with my other medications.,8,2020-04-16,155
+Metformin,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,1,2020-04-16,67
+Hydrochlorothiazide,Asthma,I had to adjust the dosage a few times but now it works perfectly.,9,2020-04-16,100
+Sertraline,Hypothyroidism,"Side effects were too severe, had to switch medications.",3,2020-04-17,14
+Acetaminophen,Heart Failure,Excellent medication with very few side effects in my experience.,6,2020-04-17,199
+Amlodipine,GERD,This medication has been very effective for me with minimal side effects.,6,2020-04-17,6
+Levothyroxine,Fluid Retention,Works well in combination with my other medications.,10,2020-04-18,197
+Atorvastatin,Nerve Pain,"Side effects were too severe, had to switch medications.",10,2020-04-18,107
+Acetaminophen,Hypertension,I had to adjust the dosage a few times but now it works perfectly.,6,2020-04-18,152
+Amoxicillin,Nerve Pain,The generic version works just as well for me.,5,2020-04-19,198
+Metformin,Heart Failure,"Side effects were too severe, had to switch medications.",6,2020-04-19,105
+Gabapentin,Type 2 Diabetes,No noticeable improvement after 6 weeks of use.,8,2020-04-19,128
+Sertraline,Asthma,I have been on this for 3 months now with good results.,8,2020-04-20,181
+Metoprolol,Heart Failure,Works well but I have to be careful about timing with meals.,3,2020-04-20,111
+Amoxicillin,Hypertension,This drug changed my life. My symptoms are almost completely gone.,1,2020-04-20,61
+Amoxicillin,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-04-21,37
+Amoxicillin,High Cholesterol,I have been on this for 3 months now with good results.,4,2020-04-21,103
+Acetaminophen,Bacterial Infection,Great improvement in my condition since starting this drug.,8,2020-04-21,186
+Amlodipine,High Cholesterol,This medication has been very effective for me with minimal side effects.,3,2020-04-22,44
+Levothyroxine,High Cholesterol,I have been on this for 3 months now with good results.,2,2020-04-22,27
+Ibuprofen,Hypertension,Works well in combination with my other medications.,8,2020-04-22,94
+Levothyroxine,Asthma,I have been on this for 3 months now with good results.,7,2020-04-23,155
+Lisinopril,Nerve Pain,I experienced some dizziness at first but it went away after a week.,7,2020-04-23,42
+Metformin,Inflammation,Works well but I have to be careful about timing with meals.,3,2020-04-23,157
+Prednisone,Fluid Retention,My doctor recommended this and I am glad they did. Feeling much better.,2,2020-04-24,73
+Omeprazole,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-04-24,147
+Hydrochlorothiazide,Chest Pain,This medication has been very effective for me with minimal side effects.,6,2020-04-24,44
+Lisinopril,Bacterial Infection,The generic version works just as well for me.,10,2020-04-25,2
+Amlodipine,Depression,Works well in combination with my other medications.,3,2020-04-25,47
+Metformin,Asthma,Great improvement in my condition since starting this drug.,7,2020-04-25,145
+Ibuprofen,Fluid Retention,This medication has been very effective for me with minimal side effects.,2,2020-04-26,68
+Atorvastatin,Hypothyroidism,The generic version works just as well for me.,5,2020-04-26,126
+Amoxicillin,Hypertension,This medication has been very effective for me with minimal side effects.,7,2020-04-26,139
+Metformin,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,8,2020-04-27,118
+Prednisone,Asthma,Excellent medication with very few side effects in my experience.,1,2020-04-27,55
+Ibuprofen,Hypertension,The generic version works just as well for me.,4,2020-04-27,114
+Prednisone,Inflammation,This medication has been very effective for me with minimal side effects.,6,2020-04-28,175
+Metformin,Type 2 Diabetes,Works well but I have to be careful about timing with meals.,10,2020-04-28,50
+Amlodipine,High Cholesterol,The generic version works just as well for me.,8,2020-04-28,46
+Omeprazole,Asthma,Works well but I have to be careful about timing with meals.,7,2020-05-01,147
+Amlodipine,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,8,2020-05-01,40
+Sertraline,GERD,Excellent medication with very few side effects in my experience.,8,2020-05-01,110
+Amlodipine,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-05-02,138
+Amlodipine,Depression,This medication has been very effective for me with minimal side effects.,7,2020-05-02,193
+Prednisone,Heart Failure,Works well but I have to be careful about timing with meals.,1,2020-05-02,40
+Prednisone,Heart Failure,This drug changed my life. My symptoms are almost completely gone.,10,2020-05-03,140
+Metoprolol,Hypertension,No noticeable improvement after 6 weeks of use.,10,2020-05-03,56
+Acetaminophen,Depression,"Side effects were too severe, had to switch medications.",3,2020-05-03,118
+Acetaminophen,High Cholesterol,Excellent medication with very few side effects in my experience.,8,2020-05-04,46
+Hydrochlorothiazide,Bacterial Infection,I experienced some dizziness at first but it went away after a week.,3,2020-05-04,146
+Lisinopril,Bacterial Infection,The generic version works just as well for me.,4,2020-05-04,89
+Levothyroxine,Type 2 Diabetes,Works well but I have to be careful about timing with meals.,10,2020-05-05,109
+Metformin,High Cholesterol,Works well in combination with my other medications.,7,2020-05-05,183
+Losartan,Nerve Pain,The generic version works just as well for me.,6,2020-05-05,43
+Gabapentin,Bacterial Infection,Great improvement in my condition since starting this drug.,9,2020-05-06,164
+Omeprazole,Heart Failure,"Side effects were too severe, had to switch medications.",10,2020-05-06,125
+Omeprazole,Depression,No noticeable improvement after 6 weeks of use.,10,2020-05-06,95
+Metformin,Nerve Pain,No noticeable improvement after 6 weeks of use.,1,2020-05-07,129
+Amoxicillin,Fluid Retention,The generic version works just as well for me.,5,2020-05-07,0
+Losartan,Pain,I have been on this for 3 months now with good results.,6,2020-05-07,192
+Losartan,Bacterial Infection,Works well in combination with my other medications.,1,2020-05-08,43
+Metformin,Fluid Retention,This medication has been very effective for me with minimal side effects.,2,2020-05-08,144
+Amoxicillin,Bacterial Infection,Great improvement in my condition since starting this drug.,10,2020-05-08,11
+Atorvastatin,High Cholesterol,Excellent medication with very few side effects in my experience.,2,2020-05-09,95
+Ibuprofen,Bacterial Infection,Works well but I have to be careful about timing with meals.,4,2020-05-09,158
+Metformin,GERD,Works well but I have to be careful about timing with meals.,9,2020-05-09,146
+Prednisone,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,4,2020-05-10,44
+Prednisone,High Cholesterol,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-05-10,63
+Amlodipine,High Cholesterol,This medication has been very effective for me with minimal side effects.,3,2020-05-10,62
+Metoprolol,Hypertension,This medication has been very effective for me with minimal side effects.,3,2020-05-11,95
+Prednisone,Hypothyroidism,Excellent medication with very few side effects in my experience.,6,2020-05-11,88
+Amoxicillin,Type 2 Diabetes,I experienced some dizziness at first but it went away after a week.,10,2020-05-11,186
+Amlodipine,Heart Failure,Works well but I have to be careful about timing with meals.,6,2020-05-12,183
+Levothyroxine,Asthma,This medication has been very effective for me with minimal side effects.,4,2020-05-12,103
+Sertraline,Fluid Retention,Works well in combination with my other medications.,9,2020-05-12,143
+Omeprazole,Pain,Excellent medication with very few side effects in my experience.,4,2020-05-13,159
+Amlodipine,Inflammation,Excellent medication with very few side effects in my experience.,4,2020-05-13,49
+Prednisone,High Cholesterol,Works well but I have to be careful about timing with meals.,4,2020-05-13,100
+Prednisone,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,7,2020-05-14,33
+Metformin,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-05-14,88
+Sertraline,Pain,No noticeable improvement after 6 weeks of use.,9,2020-05-14,165
+Amlodipine,Hypertension,Great improvement in my condition since starting this drug.,5,2020-05-15,192
+Omeprazole,Hypertension,Great improvement in my condition since starting this drug.,10,2020-05-15,14
+Gabapentin,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-05-15,100
+Metoprolol,Asthma,Works well in combination with my other medications.,10,2020-05-16,153
+Sertraline,High Cholesterol,This medication has been very effective for me with minimal side effects.,2,2020-05-16,36
+Amlodipine,Nerve Pain,The generic version works just as well for me.,4,2020-05-16,19
+Gabapentin,Nerve Pain,Works well but I have to be careful about timing with meals.,10,2020-05-17,95
+Omeprazole,High Cholesterol,I experienced some dizziness at first but it went away after a week.,1,2020-05-17,98
+Atorvastatin,Depression,Excellent medication with very few side effects in my experience.,5,2020-05-17,164
+Lisinopril,Depression,"Side effects were too severe, had to switch medications.",8,2020-05-18,87
+Sertraline,Inflammation,I experienced some dizziness at first but it went away after a week.,10,2020-05-18,33
+Atorvastatin,Blood Pressure,I have been on this for 3 months now with good results.,2,2020-05-18,179
+Amlodipine,Hypertension,I have been on this for 3 months now with good results.,6,2020-05-19,59
+Acetaminophen,Blood Pressure,Great improvement in my condition since starting this drug.,7,2020-05-19,70
+Gabapentin,Heart Failure,Great improvement in my condition since starting this drug.,9,2020-05-19,161
+Prednisone,Blood Pressure,Works well but I have to be careful about timing with meals.,7,2020-05-20,26
+Prednisone,Asthma,Great improvement in my condition since starting this drug.,1,2020-05-20,158
+Losartan,Hypertension,I have been on this for 3 months now with good results.,4,2020-05-20,6
+Metformin,Depression,This drug changed my life. My symptoms are almost completely gone.,3,2020-05-21,168
+Acetaminophen,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-05-21,80
+Amoxicillin,High Cholesterol,Works well but I have to be careful about timing with meals.,1,2020-05-21,48
+Atorvastatin,Pain,I experienced some dizziness at first but it went away after a week.,2,2020-05-22,90
+Acetaminophen,Chest Pain,Works well in combination with my other medications.,6,2020-05-22,90
+Metformin,Heart Failure,I experienced some dizziness at first but it went away after a week.,5,2020-05-22,53
+Acetaminophen,Inflammation,Great improvement in my condition since starting this drug.,2,2020-05-23,148
+Levothyroxine,Hypertension,Works well but I have to be careful about timing with meals.,4,2020-05-23,170
+Amoxicillin,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-05-23,124
+Prednisone,Depression,I have been on this for 3 months now with good results.,3,2020-05-24,66
+Gabapentin,Depression,Great improvement in my condition since starting this drug.,6,2020-05-24,177
+Acetaminophen,GERD,Works well in combination with my other medications.,3,2020-05-24,39
+Lisinopril,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-05-25,181
+Amoxicillin,GERD,Moderate improvement but the cost is quite high.,6,2020-05-25,179
+Prednisone,Fluid Retention,Excellent medication with very few side effects in my experience.,2,2020-05-25,151
+Atorvastatin,Pain,I had to adjust the dosage a few times but now it works perfectly.,1,2020-05-26,77
+Ibuprofen,Fluid Retention,I have been on this for 3 months now with good results.,8,2020-05-26,10
+Losartan,Nerve Pain,Moderate improvement but the cost is quite high.,7,2020-05-26,147
+Amlodipine,Chest Pain,I had to adjust the dosage a few times but now it works perfectly.,4,2020-05-27,193
+Atorvastatin,Depression,This drug changed my life. My symptoms are almost completely gone.,9,2020-05-27,110
+Metoprolol,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-05-27,14
+Atorvastatin,Heart Failure,I have been on this for 3 months now with good results.,9,2020-05-28,170
+Omeprazole,Blood Pressure,Works well but I have to be careful about timing with meals.,1,2020-05-28,133
+Metoprolol,Hypothyroidism,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-05-28,188
+Hydrochlorothiazide,Fluid Retention,"Side effects were too severe, had to switch medications.",9,2020-06-01,43
+Ibuprofen,Heart Failure,No noticeable improvement after 6 weeks of use.,7,2020-06-01,181
+Ibuprofen,Nerve Pain,Great improvement in my condition since starting this drug.,7,2020-06-01,44
+Metformin,Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-06-02,101
+Gabapentin,High Cholesterol,Moderate improvement but the cost is quite high.,10,2020-06-02,199
+Atorvastatin,Heart Failure,Works well but I have to be careful about timing with meals.,4,2020-06-02,199
+Levothyroxine,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,6,2020-06-03,20
+Ibuprofen,Depression,The generic version works just as well for me.,3,2020-06-03,142
+Atorvastatin,High Cholesterol,Great improvement in my condition since starting this drug.,6,2020-06-03,2
+Ibuprofen,Hypertension,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-06-04,90
+Acetaminophen,Inflammation,Moderate improvement but the cost is quite high.,7,2020-06-04,43
+Ibuprofen,Asthma,Works well but I have to be careful about timing with meals.,8,2020-06-04,44
+Hydrochlorothiazide,Blood Pressure,"Side effects were too severe, had to switch medications.",10,2020-06-05,194
+Omeprazole,Asthma,Great improvement in my condition since starting this drug.,1,2020-06-05,23
+Amoxicillin,High Cholesterol,Excellent medication with very few side effects in my experience.,3,2020-06-05,62
+Prednisone,GERD,I experienced some dizziness at first but it went away after a week.,5,2020-06-06,145
+Sertraline,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,1,2020-06-06,3
+Sertraline,Pain,Moderate improvement but the cost is quite high.,7,2020-06-06,100
+Atorvastatin,Bacterial Infection,No noticeable improvement after 6 weeks of use.,8,2020-06-07,10
+Atorvastatin,Blood Pressure,The generic version works just as well for me.,1,2020-06-07,67
+Prednisone,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,6,2020-06-07,13
+Sertraline,Heart Failure,The generic version works just as well for me.,4,2020-06-08,47
+Lisinopril,Nerve Pain,Works well in combination with my other medications.,5,2020-06-08,165
+Metformin,Type 2 Diabetes,No noticeable improvement after 6 weeks of use.,4,2020-06-08,157
+Lisinopril,Type 2 Diabetes,No noticeable improvement after 6 weeks of use.,2,2020-06-09,147
+Amlodipine,Chest Pain,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-06-09,137
+Sertraline,High Cholesterol,Great improvement in my condition since starting this drug.,3,2020-06-09,76
+Amoxicillin,Nerve Pain,I experienced some dizziness at first but it went away after a week.,2,2020-06-10,151
+Amlodipine,Blood Pressure,Works well in combination with my other medications.,1,2020-06-10,177
+Metformin,Blood Pressure,This medication has been very effective for me with minimal side effects.,9,2020-06-10,36
+Gabapentin,Nerve Pain,Moderate improvement but the cost is quite high.,1,2020-06-11,82
+Losartan,GERD,The generic version works just as well for me.,2,2020-06-11,175
+Acetaminophen,Blood Pressure,Works well in combination with my other medications.,1,2020-06-11,121
+Losartan,Bacterial Infection,Great improvement in my condition since starting this drug.,7,2020-06-12,72
+Amlodipine,Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-06-12,2
+Metformin,Depression,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-06-12,118
+Atorvastatin,Chest Pain,Works well but I have to be careful about timing with meals.,7,2020-06-13,23
+Gabapentin,Bacterial Infection,The generic version works just as well for me.,3,2020-06-13,57
+Levothyroxine,Hypertension,"Side effects were too severe, had to switch medications.",4,2020-06-13,105
+Lisinopril,Type 2 Diabetes,Moderate improvement but the cost is quite high.,10,2020-06-14,66
+Omeprazole,Pain,I experienced some dizziness at first but it went away after a week.,7,2020-06-14,76
+Atorvastatin,Chest Pain,No noticeable improvement after 6 weeks of use.,2,2020-06-14,99
+Metoprolol,GERD,I had to adjust the dosage a few times but now it works perfectly.,5,2020-06-15,29
+Prednisone,Pain,"Side effects were too severe, had to switch medications.",8,2020-06-15,45
+Gabapentin,Nerve Pain,Moderate improvement but the cost is quite high.,7,2020-06-15,133
+Metoprolol,Nerve Pain,The generic version works just as well for me.,1,2020-06-16,108
+Amoxicillin,Pain,"Side effects were too severe, had to switch medications.",5,2020-06-16,154
+Omeprazole,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,1,2020-06-16,71
+Prednisone,Blood Pressure,Excellent medication with very few side effects in my experience.,2,2020-06-17,121
+Metoprolol,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,2,2020-06-17,130
+Hydrochlorothiazide,Nerve Pain,This medication has been very effective for me with minimal side effects.,2,2020-06-17,126
+Sertraline,Depression,This drug changed my life. My symptoms are almost completely gone.,4,2020-06-18,44
+Omeprazole,Pain,Great improvement in my condition since starting this drug.,1,2020-06-18,43
+Omeprazole,Fluid Retention,"Side effects were too severe, had to switch medications.",8,2020-06-18,78
+Omeprazole,Inflammation,Works well but I have to be careful about timing with meals.,2,2020-06-19,196
+Gabapentin,High Cholesterol,"Side effects were too severe, had to switch medications.",5,2020-06-19,88
+Losartan,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-06-19,128
+Amoxicillin,Blood Pressure,This drug changed my life. My symptoms are almost completely gone.,5,2020-06-20,114
+Sertraline,Inflammation,This medication has been very effective for me with minimal side effects.,3,2020-06-20,91
+Amoxicillin,GERD,Excellent medication with very few side effects in my experience.,9,2020-06-20,94
+Acetaminophen,Chest Pain,The generic version works just as well for me.,3,2020-06-21,107
+Hydrochlorothiazide,Depression,This medication has been very effective for me with minimal side effects.,5,2020-06-21,176
+Gabapentin,High Cholesterol,"Side effects were too severe, had to switch medications.",9,2020-06-21,111
+Acetaminophen,Pain,Works well but I have to be careful about timing with meals.,2,2020-06-22,167
+Metformin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,6,2020-06-22,58
+Hydrochlorothiazide,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,6,2020-06-22,123
+Acetaminophen,GERD,Great improvement in my condition since starting this drug.,2,2020-06-23,100
+Acetaminophen,GERD,"Side effects were too severe, had to switch medications.",6,2020-06-23,199
+Sertraline,Depression,This medication has been very effective for me with minimal side effects.,1,2020-06-23,148
+Ibuprofen,Chest Pain,I have been on this for 3 months now with good results.,9,2020-06-24,19
+Omeprazole,Hypothyroidism,The generic version works just as well for me.,1,2020-06-24,78
+Gabapentin,Bacterial Infection,Moderate improvement but the cost is quite high.,7,2020-06-24,188
+Lisinopril,GERD,"Side effects were too severe, had to switch medications.",8,2020-06-25,129
+Prednisone,Fluid Retention,Works well but I have to be careful about timing with meals.,5,2020-06-25,54
+Gabapentin,Type 2 Diabetes,The generic version works just as well for me.,7,2020-06-25,21
+Hydrochlorothiazide,Inflammation,I have been on this for 3 months now with good results.,6,2020-06-26,106
+Omeprazole,Asthma,The generic version works just as well for me.,8,2020-06-26,33
+Levothyroxine,Asthma,The generic version works just as well for me.,4,2020-06-26,103
+Hydrochlorothiazide,Asthma,Excellent medication with very few side effects in my experience.,2,2020-06-27,94
+Levothyroxine,GERD,I had to adjust the dosage a few times but now it works perfectly.,2,2020-06-27,132
+Metoprolol,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-06-27,146
+Metformin,Type 2 Diabetes,Great improvement in my condition since starting this drug.,8,2020-06-28,121
+Prednisone,Pain,Great improvement in my condition since starting this drug.,10,2020-06-28,28
+Metformin,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-06-28,85
+Metformin,Pain,I have been on this for 3 months now with good results.,9,2020-07-01,98
+Metformin,GERD,"Side effects were too severe, had to switch medications.",6,2020-07-01,105
+Ibuprofen,Asthma,The generic version works just as well for me.,1,2020-07-01,86
+Prednisone,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",4,2020-07-02,113
+Omeprazole,Asthma,The generic version works just as well for me.,10,2020-07-02,130
+Amlodipine,Chest Pain,This medication has been very effective for me with minimal side effects.,7,2020-07-02,123
+Levothyroxine,Nerve Pain,Moderate improvement but the cost is quite high.,4,2020-07-03,5
+Amoxicillin,Blood Pressure,I have been on this for 3 months now with good results.,2,2020-07-03,140
+Prednisone,High Cholesterol,Great improvement in my condition since starting this drug.,3,2020-07-03,107
+Losartan,Asthma,Works well in combination with my other medications.,8,2020-07-04,147
+Levothyroxine,GERD,Excellent medication with very few side effects in my experience.,2,2020-07-04,157
+Metformin,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-07-04,130
+Levothyroxine,Fluid Retention,The generic version works just as well for me.,6,2020-07-05,55
+Hydrochlorothiazide,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-07-05,11
+Losartan,Nerve Pain,Excellent medication with very few side effects in my experience.,4,2020-07-05,146
+Losartan,Chest Pain,Works well but I have to be careful about timing with meals.,3,2020-07-06,178
+Hydrochlorothiazide,Pain,This drug changed my life. My symptoms are almost completely gone.,9,2020-07-06,193
+Gabapentin,Blood Pressure,This medication has been very effective for me with minimal side effects.,6,2020-07-06,163
+Metoprolol,Bacterial Infection,This medication has been very effective for me with minimal side effects.,5,2020-07-07,146
+Atorvastatin,High Cholesterol,Works well in combination with my other medications.,2,2020-07-07,177
+Gabapentin,Type 2 Diabetes,Works well but I have to be careful about timing with meals.,9,2020-07-07,108
+Ibuprofen,Pain,Excellent medication with very few side effects in my experience.,2,2020-07-08,139
+Amoxicillin,Blood Pressure,Moderate improvement but the cost is quite high.,8,2020-07-08,7
+Losartan,Blood Pressure,"Side effects were too severe, had to switch medications.",3,2020-07-08,15
+Ibuprofen,Hypertension,The generic version works just as well for me.,3,2020-07-09,147
+Prednisone,Hypothyroidism,I had to adjust the dosage a few times but now it works perfectly.,1,2020-07-09,121
+Amlodipine,Inflammation,This drug changed my life. My symptoms are almost completely gone.,10,2020-07-09,45
+Ibuprofen,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-07-10,20
+Levothyroxine,Depression,Works well in combination with my other medications.,9,2020-07-10,40
+Gabapentin,Hypertension,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-07-10,107
+Acetaminophen,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,4,2020-07-11,197
+Ibuprofen,Chest Pain,I have been on this for 3 months now with good results.,2,2020-07-11,117
+Acetaminophen,Asthma,I had to adjust the dosage a few times but now it works perfectly.,1,2020-07-11,136
+Losartan,Bacterial Infection,Works well in combination with my other medications.,5,2020-07-12,156
+Omeprazole,High Cholesterol,The generic version works just as well for me.,10,2020-07-12,74
+Atorvastatin,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",10,2020-07-12,137
+Levothyroxine,Hypothyroidism,"Side effects were too severe, had to switch medications.",2,2020-07-13,172
+Ibuprofen,Chest Pain,My doctor recommended this and I am glad they did. Feeling much better.,5,2020-07-13,175
+Levothyroxine,Depression,No noticeable improvement after 6 weeks of use.,1,2020-07-13,28
+Omeprazole,Heart Failure,Excellent medication with very few side effects in my experience.,10,2020-07-14,156
+Losartan,Nerve Pain,This medication has been very effective for me with minimal side effects.,7,2020-07-14,153
+Atorvastatin,Hypertension,This drug changed my life. My symptoms are almost completely gone.,6,2020-07-14,137
+Gabapentin,Chest Pain,This medication has been very effective for me with minimal side effects.,6,2020-07-15,66
+Sertraline,Fluid Retention,Great improvement in my condition since starting this drug.,5,2020-07-15,59
+Hydrochlorothiazide,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-07-15,168
+Ibuprofen,Chest Pain,Excellent medication with very few side effects in my experience.,1,2020-07-16,178
+Atorvastatin,Inflammation,Works well in combination with my other medications.,2,2020-07-16,119
+Acetaminophen,Fluid Retention,I experienced some dizziness at first but it went away after a week.,7,2020-07-16,120
+Hydrochlorothiazide,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,1,2020-07-17,98
+Levothyroxine,Blood Pressure,Moderate improvement but the cost is quite high.,5,2020-07-17,169
+Amlodipine,Hypothyroidism,I experienced some dizziness at first but it went away after a week.,6,2020-07-17,165
+Hydrochlorothiazide,Depression,Works well in combination with my other medications.,1,2020-07-18,26
+Losartan,Hypothyroidism,Works well in combination with my other medications.,5,2020-07-18,197
+Sertraline,Asthma,No noticeable improvement after 6 weeks of use.,3,2020-07-18,167
+Hydrochlorothiazide,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-07-19,51
+Gabapentin,Inflammation,This medication has been very effective for me with minimal side effects.,2,2020-07-19,121
+Metformin,Asthma,This drug changed my life. My symptoms are almost completely gone.,3,2020-07-19,105
+Levothyroxine,GERD,This medication has been very effective for me with minimal side effects.,8,2020-07-20,12
+Amlodipine,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,9,2020-07-20,8
+Hydrochlorothiazide,Hypothyroidism,I had to adjust the dosage a few times but now it works perfectly.,2,2020-07-20,116
+Atorvastatin,Blood Pressure,Great improvement in my condition since starting this drug.,9,2020-07-21,42
+Sertraline,Blood Pressure,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-07-21,166
+Amoxicillin,Inflammation,Works well but I have to be careful about timing with meals.,5,2020-07-21,134
+Metoprolol,Inflammation,This medication has been very effective for me with minimal side effects.,1,2020-07-22,117
+Atorvastatin,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-07-22,86
+Sertraline,High Cholesterol,Moderate improvement but the cost is quite high.,8,2020-07-22,161
+Omeprazole,Hypertension,I experienced some dizziness at first but it went away after a week.,7,2020-07-23,138
+Metformin,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,10,2020-07-23,175
+Lisinopril,Pain,This drug changed my life. My symptoms are almost completely gone.,7,2020-07-23,28
+Atorvastatin,Inflammation,I have been on this for 3 months now with good results.,7,2020-07-24,100
+Atorvastatin,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-07-24,135
+Atorvastatin,Bacterial Infection,This medication has been very effective for me with minimal side effects.,4,2020-07-24,159
+Lisinopril,Nerve Pain,This medication has been very effective for me with minimal side effects.,3,2020-07-25,107
+Amlodipine,Hypothyroidism,I had to adjust the dosage a few times but now it works perfectly.,5,2020-07-25,71
+Omeprazole,Chest Pain,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-07-25,97
+Levothyroxine,Hypothyroidism,Great improvement in my condition since starting this drug.,5,2020-07-26,85
+Hydrochlorothiazide,Hypothyroidism,Works well in combination with my other medications.,8,2020-07-26,1
+Lisinopril,High Cholesterol,This medication has been very effective for me with minimal side effects.,5,2020-07-26,169
+Prednisone,Hypothyroidism,Great improvement in my condition since starting this drug.,5,2020-07-27,41
+Levothyroxine,Asthma,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-07-27,104
+Sertraline,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,2,2020-07-27,39
+Amlodipine,Nerve Pain,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-07-28,2
+Atorvastatin,Fluid Retention,I had to adjust the dosage a few times but now it works perfectly.,5,2020-07-28,145
+Gabapentin,Blood Pressure,Works well in combination with my other medications.,1,2020-07-28,63
+Sertraline,Blood Pressure,Moderate improvement but the cost is quite high.,8,2020-08-01,0
+Atorvastatin,Asthma,Excellent medication with very few side effects in my experience.,5,2020-08-01,62
+Losartan,Heart Failure,Great improvement in my condition since starting this drug.,5,2020-08-01,10
+Metoprolol,Heart Failure,"Side effects were too severe, had to switch medications.",7,2020-08-02,65
+Hydrochlorothiazide,Inflammation,I experienced some dizziness at first but it went away after a week.,9,2020-08-02,112
+Ibuprofen,Heart Failure,Excellent medication with very few side effects in my experience.,5,2020-08-02,173
+Metformin,Chest Pain,Works well in combination with my other medications.,7,2020-08-03,179
+Omeprazole,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,9,2020-08-03,139
+Atorvastatin,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-08-03,115
+Gabapentin,Chest Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-08-04,70
+Acetaminophen,Blood Pressure,The generic version works just as well for me.,3,2020-08-04,50
+Atorvastatin,Chest Pain,The generic version works just as well for me.,1,2020-08-04,97
+Losartan,Inflammation,I have been on this for 3 months now with good results.,10,2020-08-05,198
+Sertraline,Fluid Retention,The generic version works just as well for me.,5,2020-08-05,149
+Lisinopril,High Cholesterol,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-08-05,79
+Sertraline,Bacterial Infection,I have been on this for 3 months now with good results.,3,2020-08-06,34
+Acetaminophen,Type 2 Diabetes,Works well but I have to be careful about timing with meals.,3,2020-08-06,154
+Hydrochlorothiazide,Blood Pressure,Great improvement in my condition since starting this drug.,3,2020-08-06,105
+Sertraline,Depression,Great improvement in my condition since starting this drug.,1,2020-08-07,98
+Losartan,Blood Pressure,I experienced some dizziness at first but it went away after a week.,8,2020-08-07,145
+Sertraline,Blood Pressure,Great improvement in my condition since starting this drug.,4,2020-08-07,88
+Losartan,Depression,This drug changed my life. My symptoms are almost completely gone.,10,2020-08-08,168
+Amoxicillin,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,10,2020-08-08,187
+Hydrochlorothiazide,Chest Pain,"Side effects were too severe, had to switch medications.",6,2020-08-08,192
+Hydrochlorothiazide,Pain,I have been on this for 3 months now with good results.,7,2020-08-09,142
+Hydrochlorothiazide,Nerve Pain,No noticeable improvement after 6 weeks of use.,8,2020-08-09,115
+Sertraline,High Cholesterol,My doctor recommended this and I am glad they did. Feeling much better.,7,2020-08-09,3
+Omeprazole,Hypertension,"Side effects were too severe, had to switch medications.",5,2020-08-10,134
+Atorvastatin,Type 2 Diabetes,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-08-10,155
+Amoxicillin,Chest Pain,I experienced some dizziness at first but it went away after a week.,6,2020-08-10,51
+Sertraline,Fluid Retention,No noticeable improvement after 6 weeks of use.,4,2020-08-11,195
+Sertraline,Hypertension,Great improvement in my condition since starting this drug.,3,2020-08-11,103
+Metformin,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,2,2020-08-11,74
+Omeprazole,Type 2 Diabetes,Moderate improvement but the cost is quite high.,8,2020-08-12,102
+Atorvastatin,Bacterial Infection,This drug changed my life. My symptoms are almost completely gone.,2,2020-08-12,78
+Acetaminophen,Hypothyroidism,Moderate improvement but the cost is quite high.,4,2020-08-12,8
+Amoxicillin,GERD,No noticeable improvement after 6 weeks of use.,10,2020-08-13,18
+Amlodipine,GERD,I experienced some dizziness at first but it went away after a week.,1,2020-08-13,52
+Hydrochlorothiazide,Inflammation,This drug changed my life. My symptoms are almost completely gone.,8,2020-08-13,82
+Atorvastatin,Asthma,Moderate improvement but the cost is quite high.,9,2020-08-14,120
+Atorvastatin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,10,2020-08-14,138
+Losartan,Hypothyroidism,My doctor recommended this and I am glad they did. Feeling much better.,7,2020-08-14,76
+Atorvastatin,Pain,Excellent medication with very few side effects in my experience.,3,2020-08-15,75
+Prednisone,Type 2 Diabetes,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-08-15,181
+Levothyroxine,High Cholesterol,This medication has been very effective for me with minimal side effects.,9,2020-08-15,46
+Amlodipine,Heart Failure,Works well in combination with my other medications.,4,2020-08-16,7
+Sertraline,Asthma,I have been on this for 3 months now with good results.,7,2020-08-16,109
+Sertraline,Inflammation,I experienced some dizziness at first but it went away after a week.,10,2020-08-16,66
+Hydrochlorothiazide,Asthma,This drug changed my life. My symptoms are almost completely gone.,7,2020-08-17,32
+Prednisone,Depression,Works well in combination with my other medications.,9,2020-08-17,8
+Levothyroxine,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,7,2020-08-17,136
+Atorvastatin,Asthma,This medication has been very effective for me with minimal side effects.,2,2020-08-18,121
+Levothyroxine,Heart Failure,"Side effects were too severe, had to switch medications.",1,2020-08-18,114
+Sertraline,Blood Pressure,The generic version works just as well for me.,2,2020-08-18,134
+Losartan,Depression,My doctor recommended this and I am glad they did. Feeling much better.,8,2020-08-19,39
+Ibuprofen,Inflammation,Moderate improvement but the cost is quite high.,5,2020-08-19,1
+Omeprazole,Chest Pain,Excellent medication with very few side effects in my experience.,5,2020-08-19,125
+Omeprazole,Hypertension,No noticeable improvement after 6 weeks of use.,3,2020-08-20,81
+Amlodipine,Hypertension,Moderate improvement but the cost is quite high.,4,2020-08-20,123
+Levothyroxine,Depression,My doctor recommended this and I am glad they did. Feeling much better.,7,2020-08-20,24
+Metformin,Type 2 Diabetes,I have been on this for 3 months now with good results.,8,2020-08-21,126
+Amlodipine,Hypothyroidism,Great improvement in my condition since starting this drug.,2,2020-08-21,127
+Metoprolol,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",7,2020-08-21,22
+Ibuprofen,Depression,Excellent medication with very few side effects in my experience.,3,2020-08-22,11
+Atorvastatin,Pain,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-08-22,190
+Amoxicillin,Depression,This drug changed my life. My symptoms are almost completely gone.,2,2020-08-22,151
+Amlodipine,Fluid Retention,I have been on this for 3 months now with good results.,4,2020-08-23,53
+Gabapentin,Type 2 Diabetes,"Side effects were too severe, had to switch medications.",5,2020-08-23,187
+Atorvastatin,Inflammation,Works well but I have to be careful about timing with meals.,5,2020-08-23,70
+Amoxicillin,Nerve Pain,Works well but I have to be careful about timing with meals.,9,2020-08-24,155
+Metformin,Inflammation,Works well but I have to be careful about timing with meals.,8,2020-08-24,110
+Metformin,Nerve Pain,No noticeable improvement after 6 weeks of use.,9,2020-08-24,106
+Amoxicillin,High Cholesterol,Excellent medication with very few side effects in my experience.,4,2020-08-25,80
+Lisinopril,Asthma,I had to adjust the dosage a few times but now it works perfectly.,1,2020-08-25,177
+Amoxicillin,Nerve Pain,The generic version works just as well for me.,6,2020-08-25,19
+Ibuprofen,Inflammation,This drug changed my life. My symptoms are almost completely gone.,2,2020-08-26,120
+Levothyroxine,Type 2 Diabetes,I had to adjust the dosage a few times but now it works perfectly.,9,2020-08-26,199
+Metoprolol,Hypertension,I have been on this for 3 months now with good results.,4,2020-08-26,168
+Atorvastatin,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-08-27,88
+Lisinopril,GERD,My doctor recommended this and I am glad they did. Feeling much better.,7,2020-08-27,49
+Omeprazole,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,2,2020-08-27,142
+Ibuprofen,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-08-28,88
+Metoprolol,Fluid Retention,No noticeable improvement after 6 weeks of use.,2,2020-08-28,186
+Acetaminophen,Inflammation,I experienced some dizziness at first but it went away after a week.,6,2020-08-28,115
+Omeprazole,GERD,No noticeable improvement after 6 weeks of use.,10,2020-09-01,100
+Levothyroxine,Heart Failure,"Side effects were too severe, had to switch medications.",10,2020-09-01,170
+Lisinopril,Asthma,The generic version works just as well for me.,1,2020-09-01,165
+Gabapentin,Bacterial Infection,I have been on this for 3 months now with good results.,1,2020-09-02,12
+Omeprazole,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,4,2020-09-02,3
+Acetaminophen,GERD,My doctor recommended this and I am glad they did. Feeling much better.,5,2020-09-02,30
+Hydrochlorothiazide,GERD,This medication has been very effective for me with minimal side effects.,4,2020-09-03,154
+Prednisone,Inflammation,No noticeable improvement after 6 weeks of use.,9,2020-09-03,38
+Atorvastatin,Hypertension,Excellent medication with very few side effects in my experience.,9,2020-09-03,6
+Levothyroxine,Chest Pain,This drug changed my life. My symptoms are almost completely gone.,7,2020-09-04,100
+Ibuprofen,High Cholesterol,Excellent medication with very few side effects in my experience.,1,2020-09-04,61
+Hydrochlorothiazide,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,9,2020-09-04,141
+Losartan,Hypothyroidism,Works well but I have to be careful about timing with meals.,1,2020-09-05,168
+Gabapentin,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-09-05,38
+Losartan,Heart Failure,Great improvement in my condition since starting this drug.,10,2020-09-05,178
+Metoprolol,Hypertension,I had to adjust the dosage a few times but now it works perfectly.,7,2020-09-06,72
+Acetaminophen,Blood Pressure,No noticeable improvement after 6 weeks of use.,10,2020-09-06,52
+Amoxicillin,Chest Pain,No noticeable improvement after 6 weeks of use.,4,2020-09-06,87
+Acetaminophen,Blood Pressure,Great improvement in my condition since starting this drug.,4,2020-09-07,14
+Prednisone,Chest Pain,This drug changed my life. My symptoms are almost completely gone.,8,2020-09-07,76
+Omeprazole,Bacterial Infection,This medication has been very effective for me with minimal side effects.,9,2020-09-07,129
+Prednisone,Type 2 Diabetes,Excellent medication with very few side effects in my experience.,7,2020-09-08,124
+Metformin,Fluid Retention,No noticeable improvement after 6 weeks of use.,10,2020-09-08,142
+Gabapentin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,3,2020-09-08,10
+Levothyroxine,Pain,I experienced some dizziness at first but it went away after a week.,10,2020-09-09,179
+Sertraline,Hypertension,Had an allergic reaction. Would not recommend without consulting doctor first.,5,2020-09-09,56
+Lisinopril,Hypertension,"Side effects were too severe, had to switch medications.",3,2020-09-09,99
+Losartan,Hypertension,I experienced some dizziness at first but it went away after a week.,6,2020-09-10,137
+Omeprazole,Fluid Retention,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-09-10,12
+Metoprolol,High Cholesterol,Excellent medication with very few side effects in my experience.,7,2020-09-10,61
+Atorvastatin,Hypothyroidism,I experienced some dizziness at first but it went away after a week.,2,2020-09-11,152
+Levothyroxine,Blood Pressure,This medication has been very effective for me with minimal side effects.,5,2020-09-11,116
+Ibuprofen,Hypothyroidism,Moderate improvement but the cost is quite high.,3,2020-09-11,37
+Metformin,Heart Failure,"Side effects were too severe, had to switch medications.",10,2020-09-12,120
+Levothyroxine,Type 2 Diabetes,I have been on this for 3 months now with good results.,8,2020-09-12,69
+Metoprolol,Pain,Works well but I have to be careful about timing with meals.,5,2020-09-12,122
+Acetaminophen,Pain,Excellent medication with very few side effects in my experience.,1,2020-09-13,136
+Levothyroxine,Asthma,Moderate improvement but the cost is quite high.,3,2020-09-13,163
+Prednisone,Chest Pain,I experienced some dizziness at first but it went away after a week.,8,2020-09-13,192
+Lisinopril,GERD,The generic version works just as well for me.,2,2020-09-14,158
+Sertraline,Heart Failure,No noticeable improvement after 6 weeks of use.,4,2020-09-14,147
+Omeprazole,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,8,2020-09-14,99
+Losartan,High Cholesterol,Works well in combination with my other medications.,7,2020-09-15,46
+Amlodipine,Heart Failure,No noticeable improvement after 6 weeks of use.,10,2020-09-15,96
+Prednisone,Type 2 Diabetes,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-09-15,3
+Atorvastatin,Pain,The generic version works just as well for me.,2,2020-09-16,189
+Hydrochlorothiazide,GERD,This medication has been very effective for me with minimal side effects.,3,2020-09-16,95
+Gabapentin,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-09-16,1
+Amlodipine,Asthma,The generic version works just as well for me.,9,2020-09-17,102
+Metformin,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,1,2020-09-17,100
+Amlodipine,Type 2 Diabetes,The generic version works just as well for me.,7,2020-09-17,61
+Losartan,Bacterial Infection,This medication has been very effective for me with minimal side effects.,6,2020-09-18,11
+Atorvastatin,Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-09-18,165
+Levothyroxine,Blood Pressure,Works well but I have to be careful about timing with meals.,1,2020-09-18,159
+Hydrochlorothiazide,Depression,I experienced some dizziness at first but it went away after a week.,1,2020-09-19,55
+Sertraline,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,2,2020-09-19,42
+Metformin,Inflammation,No noticeable improvement after 6 weeks of use.,4,2020-09-19,163
+Metformin,High Cholesterol,My doctor recommended this and I am glad they did. Feeling much better.,3,2020-09-20,5
+Sertraline,GERD,My doctor recommended this and I am glad they did. Feeling much better.,3,2020-09-20,176
+Amlodipine,Inflammation,I have been on this for 3 months now with good results.,6,2020-09-20,145
+Gabapentin,Pain,This drug changed my life. My symptoms are almost completely gone.,6,2020-09-21,59
+Amoxicillin,Hypertension,This drug changed my life. My symptoms are almost completely gone.,3,2020-09-21,100
+Metformin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,9,2020-09-21,110
+Metformin,High Cholesterol,Works well in combination with my other medications.,8,2020-09-22,89
+Prednisone,Bacterial Infection,I have been on this for 3 months now with good results.,5,2020-09-22,169
+Metoprolol,GERD,Excellent medication with very few side effects in my experience.,5,2020-09-22,161
+Sertraline,High Cholesterol,This medication has been very effective for me with minimal side effects.,6,2020-09-23,73
+Acetaminophen,Fluid Retention,This drug changed my life. My symptoms are almost completely gone.,5,2020-09-23,177
+Omeprazole,Asthma,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-09-23,131
+Lisinopril,Hypertension,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-09-24,161
+Hydrochlorothiazide,Hypertension,No noticeable improvement after 6 weeks of use.,9,2020-09-24,152
+Losartan,Heart Failure,Moderate improvement but the cost is quite high.,6,2020-09-24,135
+Amlodipine,GERD,I had to adjust the dosage a few times but now it works perfectly.,5,2020-09-25,195
+Metoprolol,Blood Pressure,The generic version works just as well for me.,3,2020-09-25,42
+Sertraline,Inflammation,Moderate improvement but the cost is quite high.,6,2020-09-25,38
+Lisinopril,Nerve Pain,This drug changed my life. My symptoms are almost completely gone.,8,2020-09-26,13
+Metoprolol,Pain,The generic version works just as well for me.,7,2020-09-26,3
+Amlodipine,Inflammation,The generic version works just as well for me.,2,2020-09-26,107
+Amoxicillin,High Cholesterol,Works well but I have to be careful about timing with meals.,9,2020-09-27,108
+Metformin,Nerve Pain,This medication has been very effective for me with minimal side effects.,5,2020-09-27,114
+Amoxicillin,Hypothyroidism,Great improvement in my condition since starting this drug.,7,2020-09-27,103
+Metformin,High Cholesterol,"Side effects were too severe, had to switch medications.",6,2020-09-28,16
+Metoprolol,Fluid Retention,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-09-28,18
+Metoprolol,Chest Pain,Moderate improvement but the cost is quite high.,1,2020-09-28,17
+Gabapentin,Chest Pain,Moderate improvement but the cost is quite high.,2,2020-10-01,108
+Gabapentin,Inflammation,I experienced some dizziness at first but it went away after a week.,6,2020-10-01,108
+Metformin,Heart Failure,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-10-01,146
+Metformin,Heart Failure,Great improvement in my condition since starting this drug.,3,2020-10-02,65
+Omeprazole,Hypertension,"Side effects were too severe, had to switch medications.",4,2020-10-02,151
+Metoprolol,GERD,I have been on this for 3 months now with good results.,10,2020-10-02,67
+Metformin,Pain,The generic version works just as well for me.,5,2020-10-03,187
+Acetaminophen,Heart Failure,"Side effects were too severe, had to switch medications.",2,2020-10-03,174
+Ibuprofen,Heart Failure,No noticeable improvement after 6 weeks of use.,8,2020-10-03,149
+Metformin,Heart Failure,No noticeable improvement after 6 weeks of use.,8,2020-10-04,31
+Sertraline,Asthma,No noticeable improvement after 6 weeks of use.,2,2020-10-04,194
+Levothyroxine,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,10,2020-10-04,136
+Losartan,Blood Pressure,No noticeable improvement after 6 weeks of use.,5,2020-10-05,183
+Losartan,Depression,"Side effects were too severe, had to switch medications.",7,2020-10-05,84
+Losartan,Asthma,I experienced some dizziness at first but it went away after a week.,9,2020-10-05,60
+Amlodipine,Asthma,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-10-06,126
+Omeprazole,Hypothyroidism,Moderate improvement but the cost is quite high.,9,2020-10-06,117
+Losartan,Fluid Retention,This medication has been very effective for me with minimal side effects.,6,2020-10-06,175
+Gabapentin,Type 2 Diabetes,Excellent medication with very few side effects in my experience.,3,2020-10-07,62
+Acetaminophen,Pain,I have been on this for 3 months now with good results.,8,2020-10-07,187
+Lisinopril,Fluid Retention,Works well but I have to be careful about timing with meals.,4,2020-10-07,1
+Ibuprofen,Hypothyroidism,I experienced some dizziness at first but it went away after a week.,10,2020-10-08,47
+Atorvastatin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,6,2020-10-08,110
+Gabapentin,Chest Pain,"Side effects were too severe, had to switch medications.",4,2020-10-08,36
+Acetaminophen,Pain,This drug changed my life. My symptoms are almost completely gone.,8,2020-10-09,54
+Ibuprofen,Hypothyroidism,Great improvement in my condition since starting this drug.,4,2020-10-09,144
+Amoxicillin,Blood Pressure,Works well but I have to be careful about timing with meals.,5,2020-10-09,10
+Atorvastatin,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,3,2020-10-10,82
+Amlodipine,Inflammation,Great improvement in my condition since starting this drug.,7,2020-10-10,117
+Losartan,Depression,Works well in combination with my other medications.,10,2020-10-10,167
+Atorvastatin,GERD,Great improvement in my condition since starting this drug.,8,2020-10-11,121
+Prednisone,Chest Pain,This drug changed my life. My symptoms are almost completely gone.,3,2020-10-11,57
+Acetaminophen,Fluid Retention,Works well in combination with my other medications.,6,2020-10-11,166
+Atorvastatin,Type 2 Diabetes,Great improvement in my condition since starting this drug.,4,2020-10-12,175
+Atorvastatin,Type 2 Diabetes,This drug changed my life. My symptoms are almost completely gone.,2,2020-10-12,64
+Acetaminophen,Type 2 Diabetes,I experienced some dizziness at first but it went away after a week.,7,2020-10-12,157
+Amlodipine,Chest Pain,Excellent medication with very few side effects in my experience.,3,2020-10-13,132
+Omeprazole,GERD,Great improvement in my condition since starting this drug.,4,2020-10-13,76
+Gabapentin,Hypothyroidism,I experienced some dizziness at first but it went away after a week.,10,2020-10-13,151
+Hydrochlorothiazide,High Cholesterol,I had to adjust the dosage a few times but now it works perfectly.,10,2020-10-14,2
+Ibuprofen,Hypothyroidism,I have been on this for 3 months now with good results.,6,2020-10-14,82
+Amoxicillin,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,5,2020-10-14,176
+Metoprolol,High Cholesterol,I had to adjust the dosage a few times but now it works perfectly.,7,2020-10-15,14
+Prednisone,Asthma,I have been on this for 3 months now with good results.,6,2020-10-15,111
+Sertraline,Pain,This drug changed my life. My symptoms are almost completely gone.,10,2020-10-15,17
+Amlodipine,Fluid Retention,"Side effects were too severe, had to switch medications.",2,2020-10-16,7
+Metformin,Pain,Works well in combination with my other medications.,7,2020-10-16,72
+Amlodipine,Chest Pain,Moderate improvement but the cost is quite high.,3,2020-10-16,47
+Ibuprofen,Inflammation,The generic version works just as well for me.,3,2020-10-17,32
+Gabapentin,Nerve Pain,I have been on this for 3 months now with good results.,8,2020-10-17,55
+Amlodipine,Hypertension,The generic version works just as well for me.,9,2020-10-17,179
+Metformin,Blood Pressure,The generic version works just as well for me.,5,2020-10-18,186
+Gabapentin,Type 2 Diabetes,I had to adjust the dosage a few times but now it works perfectly.,8,2020-10-18,0
+Amlodipine,Fluid Retention,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-10-18,60
+Losartan,Inflammation,This medication has been very effective for me with minimal side effects.,6,2020-10-19,157
+Metoprolol,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,9,2020-10-19,77
+Atorvastatin,Hypothyroidism,Works well but I have to be careful about timing with meals.,2,2020-10-19,186
+Amoxicillin,Type 2 Diabetes,Moderate improvement but the cost is quite high.,8,2020-10-20,181
+Omeprazole,Pain,This medication has been very effective for me with minimal side effects.,3,2020-10-20,126
+Omeprazole,Type 2 Diabetes,Moderate improvement but the cost is quite high.,7,2020-10-20,121
+Ibuprofen,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-10-21,42
+Losartan,Nerve Pain,The generic version works just as well for me.,3,2020-10-21,95
+Sertraline,Asthma,This medication has been very effective for me with minimal side effects.,7,2020-10-21,40
+Metformin,Bacterial Infection,This medication has been very effective for me with minimal side effects.,4,2020-10-22,180
+Losartan,Chest Pain,Excellent medication with very few side effects in my experience.,9,2020-10-22,169
+Metoprolol,Hypothyroidism,Works well in combination with my other medications.,7,2020-10-22,67
+Losartan,Pain,I experienced some dizziness at first but it went away after a week.,5,2020-10-23,146
+Gabapentin,GERD,My doctor recommended this and I am glad they did. Feeling much better.,10,2020-10-23,124
+Levothyroxine,Depression,"Side effects were too severe, had to switch medications.",2,2020-10-23,133
+Prednisone,Chest Pain,This drug changed my life. My symptoms are almost completely gone.,10,2020-10-24,173
+Gabapentin,Pain,This drug changed my life. My symptoms are almost completely gone.,9,2020-10-24,181
+Omeprazole,Bacterial Infection,This drug changed my life. My symptoms are almost completely gone.,2,2020-10-24,65
+Sertraline,Asthma,No noticeable improvement after 6 weeks of use.,9,2020-10-25,109
+Metformin,Depression,No noticeable improvement after 6 weeks of use.,10,2020-10-25,80
+Amoxicillin,Heart Failure,This medication has been very effective for me with minimal side effects.,5,2020-10-25,152
+Acetaminophen,Inflammation,Moderate improvement but the cost is quite high.,4,2020-10-26,36
+Amoxicillin,Blood Pressure,Excellent medication with very few side effects in my experience.,7,2020-10-26,75
+Amlodipine,High Cholesterol,Great improvement in my condition since starting this drug.,4,2020-10-26,151
+Omeprazole,Asthma,The generic version works just as well for me.,2,2020-10-27,33
+Lisinopril,High Cholesterol,No noticeable improvement after 6 weeks of use.,9,2020-10-27,149
+Acetaminophen,Asthma,I had to adjust the dosage a few times but now it works perfectly.,9,2020-10-27,166
+Lisinopril,Hypothyroidism,Works well in combination with my other medications.,2,2020-10-28,84
+Sertraline,GERD,Had an allergic reaction. Would not recommend without consulting doctor first.,6,2020-10-28,58
+Omeprazole,Type 2 Diabetes,This medication has been very effective for me with minimal side effects.,2,2020-10-28,46
+Levothyroxine,Nerve Pain,The generic version works just as well for me.,3,2020-11-01,35
+Prednisone,Chest Pain,Works well in combination with my other medications.,10,2020-11-01,135
+Acetaminophen,Asthma,Works well but I have to be careful about timing with meals.,8,2020-11-01,76
+Atorvastatin,Bacterial Infection,I had to adjust the dosage a few times but now it works perfectly.,3,2020-11-02,87
+Losartan,Pain,I have been on this for 3 months now with good results.,9,2020-11-02,178
+Gabapentin,Hypertension,Works well in combination with my other medications.,9,2020-11-02,198
+Hydrochlorothiazide,Fluid Retention,Great improvement in my condition since starting this drug.,3,2020-11-03,52
+Gabapentin,Fluid Retention,Moderate improvement but the cost is quite high.,9,2020-11-03,166
+Gabapentin,Type 2 Diabetes,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-11-03,74
+Lisinopril,Blood Pressure,Had an allergic reaction. Would not recommend without consulting doctor first.,1,2020-11-04,98
+Acetaminophen,Hypertension,No noticeable improvement after 6 weeks of use.,4,2020-11-04,178
+Acetaminophen,GERD,This drug changed my life. My symptoms are almost completely gone.,6,2020-11-04,102
+Omeprazole,Nerve Pain,No noticeable improvement after 6 weeks of use.,10,2020-11-05,153
+Hydrochlorothiazide,Bacterial Infection,Works well but I have to be careful about timing with meals.,7,2020-11-05,6
+Ibuprofen,Hypothyroidism,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-11-05,109
+Levothyroxine,Nerve Pain,This drug changed my life. My symptoms are almost completely gone.,5,2020-11-06,145
+Ibuprofen,Inflammation,The generic version works just as well for me.,4,2020-11-06,173
+Hydrochlorothiazide,Chest Pain,This medication has been very effective for me with minimal side effects.,10,2020-11-06,113
+Atorvastatin,Chest Pain,The generic version works just as well for me.,2,2020-11-07,12
+Amoxicillin,Fluid Retention,This medication has been very effective for me with minimal side effects.,10,2020-11-07,36
+Losartan,Hypertension,The generic version works just as well for me.,7,2020-11-07,33
+Metformin,Hypertension,The generic version works just as well for me.,6,2020-11-08,91
+Prednisone,Heart Failure,No noticeable improvement after 6 weeks of use.,8,2020-11-08,175
+Hydrochlorothiazide,Blood Pressure,Works well but I have to be careful about timing with meals.,6,2020-11-08,127
+Levothyroxine,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-11-09,82
+Metoprolol,Inflammation,Excellent medication with very few side effects in my experience.,6,2020-11-09,126
+Metoprolol,Hypertension,Great improvement in my condition since starting this drug.,5,2020-11-09,120
+Losartan,GERD,This medication has been very effective for me with minimal side effects.,1,2020-11-10,13
+Losartan,Fluid Retention,I have been on this for 3 months now with good results.,6,2020-11-10,133
+Ibuprofen,Inflammation,The generic version works just as well for me.,9,2020-11-10,33
+Omeprazole,Hypothyroidism,This medication has been very effective for me with minimal side effects.,6,2020-11-11,18
+Losartan,Blood Pressure,My doctor recommended this and I am glad they did. Feeling much better.,5,2020-11-11,83
+Lisinopril,High Cholesterol,Great improvement in my condition since starting this drug.,5,2020-11-11,77
+Omeprazole,Hypertension,Excellent medication with very few side effects in my experience.,9,2020-11-12,150
+Sertraline,Nerve Pain,I had to adjust the dosage a few times but now it works perfectly.,5,2020-11-12,1
+Atorvastatin,Inflammation,Works well in combination with my other medications.,4,2020-11-12,51
+Hydrochlorothiazide,Blood Pressure,I had to adjust the dosage a few times but now it works perfectly.,9,2020-11-13,109
+Metformin,Fluid Retention,Excellent medication with very few side effects in my experience.,4,2020-11-13,81
+Amoxicillin,Nerve Pain,Works well in combination with my other medications.,1,2020-11-13,186
+Lisinopril,Nerve Pain,This medication has been very effective for me with minimal side effects.,4,2020-11-14,104
+Amlodipine,Type 2 Diabetes,I had to adjust the dosage a few times but now it works perfectly.,10,2020-11-14,76
+Ibuprofen,Asthma,Works well but I have to be careful about timing with meals.,3,2020-11-14,54
+Hydrochlorothiazide,Hypothyroidism,The generic version works just as well for me.,1,2020-11-15,44
+Metformin,Inflammation,No noticeable improvement after 6 weeks of use.,6,2020-11-15,187
+Metformin,Fluid Retention,This drug changed my life. My symptoms are almost completely gone.,9,2020-11-15,57
+Metformin,Depression,Excellent medication with very few side effects in my experience.,5,2020-11-16,191
+Lisinopril,Chest Pain,Works well but I have to be careful about timing with meals.,10,2020-11-16,3
+Sertraline,Inflammation,The generic version works just as well for me.,2,2020-11-16,155
+Gabapentin,Depression,I have been on this for 3 months now with good results.,10,2020-11-17,124
+Atorvastatin,Bacterial Infection,Works well but I have to be careful about timing with meals.,6,2020-11-17,39
+Hydrochlorothiazide,GERD,I experienced some dizziness at first but it went away after a week.,4,2020-11-17,92
+Losartan,Depression,Works well but I have to be careful about timing with meals.,9,2020-11-18,3
+Omeprazole,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,1,2020-11-18,118
+Amlodipine,Heart Failure,Excellent medication with very few side effects in my experience.,7,2020-11-18,192
+Acetaminophen,Nerve Pain,Works well but I have to be careful about timing with meals.,9,2020-11-19,3
+Sertraline,Heart Failure,I have been on this for 3 months now with good results.,4,2020-11-19,146
+Omeprazole,Hypothyroidism,This medication has been very effective for me with minimal side effects.,6,2020-11-19,149
+Amoxicillin,Hypothyroidism,Excellent medication with very few side effects in my experience.,9,2020-11-20,11
+Atorvastatin,Hypothyroidism,The generic version works just as well for me.,1,2020-11-20,43
+Acetaminophen,Depression,Works well but I have to be careful about timing with meals.,5,2020-11-20,37
+Levothyroxine,Bacterial Infection,Excellent medication with very few side effects in my experience.,1,2020-11-21,59
+Lisinopril,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,9,2020-11-21,153
+Ibuprofen,High Cholesterol,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-11-21,71
+Sertraline,Bacterial Infection,Works well in combination with my other medications.,1,2020-11-22,119
+Amlodipine,Bacterial Infection,Works well but I have to be careful about timing with meals.,3,2020-11-22,10
+Amlodipine,Hypertension,This drug changed my life. My symptoms are almost completely gone.,8,2020-11-22,170
+Gabapentin,Nerve Pain,Works well but I have to be careful about timing with meals.,9,2020-11-23,111
+Gabapentin,Heart Failure,This drug changed my life. My symptoms are almost completely gone.,6,2020-11-23,29
+Levothyroxine,GERD,I experienced some dizziness at first but it went away after a week.,9,2020-11-23,108
+Acetaminophen,GERD,I had to adjust the dosage a few times but now it works perfectly.,9,2020-11-24,184
+Atorvastatin,Chest Pain,This medication has been very effective for me with minimal side effects.,9,2020-11-24,133
+Ibuprofen,Pain,Great improvement in my condition since starting this drug.,10,2020-11-24,81
+Ibuprofen,Hypothyroidism,Had an allergic reaction. Would not recommend without consulting doctor first.,7,2020-11-25,178
+Hydrochlorothiazide,Inflammation,Works well but I have to be careful about timing with meals.,2,2020-11-25,146
+Losartan,High Cholesterol,"Side effects were too severe, had to switch medications.",4,2020-11-25,43
+Prednisone,Blood Pressure,This medication has been very effective for me with minimal side effects.,6,2020-11-26,184
+Hydrochlorothiazide,Blood Pressure,No noticeable improvement after 6 weeks of use.,10,2020-11-26,193
+Omeprazole,High Cholesterol,I have been on this for 3 months now with good results.,7,2020-11-26,123
+Omeprazole,Asthma,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-11-27,25
+Amoxicillin,Nerve Pain,"Side effects were too severe, had to switch medications.",1,2020-11-27,98
+Losartan,High Cholesterol,Works well in combination with my other medications.,10,2020-11-27,54
+Levothyroxine,Hypothyroidism,I had to adjust the dosage a few times but now it works perfectly.,2,2020-11-28,95
+Lisinopril,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-11-28,119
+Hydrochlorothiazide,Fluid Retention,Great improvement in my condition since starting this drug.,5,2020-11-28,199
+Atorvastatin,Asthma,The generic version works just as well for me.,6,2020-12-01,87
+Sertraline,GERD,The generic version works just as well for me.,10,2020-12-01,140
+Sertraline,Bacterial Infection,This medication has been very effective for me with minimal side effects.,7,2020-12-01,39
+Amlodipine,High Cholesterol,I have been on this for 3 months now with good results.,3,2020-12-02,56
+Levothyroxine,Nerve Pain,I experienced some dizziness at first but it went away after a week.,8,2020-12-02,159
+Hydrochlorothiazide,Depression,This medication has been very effective for me with minimal side effects.,3,2020-12-02,43
+Amlodipine,Nerve Pain,Moderate improvement but the cost is quite high.,10,2020-12-03,14
+Metformin,Pain,Works well in combination with my other medications.,7,2020-12-03,80
+Amoxicillin,GERD,Works well in combination with my other medications.,9,2020-12-03,160
+Levothyroxine,Nerve Pain,This medication has been very effective for me with minimal side effects.,9,2020-12-04,71
+Ibuprofen,Nerve Pain,I have been on this for 3 months now with good results.,10,2020-12-04,82
+Acetaminophen,GERD,I experienced some dizziness at first but it went away after a week.,8,2020-12-04,107
+Gabapentin,Heart Failure,My doctor recommended this and I am glad they did. Feeling much better.,4,2020-12-05,151
+Hydrochlorothiazide,Hypertension,Works well in combination with my other medications.,9,2020-12-05,138
+Sertraline,Hypothyroidism,This medication has been very effective for me with minimal side effects.,8,2020-12-05,191
+Amlodipine,Nerve Pain,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-12-06,90
+Sertraline,Hypertension,My doctor recommended this and I am glad they did. Feeling much better.,8,2020-12-06,154
+Metformin,Fluid Retention,This drug changed my life. My symptoms are almost completely gone.,5,2020-12-06,94
+Hydrochlorothiazide,Depression,Excellent medication with very few side effects in my experience.,7,2020-12-07,42
+Losartan,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-12-07,129
+Omeprazole,Fluid Retention,Had an allergic reaction. Would not recommend without consulting doctor first.,8,2020-12-07,105
+Amlodipine,Fluid Retention,This medication has been very effective for me with minimal side effects.,3,2020-12-08,4
+Levothyroxine,Nerve Pain,The generic version works just as well for me.,2,2020-12-08,38
+Amlodipine,Depression,The generic version works just as well for me.,2,2020-12-08,46
+Lisinopril,Asthma,Moderate improvement but the cost is quite high.,10,2020-12-09,7
+Levothyroxine,Bacterial Infection,My doctor recommended this and I am glad they did. Feeling much better.,2,2020-12-09,140
+Prednisone,Inflammation,Had an allergic reaction. Would not recommend without consulting doctor first.,2,2020-12-09,39
+Prednisone,Depression,Moderate improvement but the cost is quite high.,9,2020-12-10,133
+Levothyroxine,Blood Pressure,Works well in combination with my other medications.,2,2020-12-10,130
+Ibuprofen,High Cholesterol,Works well in combination with my other medications.,1,2020-12-10,166
+Amoxicillin,Nerve Pain,This medication has been very effective for me with minimal side effects.,7,2020-12-11,99
+Acetaminophen,Inflammation,Works well in combination with my other medications.,10,2020-12-11,9
+Amoxicillin,Hypertension,This medication has been very effective for me with minimal side effects.,8,2020-12-11,150
+Atorvastatin,Chest Pain,I have been on this for 3 months now with good results.,3,2020-12-12,150
+Hydrochlorothiazide,High Cholesterol,The generic version works just as well for me.,9,2020-12-12,155
+Prednisone,Chest Pain,"Side effects were too severe, had to switch medications.",5,2020-12-12,180
+Hydrochlorothiazide,Hypothyroidism,I had to adjust the dosage a few times but now it works perfectly.,7,2020-12-13,169
+Omeprazole,Depression,I had to adjust the dosage a few times but now it works perfectly.,8,2020-12-13,11
+Amlodipine,Pain,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-12-13,107
+Gabapentin,Heart Failure,I have been on this for 3 months now with good results.,9,2020-12-14,157
+Losartan,Bacterial Infection,Had an allergic reaction. Would not recommend without consulting doctor first.,4,2020-12-14,48
+Metoprolol,Heart Failure,No noticeable improvement after 6 weeks of use.,8,2020-12-14,3
+Ibuprofen,Nerve Pain,I have been on this for 3 months now with good results.,4,2020-12-15,189
+Lisinopril,Inflammation,Great improvement in my condition since starting this drug.,4,2020-12-15,25
+Metoprolol,Heart Failure,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-12-15,174
+Amoxicillin,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,8,2020-12-16,173
+Prednisone,Type 2 Diabetes,My doctor recommended this and I am glad they did. Feeling much better.,3,2020-12-16,164
+Lisinopril,Fluid Retention,I have been on this for 3 months now with good results.,10,2020-12-16,154
+Levothyroxine,Asthma,No noticeable improvement after 6 weeks of use.,4,2020-12-17,132
+Omeprazole,Pain,Works well in combination with my other medications.,5,2020-12-17,67
+Metformin,GERD,My doctor recommended this and I am glad they did. Feeling much better.,9,2020-12-17,137
+Amlodipine,Hypertension,I experienced some dizziness at first but it went away after a week.,5,2020-12-18,16
+Omeprazole,Asthma,I have been on this for 3 months now with good results.,1,2020-12-18,166
+Prednisone,Pain,I experienced some dizziness at first but it went away after a week.,3,2020-12-18,58
+Levothyroxine,Inflammation,My doctor recommended this and I am glad they did. Feeling much better.,1,2020-12-19,50
+Losartan,Fluid Retention,I have been on this for 3 months now with good results.,2,2020-12-19,83
+Levothyroxine,Inflammation,The generic version works just as well for me.,9,2020-12-19,154
+Lisinopril,Pain,This medication has been very effective for me with minimal side effects.,10,2020-12-20,163
+Gabapentin,Asthma,Works well in combination with my other medications.,8,2020-12-20,158
+Gabapentin,Fluid Retention,This medication has been very effective for me with minimal side effects.,3,2020-12-20,59
+Levothyroxine,GERD,Excellent medication with very few side effects in my experience.,5,2020-12-21,91
+Losartan,Fluid Retention,Works well but I have to be careful about timing with meals.,5,2020-12-21,105
+Gabapentin,Depression,Excellent medication with very few side effects in my experience.,5,2020-12-21,6
+Prednisone,Inflammation,"Side effects were too severe, had to switch medications.",7,2020-12-22,185
+Amoxicillin,Blood Pressure,Works well but I have to be careful about timing with meals.,1,2020-12-22,16
+Losartan,Chest Pain,Great improvement in my condition since starting this drug.,10,2020-12-22,81
+Gabapentin,Chest Pain,Excellent medication with very few side effects in my experience.,8,2020-12-23,129
+Levothyroxine,Chest Pain,Works well in combination with my other medications.,2,2020-12-23,90
+Sertraline,Nerve Pain,My doctor recommended this and I am glad they did. Feeling much better.,8,2020-12-23,180
+Prednisone,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,3,2020-12-24,169
+Gabapentin,Chest Pain,I experienced some dizziness at first but it went away after a week.,9,2020-12-24,100
+Hydrochlorothiazide,Inflammation,No noticeable improvement after 6 weeks of use.,4,2020-12-24,181
+Metformin,High Cholesterol,This drug changed my life. My symptoms are almost completely gone.,2,2020-12-25,84
+Hydrochlorothiazide,Heart Failure,I had to adjust the dosage a few times but now it works perfectly.,5,2020-12-25,164
+Atorvastatin,Bacterial Infection,"Side effects were too severe, had to switch medications.",4,2020-12-25,44
+Omeprazole,Hypertension,The generic version works just as well for me.,6,2020-12-26,17

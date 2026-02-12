@@ -1,14 +1,20 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # DataOps Olympics - Environment Setup & Data Download
+# MAGIC # DataOps Olympics — Environment Setup & Data Loading
 # MAGIC
 # MAGIC **Run this notebook FIRST** before starting any competition events.
 # MAGIC
 # MAGIC This notebook will:
 # MAGIC 1. Verify your Databricks environment
-# MAGIC 2. Download all open-source datasets
-# MAGIC 3. Create the database and tables
-# MAGIC 4. Validate everything is ready
+# MAGIC 2. Install required libraries
+# MAGIC 3. Set up the catalog/schema (Unity Catalog or hive_metastore fallback)
+# MAGIC 4. Load bundled data files into Delta tables
+# MAGIC 5. (Optional) Set up Unity Catalog Volumes
+# MAGIC 6. Validate everything is ready
+# MAGIC
+# MAGIC ### Data Source
+# MAGIC All data files are **bundled in this repository** under the `data/` folder.
+# MAGIC No internet downloads required at runtime.
 
 # COMMAND ----------
 
@@ -21,45 +27,47 @@ import sys
 import importlib
 
 print("=" * 60)
-print("DATABRICKS ENVIRONMENT CHECK")
+print("  DATABRICKS ENVIRONMENT CHECK")
 print("=" * 60)
 
-# Check Python version
-print(f"\n✅ Python version: {sys.version}")
+print(f"\n  Python version: {sys.version.split()[0]}")
 
-# Check Spark
 try:
-    print(f"✅ Spark version: {spark.version}")
+    print(f"  Spark version:  {spark.version}")
 except:
-    print("❌ Spark not available - are you running on a Databricks cluster?")
+    raise RuntimeError("Spark not available — are you on a Databricks cluster?")
 
 # Check key libraries
-libs = ["pandas", "numpy", "sklearn", "mlflow", "plotly", "delta"]
-for lib in libs:
+libs = {
+    "pandas": "pandas",
+    "numpy": "numpy",
+    "sklearn": "scikit-learn",
+    "mlflow": "mlflow",
+    "plotly": "plotly",
+    "delta": "delta-spark",
+}
+
+for import_name, pip_name in libs.items():
     try:
-        mod = importlib.import_module(lib)
-        ver = getattr(mod, "__version__", "installed")
-        print(f"✅ {lib}: {ver}")
+        mod = importlib.import_module(import_name)
+        ver = getattr(mod, "__version__", "✓")
+        print(f"  ✅ {import_name}: {ver}")
     except ImportError:
-        print(f"⚠️  {lib}: not installed (will install below)")
+        print(f"  ⚠️  {import_name}: not installed")
 
 print("\n" + "=" * 60)
-print("Environment check complete!")
-print("=" * 60)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2. Install Additional Libraries (if needed)
+# MAGIC ## 2. Install Additional Libraries
 
 # COMMAND ----------
 
-# Install any missing libraries
-%pip install plotly chromadb sentence-transformers openai --quiet
+%pip install plotly chromadb sentence-transformers --quiet
 
 # COMMAND ----------
 
-# Restart Python after pip install
 dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -69,23 +77,38 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# Configuration - Modify these if needed
+# -------------------------------------------------------------------
+# EDIT THESE if needed
+# -------------------------------------------------------------------
 CATALOG_NAME = "dataops_olympics"
-SCHEMA_NAME = "competition"
-DATA_PATH = "/tmp/dataops_olympics/raw"
+SCHEMA_NAME  = "competition"
+NUM_TEAMS    = 10
 
-# Team configuration
-NUM_TEAMS = 10
-TEAM_PREFIX = "team"
+# Path to the bundled data/ folder inside this repo
+# When imported via Databricks Repos, the repo root is the notebook's CWD.
+import os, pathlib
 
-print(f"Catalog:  {CATALOG_NAME}")
-print(f"Schema:   {SCHEMA_NAME}")
-print(f"Data Path: {DATA_PATH}")
+# Auto-detect repo root (works in Repos and Workspace)
+_nb_dir = os.getcwd()
+REPO_DATA_DIR = os.path.join(_nb_dir, "..", "data")
+if not os.path.isdir(REPO_DATA_DIR):
+    # Fallback: maybe the repo was cloned to /Workspace/...
+    REPO_DATA_DIR = "/Workspace/Repos/" + os.environ.get("USER", "user") + "/gsk-dataops-olympics/data"
+if not os.path.isdir(REPO_DATA_DIR):
+    REPO_DATA_DIR = None  # Will use /tmp fallback
+
+# Local staging area
+LOCAL_DATA_DIR = "/tmp/dataops_olympics/raw"
+
+print(f"Catalog:       {CATALOG_NAME}")
+print(f"Schema:        {SCHEMA_NAME}")
+print(f"Repo data dir: {REPO_DATA_DIR or '(not found, will generate)'}")
+print(f"Staging dir:   {LOCAL_DATA_DIR}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Create Database Structure
+# MAGIC ## 4. Create Catalog / Schema
 
 # COMMAND ----------
 
@@ -98,384 +121,337 @@ try:
     USING_UNITY_CATALOG = True
     print(f"✅ Using Unity Catalog: {CATALOG_NAME}.{SCHEMA_NAME}")
 except Exception as e:
-    print(f"⚠️  Unity Catalog not available ({str(e)[:80]}...)")
-    print("   Falling back to hive_metastore...")
+    print(f"⚠️  Unity Catalog not available — falling back to hive_metastore")
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {SCHEMA_NAME}")
     spark.sql(f"USE {SCHEMA_NAME}")
     USING_UNITY_CATALOG = False
-    print(f"✅ Using hive_metastore: {SCHEMA_NAME}")
+    print(f"✅ Using hive_metastore.{SCHEMA_NAME}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Download Open-Source Datasets
+# MAGIC ## 5. Stage Data Files
 # MAGIC
-# MAGIC All datasets are publicly available and free to use.
+# MAGIC Data is bundled in the `data/` folder of this repository.
+# MAGIC We copy it to a local staging path so all notebooks have a consistent path,
+# MAGIC and (optionally) upload to a Unity Catalog Volume.
 
 # COMMAND ----------
 
-import urllib.request
-import os
-import json
+import shutil, os, json
 
-# Create data directories
-os.makedirs(f"{DATA_PATH}/heart_disease", exist_ok=True)
-os.makedirs(f"{DATA_PATH}/diabetes", exist_ok=True)
-os.makedirs(f"{DATA_PATH}/life_expectancy", exist_ok=True)
-os.makedirs(f"{DATA_PATH}/drug_reviews", exist_ok=True)
-os.makedirs(f"{DATA_PATH}/clinical_notes", exist_ok=True)
+os.makedirs(f"{LOCAL_DATA_DIR}/heart_disease", exist_ok=True)
+os.makedirs(f"{LOCAL_DATA_DIR}/diabetes", exist_ok=True)
+os.makedirs(f"{LOCAL_DATA_DIR}/life_expectancy", exist_ok=True)
+os.makedirs(f"{LOCAL_DATA_DIR}/drug_reviews", exist_ok=True)
+os.makedirs(f"{LOCAL_DATA_DIR}/clinical_notes", exist_ok=True)
 
-print("📁 Data directories created")
+if REPO_DATA_DIR and os.path.isdir(REPO_DATA_DIR):
+    # Copy from bundled repo data/ to local staging
+    src = REPO_DATA_DIR
+    files_copied = 0
+    
+    copy_map = {
+        "heart_disease.csv":           f"{LOCAL_DATA_DIR}/heart_disease/heart.csv",
+        "heart_disease_batch_1.csv":   f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_1.csv",
+        "heart_disease_batch_2.csv":   f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_2.csv",
+        "heart_disease_batch_3.csv":   f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_3.csv",
+        "diabetes_readmission.csv":    f"{LOCAL_DATA_DIR}/diabetes/diabetes.csv",
+        "life_expectancy.csv":         f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy.csv",
+        "life_expectancy_sample.json": f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy_sample.json",
+        "drug_reviews.csv":            f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv",
+        "clinical_notes.json":         f"{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json",
+    }
+    
+    for src_name, dst_path in copy_map.items():
+        src_path = os.path.join(src, src_name)
+        if os.path.isfile(src_path):
+            shutil.copy2(src_path, dst_path)
+            files_copied += 1
+    
+    print(f"✅ Copied {files_copied} files from repo data/ to staging")
+else:
+    print("⚠️  Repo data/ folder not found — generating data at runtime...")
+    print("   (This is fine, but importing via Repos is recommended)")
+    exec(open("/dev/null").read())  # placeholder; generation logic below
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5a. Heart Disease Dataset (UCI)
+# MAGIC ### Generate Data (fallback if repo data/ not found)
+# MAGIC
+# MAGIC This cell only runs if the bundled data files weren't detected.
+# MAGIC It creates equivalent synthetic datasets.
 
 # COMMAND ----------
 
-# Download Heart Disease dataset from UCI
-HEART_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/heart-disease/processed.cleveland.data"
-
-heart_path = f"{DATA_PATH}/heart_disease/heart.csv"
-print(f"Downloading Heart Disease dataset...")
-
-try:
-    urllib.request.urlretrieve(HEART_URL, heart_path)
-    print(f"✅ Downloaded to {heart_path}")
-except Exception as e:
-    print(f"⚠️  Direct download failed: {e}")
-    print("   Generating synthetic heart disease data instead...")
-
-# Create proper CSV with headers
 import pandas as pd
 import numpy as np
 
-columns = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
-    "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target"
-]
+np.random.seed(42)
 
-try:
-    df_heart = pd.read_csv(heart_path, header=None, names=columns, na_values="?")
-    df_heart = df_heart.dropna()
-    df_heart["target"] = (df_heart["target"] > 0).astype(int)  # Binary: disease or not
-except:
-    # Generate synthetic data if download fails
-    np.random.seed(42)
+# ---------- Heart Disease ----------
+heart_path = f"{LOCAL_DATA_DIR}/heart_disease/heart.csv"
+if not os.path.isfile(heart_path) or os.path.getsize(heart_path) < 100:
     n = 500
     df_heart = pd.DataFrame({
-        "age": np.random.randint(29, 77, n),
-        "sex": np.random.randint(0, 2, n),
-        "cp": np.random.randint(0, 4, n),
-        "trestbps": np.random.randint(94, 200, n),
-        "chol": np.random.randint(126, 564, n),
-        "fbs": np.random.randint(0, 2, n),
-        "restecg": np.random.randint(0, 3, n),
-        "thalach": np.random.randint(71, 202, n),
+        "age": np.random.randint(29, 77, n), "sex": np.random.randint(0, 2, n),
+        "cp": np.random.randint(0, 4, n), "trestbps": np.random.randint(94, 200, n),
+        "chol": np.random.randint(126, 564, n), "fbs": np.random.randint(0, 2, n),
+        "restecg": np.random.randint(0, 3, n), "thalach": np.random.randint(71, 202, n),
         "exang": np.random.randint(0, 2, n),
         "oldpeak": np.round(np.random.uniform(0, 6.2, n), 1),
-        "slope": np.random.randint(0, 3, n),
-        "ca": np.random.randint(0, 4, n),
-        "thal": np.random.choice([3, 6, 7], n),
-        "target": np.random.randint(0, 2, n),
+        "slope": np.random.randint(0, 3, n), "ca": np.random.randint(0, 4, n),
+        "thal": np.random.choice([3, 6, 7], n), "target": np.random.randint(0, 2, n),
     })
+    df_heart.to_csv(heart_path, index=False)
+    print(f"  Generated heart_disease.csv: {n} rows")
 
-df_heart.to_csv(heart_path, index=False)
-print(f"✅ Heart Disease dataset ready: {len(df_heart)} records")
-df_heart.head()
+    # Batch files for DLT event
+    for batch in range(1, 4):
+        batch_df = df_heart.sample(50, random_state=batch)
+        # Inject quality issues
+        batch_df.loc[batch_df.sample(3, random_state=batch).index, "age"] = -1
+        batch_df.loc[batch_df.sample(2, random_state=batch+10).index, "trestbps"] = 999
+        batch_df.to_csv(f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_{batch}.csv", index=False)
+        print(f"  Generated heart_disease_batch_{batch}.csv: 50 rows")
+
+# ---------- Diabetes / Readmission ----------
+diab_path = f"{LOCAL_DATA_DIR}/diabetes/diabetes.csv"
+if not os.path.isfile(diab_path) or os.path.getsize(diab_path) < 100:
+    n = 768
+    df_diab = pd.DataFrame({
+        "pregnancies": np.random.randint(0, 17, n),
+        "glucose": np.random.randint(44, 199, n),
+        "blood_pressure": np.random.randint(24, 122, n),
+        "skin_thickness": np.random.randint(7, 99, n),
+        "insulin": np.random.randint(14, 846, n),
+        "bmi": np.round(np.random.uniform(18.2, 67.1, n), 1),
+        "diabetes_pedigree": np.round(np.random.uniform(0.078, 2.42, n), 3),
+        "age": np.random.randint(21, 81, n),
+    })
+    risk = ((df_diab["glucose"] > 140).astype(float) * 0.3 +
+            (df_diab["bmi"] > 30).astype(float) * 0.25 +
+            (df_diab["age"] > 45).astype(float) * 0.15 +
+            (df_diab["diabetes_pedigree"] > 1.0).astype(float) * 0.15 +
+            (df_diab["pregnancies"] > 5).astype(float) * 0.1 +
+            np.random.uniform(0, 0.3, n))
+    df_diab["readmission_risk"] = (risk > 0.45).astype(int)
+    df_diab.to_csv(diab_path, index=False)
+    print(f"  Generated diabetes.csv: {n} rows")
+
+# ---------- Life Expectancy ----------
+life_path = f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy.csv"
+if not os.path.isfile(life_path) or os.path.getsize(life_path) < 100:
+    countries = ["India","United States","United Kingdom","Germany","France","Brazil",
+                 "Japan","China","Australia","South Africa","Nigeria","Mexico",
+                 "Canada","Italy","Spain","Russia","South Korea","Indonesia","Turkey","Thailand"]
+    rows = []
+    for c in countries:
+        base = np.random.uniform(55, 82)
+        for y in range(2000, 2024):
+            rows.append({
+                "country": c, "year": y,
+                "life_expectancy": round(base + (y-2000)*0.2 + np.random.normal(0,1), 1),
+                "adult_mortality": round(np.random.uniform(50,350),1),
+                "infant_deaths": np.random.randint(0,500),
+                "alcohol_consumption": round(np.random.uniform(0.01,17),2),
+                "health_expenditure_pct": round(np.random.uniform(1,18),2),
+                "hepatitis_b_coverage": round(np.random.uniform(10,99),1),
+                "measles_cases": np.random.randint(0,50000),
+                "bmi": round(np.random.uniform(18,65),1),
+                "under_five_deaths": np.random.randint(0,300),
+                "polio_coverage": round(np.random.uniform(30,99),1),
+                "total_expenditure": round(np.random.uniform(1,18),2),
+                "diphtheria_coverage": round(np.random.uniform(30,99),1),
+                "hiv_aids": round(np.random.uniform(0.1,30),1),
+                "gdp_per_capita": round(np.random.uniform(200,80000),2),
+                "population": np.random.randint(100000,1500000000),
+                "schooling": round(np.random.uniform(2,20),1),
+                "status": np.random.choice(["Developing","Developed"], p=[0.7,0.3]),
+            })
+    df_life = pd.DataFrame(rows)
+    df_life.to_csv(life_path, index=False)
+    df_life.head(100).to_json(
+        f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy_sample.json", orient="records", indent=2)
+    print(f"  Generated life_expectancy.csv: {len(rows)} rows + JSON sample")
+
+# ---------- Drug Reviews ----------
+reviews_path = f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv"
+if not os.path.isfile(reviews_path) or os.path.getsize(reviews_path) < 100:
+    drugs = ["Metformin","Lisinopril","Atorvastatin","Amlodipine","Omeprazole",
+             "Metoprolol","Losartan","Gabapentin","Hydrochlorothiazide","Sertraline",
+             "Levothyroxine","Acetaminophen","Ibuprofen","Amoxicillin","Prednisone"]
+    conditions = ["Type 2 Diabetes","Hypertension","High Cholesterol","Chest Pain",
+                  "GERD","Heart Failure","Blood Pressure","Nerve Pain","Fluid Retention",
+                  "Depression","Hypothyroidism","Pain","Inflammation","Bacterial Infection","Asthma"]
+    reviews_list = [
+        "This medication has been very effective for me with minimal side effects.",
+        "I experienced some dizziness at first but it went away after a week.",
+        "Great improvement in my condition since starting this drug.",
+        "Side effects were too severe, had to switch medications.",
+        "My doctor recommended this and I am glad they did. Feeling much better.",
+        "The generic version works just as well for me.",
+        "I have been on this for 3 months now with good results.",
+        "Excellent medication with very few side effects in my experience.",
+        "Works well in combination with my other medications.",
+    ]
+    n = 1000
+    df_rev = pd.DataFrame({
+        "drug_name": np.random.choice(drugs, n),
+        "condition": np.random.choice(conditions, n),
+        "review": np.random.choice(reviews_list, n),
+        "rating": np.random.randint(1, 11, n),
+        "date": pd.date_range("2020-01-01", periods=n, freq="8h").strftime("%Y-%m-%d").tolist(),
+        "useful_count": np.random.randint(0, 200, n),
+    })
+    df_rev.to_csv(reviews_path, index=False)
+    print(f"  Generated drug_reviews.csv: {n} rows")
+
+# ---------- Clinical Notes ----------
+notes_path = f"{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json"
+if not os.path.isfile(notes_path) or os.path.getsize(notes_path) < 100:
+    print("  ⚠️  clinical_notes.json not found — expected from repo data/")
+
+print("\n✅ Data staging complete!")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5b. Diabetes Dataset (Pima Indians)
+# MAGIC ## 6. (Optional) Upload to Unity Catalog Volume
+# MAGIC
+# MAGIC **Volumes** are the modern way to manage files in Databricks.
+# MAGIC This stores data under `/Volumes/catalog/schema/volume_name/`.
 
 # COMMAND ----------
 
-from sklearn.datasets import load_diabetes
+if USING_UNITY_CATALOG:
+    try:
+        spark.sql(f"""
+            CREATE VOLUME IF NOT EXISTS {CATALOG_NAME}.{SCHEMA_NAME}.raw_data
+            COMMENT 'Raw data files for DataOps Olympics'
+        """)
+        VOLUME_PATH = f"/Volumes/{CATALOG_NAME}/{SCHEMA_NAME}/raw_data"
+        
+        # Upload key files to the Volume
+        import glob
+        uploaded = 0
+        for local_file in glob.glob(f"{LOCAL_DATA_DIR}/**/*.*", recursive=True):
+            rel = os.path.relpath(local_file, LOCAL_DATA_DIR)
+            dest = f"{VOLUME_PATH}/{rel}"
+            try:
+                dbutils.fs.cp(f"file:{local_file}", dest)
+                uploaded += 1
+            except:
+                pass
+        
+        print(f"✅ UC Volume created: {VOLUME_PATH}")
+        print(f"   Uploaded {uploaded} files")
+        print(f"   Files are now accessible at {VOLUME_PATH}/")
+    except Exception as e:
+        print(f"⚠️  Volume creation skipped: {str(e)[:80]}")
+else:
+    print("ℹ️  Unity Catalog not available — skipping Volume creation")
+    print(f"   Data is available at file:{LOCAL_DATA_DIR}/")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 7. Create Delta Tables
+
+# COMMAND ----------
+
 import pandas as pd
-import numpy as np
 
-# Use sklearn's diabetes dataset and enhance it for classification
-np.random.seed(42)
+# ---- Heart Disease ----
+df = pd.read_csv(f"{LOCAL_DATA_DIR}/heart_disease/heart.csv")
+sdf = spark.createDataFrame(df)
+sdf.write.format("delta").mode("overwrite").saveAsTable("heart_disease")
+print(f"✅ heart_disease: {sdf.count()} rows")
 
-# Generate a richer diabetes dataset (Pima-style)
-n = 768
-df_diabetes = pd.DataFrame({
-    "pregnancies": np.random.randint(0, 17, n),
-    "glucose": np.random.randint(44, 199, n),
-    "blood_pressure": np.random.randint(24, 122, n),
-    "skin_thickness": np.random.randint(7, 99, n),
-    "insulin": np.random.randint(14, 846, n),
-    "bmi": np.round(np.random.uniform(18.2, 67.1, n), 1),
-    "diabetes_pedigree": np.round(np.random.uniform(0.078, 2.42, n), 3),
-    "age": np.random.randint(21, 81, n),
-})
+# COMMAND ----------
 
-# Create realistic target based on features
-risk_score = (
-    (df_diabetes["glucose"] > 140).astype(float) * 0.3 +
-    (df_diabetes["bmi"] > 30).astype(float) * 0.25 +
-    (df_diabetes["age"] > 45).astype(float) * 0.15 +
-    (df_diabetes["diabetes_pedigree"] > 1.0).astype(float) * 0.15 +
-    (df_diabetes["pregnancies"] > 5).astype(float) * 0.1 +
-    np.random.uniform(0, 0.3, n)
-)
-df_diabetes["readmission_risk"] = (risk_score > 0.45).astype(int)
+# ---- Diabetes / Readmission ----
+df = pd.read_csv(f"{LOCAL_DATA_DIR}/diabetes/diabetes.csv")
+sdf = spark.createDataFrame(df)
+sdf.write.format("delta").mode("overwrite").saveAsTable("diabetes_readmission")
+print(f"✅ diabetes_readmission: {sdf.count()} rows")
 
-diabetes_path = f"{DATA_PATH}/diabetes/diabetes.csv"
-df_diabetes.to_csv(diabetes_path, index=False)
-print(f"✅ Diabetes/Readmission dataset ready: {len(df_diabetes)} records")
-print(f"   Readmission rate: {df_diabetes['readmission_risk'].mean():.1%}")
-df_diabetes.head()
+# COMMAND ----------
+
+# ---- Life Expectancy ----
+df = pd.read_csv(f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy.csv")
+sdf = spark.createDataFrame(df)
+sdf.write.format("delta").mode("overwrite").saveAsTable("life_expectancy")
+print(f"✅ life_expectancy: {sdf.count()} rows")
+
+# COMMAND ----------
+
+# ---- Drug Reviews ----
+df = pd.read_csv(f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv")
+sdf = spark.createDataFrame(df)
+sdf.write.format("delta").mode("overwrite").saveAsTable("drug_reviews")
+print(f"✅ drug_reviews: {sdf.count()} rows")
+
+# COMMAND ----------
+
+# ---- Clinical Notes ----
+sdf = spark.read.json(f"file:{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json")
+sdf.write.format("delta").mode("overwrite").saveAsTable("clinical_notes")
+print(f"✅ clinical_notes: {sdf.count()} rows")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 5c. WHO Life Expectancy Dataset
-
-# COMMAND ----------
-
-import pandas as pd
-import numpy as np
-
-# Generate WHO-style life expectancy data
-np.random.seed(42)
-
-countries = [
-    "India", "United States", "United Kingdom", "Germany", "France",
-    "Brazil", "Japan", "China", "Australia", "South Africa",
-    "Nigeria", "Mexico", "Canada", "Italy", "Spain",
-    "Russia", "South Korea", "Indonesia", "Turkey", "Thailand"
-]
-years = list(range(2000, 2024))
-
-rows = []
-for country in countries:
-    base_life_exp = np.random.uniform(55, 82)
-    for year in years:
-        rows.append({
-            "country": country,
-            "year": year,
-            "life_expectancy": round(base_life_exp + (year - 2000) * 0.2 + np.random.normal(0, 1), 1),
-            "adult_mortality": round(np.random.uniform(50, 350), 1),
-            "infant_deaths": np.random.randint(0, 500),
-            "alcohol_consumption": round(np.random.uniform(0.01, 17.0), 2),
-            "health_expenditure_pct": round(np.random.uniform(1.0, 18.0), 2),
-            "hepatitis_b_coverage": round(np.random.uniform(10, 99), 1),
-            "measles_cases": np.random.randint(0, 50000),
-            "bmi": round(np.random.uniform(18, 65), 1),
-            "under_five_deaths": np.random.randint(0, 300),
-            "polio_coverage": round(np.random.uniform(30, 99), 1),
-            "total_expenditure": round(np.random.uniform(1, 18), 2),
-            "diphtheria_coverage": round(np.random.uniform(30, 99), 1),
-            "hiv_aids": round(np.random.uniform(0.1, 30), 1),
-            "gdp_per_capita": round(np.random.uniform(200, 80000), 2),
-            "population": np.random.randint(100000, 1500000000),
-            "schooling": round(np.random.uniform(2, 20), 1),
-            "status": np.random.choice(["Developing", "Developed"], p=[0.7, 0.3]),
-        })
-
-df_life = pd.DataFrame(rows)
-life_path = f"{DATA_PATH}/life_expectancy/life_expectancy.csv"
-df_life.to_csv(life_path, index=False)
-
-# Also save as JSON for Event 1 format variety
-df_life.head(100).to_json(f"{DATA_PATH}/life_expectancy/life_expectancy_sample.json", orient="records", indent=2)
-
-print(f"✅ Life Expectancy dataset ready: {len(df_life)} records ({len(countries)} countries × {len(years)} years)")
-df_life.head()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 5d. Drug Reviews Dataset (Synthetic - based on public schema)
-
-# COMMAND ----------
-
-import pandas as pd
-import numpy as np
-
-np.random.seed(42)
-
-# Drug review data (synthetic, based on publicly available schema)
-drugs = [
-    "Metformin", "Lisinopril", "Atorvastatin", "Amlodipine", "Omeprazole",
-    "Metoprolol", "Losartan", "Gabapentin", "Hydrochlorothiazide", "Sertraline",
-    "Levothyroxine", "Acetaminophen", "Ibuprofen", "Amoxicillin", "Prednisone"
-]
-conditions = [
-    "Type 2 Diabetes", "Hypertension", "High Cholesterol", "Chest Pain",
-    "GERD", "Heart Failure", "Blood Pressure", "Nerve Pain",
-    "Fluid Retention", "Depression", "Hypothyroidism", "Pain",
-    "Inflammation", "Bacterial Infection", "Asthma"
-]
-
-reviews = [
-    "This medication has been very effective for me with minimal side effects.",
-    "I experienced some dizziness at first but it went away after a week.",
-    "Great improvement in my condition since starting this drug.",
-    "Side effects were too severe, had to switch medications.",
-    "Works well but I have to be careful about timing with meals.",
-    "My doctor recommended this and I'm glad they did. Feeling much better.",
-    "The generic version works just as well for me.",
-    "I've been on this for 3 months now with good results.",
-    "Had an allergic reaction, would not recommend without consulting doctor first.",
-    "This drug changed my life. My symptoms are almost completely gone.",
-    "Moderate improvement but the cost is quite high.",
-    "No noticeable improvement after 6 weeks of use.",
-    "Excellent medication with very few side effects in my experience.",
-    "Works well in combination with my other medications.",
-    "I had to adjust the dosage a few times but now it works perfectly.",
-]
-
-n = 1000
-df_reviews = pd.DataFrame({
-    "drug_name": np.random.choice(drugs, n),
-    "condition": np.random.choice(conditions, n),
-    "review": np.random.choice(reviews, n),
-    "rating": np.random.randint(1, 11, n),
-    "date": pd.date_range("2020-01-01", periods=n, freq="8h").strftime("%Y-%m-%d").tolist(),
-    "useful_count": np.random.randint(0, 200, n),
-})
-
-reviews_path = f"{DATA_PATH}/drug_reviews/drug_reviews.csv"
-df_reviews.to_csv(reviews_path, index=False)
-print(f"✅ Drug Reviews dataset ready: {len(df_reviews)} records")
-df_reviews.head()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### 5e. Synthetic Clinical Notes (for Event 3 - AI Agent)
-
-# COMMAND ----------
-
-import json
-import numpy as np
-
-np.random.seed(42)
-
-clinical_notes = [
-    {
-        "patient_id": f"PT-{i:04d}",
-        "note_type": np.random.choice(["Discharge Summary", "Progress Note", "Consultation", "Lab Report"]),
-        "text": note,
-        "department": np.random.choice(["Cardiology", "Endocrinology", "Oncology", "Neurology", "General Medicine"]),
-        "date": f"2024-{np.random.randint(1,13):02d}-{np.random.randint(1,29):02d}",
-    }
-    for i, note in enumerate([
-        "Patient is a 65-year-old male with history of type 2 diabetes mellitus and hypertension. HbA1c elevated at 8.2%. Recommend increasing metformin dosage and adding lifestyle modifications. Follow-up in 3 months.",
-        "72-year-old female presenting with chest pain and shortness of breath. ECG shows ST elevation in leads II, III, aVF. Troponin elevated. Diagnosis: Acute inferior MI. Started on dual antiplatelet therapy.",
-        "45-year-old male with newly diagnosed hypertension. BP 155/95 mmHg. BMI 32. No end-organ damage. Starting amlodipine 5mg daily. Lifestyle counseling provided. Recheck in 4 weeks.",
-        "58-year-old female with breast cancer stage IIA. Completed 4 cycles of AC chemotherapy. Tolerating well with manageable nausea. Scheduled for surgery next month. Continue current antiemetic regimen.",
-        "30-year-old male with type 1 diabetes on insulin pump. Frequent hypoglycemic episodes noted. CGM data shows glucose variability. Adjusting basal rates and carb ratios. Diabetes educator referral placed.",
-        "68-year-old female with atrial fibrillation on warfarin. INR 3.8, above therapeutic range. Hold warfarin for 2 days, recheck INR. Counsel on dietary consistency with vitamin K foods.",
-        "55-year-old male with COPD exacerbation. FEV1 45% predicted. Started on prednisone taper and azithromycin. Nebulizer treatments every 4 hours. Smoking cessation counseling reinforced.",
-        "40-year-old female with migraine headaches, 4-5 episodes per month. Starting topiramate for prophylaxis. Sumatriptan for acute episodes. Headache diary recommended. MRI brain normal.",
-        "75-year-old male with Parkinson disease, Hoehn and Yahr stage 3. Motor fluctuations with wearing-off phenomena. Adding rasagiline to levodopa regimen. Physical therapy referral for gait training.",
-        "50-year-old female with rheumatoid arthritis inadequately controlled on methotrexate. DAS28 score 4.2. Adding adalimumab. TB screening negative. Hepatitis B/C screening negative. Vaccinations updated.",
-        "62-year-old male with chronic kidney disease stage 3b. eGFR 38. Proteinuria 500mg/day. On ACE inhibitor. BP at goal. Avoid nephrotoxins. Renal diet counseling. Follow-up with nephrology in 3 months.",
-        "35-year-old female with generalized anxiety disorder. PHQ-9 score 12 (moderate). Starting sertraline 50mg. Cognitive behavioral therapy referral. Follow-up in 2 weeks for medication titration.",
-        "80-year-old male with heart failure with reduced ejection fraction (EF 30%). NYHA class III. Optimizing GDMT: uptitrating sacubitril/valsartan. Adding dapagliflozin. Salt restriction counseled.",
-        "28-year-old male with new-onset seizure. EEG shows left temporal spike-wave discharges. MRI brain with left hippocampal sclerosis. Starting levetiracetam. Driving restrictions discussed. Neurology follow-up.",
-        "48-year-old female with hypothyroidism on levothyroxine. TSH 8.2, above target. Increasing dose from 75mcg to 100mcg. Take on empty stomach 30-60 minutes before breakfast. Recheck TSH in 6 weeks.",
-        "70-year-old male post total knee replacement day 2. Pain well controlled with multimodal analgesia. Physical therapy started. DVT prophylaxis with enoxaparin. Wound clean and dry. Anticipated discharge day 3.",
-        "55-year-old female with liver cirrhosis (Child-Pugh B). New-onset ascites. Starting spironolactone and furosemide. Sodium restriction to 2g/day. Diagnostic paracentesis shows SAAG >1.1. No SBP.",
-        "42-year-old male with sleep apnea. AHI 32 on sleep study (severe). BMI 35. CPAP initiated at 12 cmH2O. Mask fitting completed. Follow-up in 1 month. Weight loss counseling provided.",
-        "60-year-old female with osteoporosis. T-score -2.8 at lumbar spine. FRAX 10-year hip fracture risk 4.5%. Starting alendronate 70mg weekly. Calcium and vitamin D supplementation. Fall prevention counseling.",
-        "38-year-old male with Crohn disease flare. Increased abdominal pain and diarrhea (6-8 stools/day). CRP elevated at 45. Starting budesonide. Colonoscopy scheduled. Consider biologic escalation if no improvement.",
-    ])
-]
-
-notes_path = f"{DATA_PATH}/clinical_notes/clinical_notes.json"
-with open(notes_path, "w") as f:
-    json.dump(clinical_notes, f, indent=2)
-
-print(f"✅ Clinical Notes dataset ready: {len(clinical_notes)} records")
-print(f"   Departments: {set(n['department'] for n in clinical_notes)}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 6. Create Delta Tables
-
-# COMMAND ----------
-
-# Heart Disease
-df_heart_spark = spark.createDataFrame(df_heart)
-df_heart_spark.write.format("delta").mode("overwrite").saveAsTable("heart_disease")
-print(f"✅ Table 'heart_disease' created: {df_heart_spark.count()} rows")
-
-# COMMAND ----------
-
-# Diabetes / Readmission
-df_diabetes_spark = spark.createDataFrame(df_diabetes)
-df_diabetes_spark.write.format("delta").mode("overwrite").saveAsTable("diabetes_readmission")
-print(f"✅ Table 'diabetes_readmission' created: {df_diabetes_spark.count()} rows")
-
-# COMMAND ----------
-
-# Life Expectancy
-df_life_spark = spark.createDataFrame(df_life)
-df_life_spark.write.format("delta").mode("overwrite").saveAsTable("life_expectancy")
-print(f"✅ Table 'life_expectancy' created: {df_life_spark.count()} rows")
-
-# COMMAND ----------
-
-# Drug Reviews
-df_reviews_spark = spark.createDataFrame(df_reviews)
-df_reviews_spark.write.format("delta").mode("overwrite").saveAsTable("drug_reviews")
-print(f"✅ Table 'drug_reviews' created: {df_reviews_spark.count()} rows")
-
-# COMMAND ----------
-
-# Clinical Notes
-df_notes = spark.read.json(f"file:{notes_path}")
-df_notes.write.format("delta").mode("overwrite").saveAsTable("clinical_notes")
-print(f"✅ Table 'clinical_notes' created: {df_notes.count()} rows")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 7. Validate Setup
+# MAGIC ## 8. Final Validation
 
 # COMMAND ----------
 
 print("=" * 60)
-print("SETUP VALIDATION")
+print("  SETUP VALIDATION")
 print("=" * 60)
 
 tables = spark.sql("SHOW TABLES").collect()
-print(f"\n📊 Tables created: {len(tables)}")
+print(f"\n  📊 Tables created: {len(tables)}")
 
+all_good = True
 for table in tables:
     tbl_name = table.tableName
-    count = spark.sql(f"SELECT COUNT(*) as cnt FROM {tbl_name}").collect()[0].cnt
-    print(f"   ✅ {tbl_name}: {count:,} rows")
+    try:
+        count = spark.sql(f"SELECT COUNT(*) as cnt FROM {tbl_name}").collect()[0].cnt
+        print(f"     ✅ {tbl_name}: {count:,} rows")
+    except:
+        print(f"     ❌ {tbl_name}: ERROR")
+        all_good = False
 
-print(f"\n📁 Raw data location: {DATA_PATH}")
-print(f"🗄️  Unity Catalog: {'Yes' if USING_UNITY_CATALOG else 'No (using hive_metastore)'}")
+print(f"\n  🗄️  Unity Catalog: {'Yes' if USING_UNITY_CATALOG else 'No (hive_metastore)'}")
+print(f"  📁 Staging path:  file:{LOCAL_DATA_DIR}/")
 
 # List raw files
-import os
-for root, dirs, files in os.walk(DATA_PATH):
+total_bytes = 0
+file_count = 0
+for root, dirs, files in os.walk(LOCAL_DATA_DIR):
     for f in files:
         fpath = os.path.join(root, f)
         size = os.path.getsize(fpath)
-        print(f"   📄 {fpath} ({size:,} bytes)")
+        total_bytes += size
+        file_count += 1
 
-print("\n" + "=" * 60)
-print("🎉 SETUP COMPLETE! Ready for DataOps Olympics!")
+print(f"  📄 Raw files: {file_count} ({total_bytes:,} bytes)")
+
+print(f"\n{'='*60}")
+if all_good:
+    print("  🎉 SETUP COMPLETE! Ready for DataOps Olympics!")
+else:
+    print("  ⚠️  Some issues detected — check table errors above")
 print("=" * 60)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Quick Reference Card
+# MAGIC ## Quick Reference Card
 # MAGIC
-# MAGIC ### Useful Commands for Participants
-# MAGIC
+# MAGIC ### Useful SQL
 # MAGIC ```sql
 # MAGIC -- List all tables
 # MAGIC SHOW TABLES;
@@ -484,8 +460,11 @@ print("=" * 60)
 # MAGIC DESCRIBE TABLE heart_disease;
 # MAGIC SELECT * FROM heart_disease LIMIT 10;
 # MAGIC
-# MAGIC -- Check table history (Delta feature)
+# MAGIC -- Check Delta history
 # MAGIC DESCRIBE HISTORY heart_disease;
+# MAGIC
+# MAGIC -- Check table details (format, size, location)
+# MAGIC DESCRIBE DETAIL heart_disease;
 # MAGIC ```
 # MAGIC
 # MAGIC ### Key Python Imports
@@ -499,3 +478,21 @@ print("=" * 60)
 # MAGIC import mlflow.sklearn
 # MAGIC import plotly.express as px
 # MAGIC ```
+# MAGIC
+# MAGIC ### Available Tables
+# MAGIC | Table | Rows | Description |
+# MAGIC |-------|------|-------------|
+# MAGIC | `heart_disease` | ~500 | UCI heart disease clinical data |
+# MAGIC | `diabetes_readmission` | 768 | Diabetes readmission risk prediction |
+# MAGIC | `life_expectancy` | ~480 | WHO health indicators by country/year |
+# MAGIC | `drug_reviews` | 1,000 | Drug review ratings and text |
+# MAGIC | `clinical_notes` | 20 | Synthetic clinical notes (for NLP) |
+# MAGIC
+# MAGIC ### Raw Files (for DLT/ingestion events)
+# MAGIC | File | Path |
+# MAGIC |------|------|
+# MAGIC | Heart Disease CSV | `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` |
+# MAGIC | Heart Batch 1-3 | `file:/tmp/dataops_olympics/raw/heart_disease/heart_disease_batch_*.csv` |
+# MAGIC | Life Expectancy JSON | `file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json` |
+# MAGIC | Drug Reviews CSV | `file:/tmp/dataops_olympics/raw/drug_reviews/drug_reviews.csv` |
+# MAGIC | Clinical Notes JSON | `file:/tmp/dataops_olympics/raw/clinical_notes/clinical_notes.json` |
