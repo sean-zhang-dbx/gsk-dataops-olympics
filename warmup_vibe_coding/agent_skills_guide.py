@@ -15,7 +15,7 @@
 # MAGIC - Create and deploy AI/BI dashboards
 # MAGIC - Set up Genie spaces with proper instructions
 # MAGIC - Build and evaluate AI agents
-# MAGIC - Write and run DLT/Declarative Pipelines
+# MAGIC - Write and run Spark Declarative Pipelines (SDP)
 # MAGIC
 # MAGIC But it needs **skills** — structured knowledge files that teach it how to use
 # MAGIC specific Databricks features. That's what we'll install.
@@ -178,7 +178,7 @@ display(df_test)
 # MAGIC
 # MAGIC | Skill | What It Teaches the Assistant | Event |
 # MAGIC |-------|------------------------------|-------|
-# MAGIC | `databricks-spark-declarative-pipelines` | Build DLT/SDP pipelines with expectations | Event 1 |
+# MAGIC | `databricks-spark-declarative-pipelines` | Build SDP pipelines with expectations | Event 1 |
 # MAGIC | `databricks-unity-catalog` | Governance, table comments, system tables | Event 1 |
 # MAGIC | `databricks-aibi-dashboards` | Create AI/BI dashboards programmatically | Event 2 |
 # MAGIC | `databricks-genie` | Set up and configure Genie spaces | Event 2, 4 |
@@ -187,7 +187,7 @@ display(df_test)
 # MAGIC | `databricks-vector-search` | RAG and semantic search | Event 4 |
 # MAGIC | `databricks-dbsql` | SQL warehouse queries and patterns | All |
 # MAGIC
-# MAGIC ### Full list: 25+ skills covering dashboards, Genie, DLT, agents, apps, and more.
+# MAGIC ### Full list: 25+ skills covering dashboards, Genie, SDP, agents, apps, and more.
 
 # COMMAND ----------
 

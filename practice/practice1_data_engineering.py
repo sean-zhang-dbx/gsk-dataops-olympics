@@ -102,7 +102,7 @@ print("Governance comments added!")
 # MAGIC - `age` is between 1 and 120
 # MAGIC - `trestbps` (blood pressure) is between 50 and 300
 # MAGIC
-# MAGIC > In a Spark Declarative Pipeline, this would be `@dlt.expect_or_drop("valid_age", "age BETWEEN 1 AND 120")`
+# MAGIC > In an SDP pipeline, this would be an expectation that automatically drops invalid rows
 
 # COMMAND ----------
 

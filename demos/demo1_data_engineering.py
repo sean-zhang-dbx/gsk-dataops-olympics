@@ -137,8 +137,7 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC
 # MAGIC > **Say this:** "Now here's the modern approach to building medallion pipelines.
 # MAGIC > Instead of writing imperative Spark code, we **declare** our tables and let
-# MAGIC > Databricks handle the orchestration. This is called Spark Declarative Pipelines —
-# MAGIC > it used to be called Delta Live Tables (DLT)."
+# MAGIC > Databricks handle the orchestration. This is called **Spark Declarative Pipelines (SDP)**."
 # MAGIC
 # MAGIC > "With SDP, you define WHAT you want, not HOW to run it. You also get
 # MAGIC > built-in data quality expectations — like unit tests for your data."
@@ -189,8 +188,8 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC ```
 # MAGIC
 # MAGIC > **Say this:** "Notice three things:
-# MAGIC > 1. Each table is a Python function decorated with `@dlt.table`
-# MAGIC > 2. Silver has `@dlt.expect` — these are data quality rules. If age is invalid, the row is dropped.
+# MAGIC > 1. Each table is a Python function decorated with `@dlt.table` (the SDP Python API)
+# MAGIC > 2. Silver has SDP expectations — these are data quality rules. If age is invalid, the row is dropped.
 # MAGIC > 3. No `write` calls — the pipeline handles all the orchestration."
 
 # COMMAND ----------
@@ -205,7 +204,7 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- SILVER: Clean the data (same logic as @dlt.expect_or_drop)
+# MAGIC -- SILVER: Clean the data (same logic as SDP expect_or_drop)
 # MAGIC CREATE OR REPLACE TABLE dataops_olympics.default.demo_heart_silver AS
 # MAGIC SELECT *, current_timestamp() as ingested_at
 # MAGIC FROM dataops_olympics.default.demo_heart_bronze
@@ -322,6 +321,6 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC 2. **Spark reads any format** — CSV, JSON, Parquet, etc. with one line
 # MAGIC 3. **Delta Lake** = ACID transactions + time travel + schema enforcement
 # MAGIC 4. **Unity Catalog governance** = table/column comments so your data is self-documenting
-# MAGIC 5. **Spark Declarative Pipelines** = declare tables with `@dlt.table`, add quality rules with `@dlt.expect`
+# MAGIC 5. **Spark Declarative Pipelines (SDP)** = declare tables and add built-in data quality expectations
 # MAGIC 6. **Medallion Architecture** = Bronze (raw) → Silver (clean) → Gold (aggregated)
 # MAGIC 7. **Use the Databricks Assistant** (`Cmd+I`) to generate all of this code from English prompts

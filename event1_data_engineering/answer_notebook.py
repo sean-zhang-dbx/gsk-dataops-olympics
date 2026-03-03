@@ -219,7 +219,7 @@ display(dq)
 # MAGIC
 # MAGIC | Feature | SDP (Path A) | SQL (Path B) |
 # MAGIC |---------|-------------|-------------|
-# MAGIC | **Data Quality** | Automatic — `@dlt.expect` tracks pass/fail rates | Manual — must write COUNT/CASE queries |
+# MAGIC | **Data Quality** | Automatic — SDP expectations track pass/fail rates | Manual — must write COUNT/CASE queries |
 # MAGIC | **Gold Table** | Materialized View — auto-refreshes when Silver changes | Static table — must manually rebuild |
 # MAGIC | **Governance** | Comments in code = infrastructure-as-code | ALTER TABLE after the fact |
 # MAGIC | **Lineage** | Pipeline UI shows full dependency graph | No automatic lineage |

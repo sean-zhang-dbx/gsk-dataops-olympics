@@ -111,7 +111,7 @@ gsk-dataops-olympics/
 │   ├── starter_notebook.py                <- With prompt gallery + stretch goals
 │   └── solution_notebook.py
 │
-├── event1b_declarative_pipelines/         <- Optional DLT/SDP challenge
+├── event1b_declarative_pipelines/         <- Optional SDP challenge
 │   ├── starter_notebook.py
 │   └── solution_notebook.py
 │
@@ -149,7 +149,7 @@ gsk-dataops-olympics/
 | Dataset | File | Records | Used In |
 |---------|------|---------|---------|
 | Heart Disease | `data/heart_disease.csv` | 500 | Events 1, 2, Warm-Up |
-| Heart Batches | `data/heart_disease_batch_*.csv` | 50 each | Event 1b (DLT) |
+| Heart Batches | `data/heart_disease_batch_*.csv` | 50 each | Event 1b (SDP) |
 | Diabetes/Readmission | `data/diabetes_readmission.csv` | 768 | Event 3 |
 | WHO Life Expectancy | `data/life_expectancy.csv` | 480 | Event 1 |
 | Life Expectancy (JSON) | `data/life_expectancy_sample.json` | 100 | Event 1 |
@@ -184,7 +184,7 @@ gsk-dataops-olympics/
 |---------|-------|-----------------|
 | **Delta Lake** | 1, 2, 3, 5 | ACID transactions, table format, time travel |
 | **Unity Catalog** | 1 | Catalog/schema governance, table comments |
-| **Declarative Pipelines (DLT)** | 1b | Medallion architecture, data quality expectations |
+| **Spark Declarative Pipelines (SDP)** | 1b | Medallion architecture, data quality expectations |
 | **AI/BI Dashboards (Lakeview)** | 2, 5 | Interactive dashboards, visualizations |
 | **Genie** | 2, 4, 5 | Natural language data querying |
 | **MLflow** | 3, 5 | Experiment tracking, model logging, registry |

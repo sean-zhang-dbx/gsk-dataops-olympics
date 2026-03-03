@@ -23,7 +23,7 @@
 # MAGIC |---|---|---|
 # MAGIC | **Max Points** | **50 pts** | **31 pts** |
 # MAGIC | **Difficulty** | Harder — create a pipeline in Workflows UI | Easier — run SQL in this notebook |
-# MAGIC | **DQ Metrics** | Automatic from `@dlt.expect` | Manual SQL computation |
+# MAGIC | **DQ Metrics** | Automatic from SDP expectations | Manual SQL computation |
 # MAGIC | **Gold Table** | Materialized View (auto-refreshes) | Regular Delta Table |
 # MAGIC | **Governance** | Comments defined in pipeline code | ALTER TABLE after creation |
 # MAGIC
@@ -227,7 +227,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > - `event_id` — what it represents
 # MAGIC >
 # MAGIC > **SDP Path:** Your comments should already be in the pipeline code via
-# MAGIC > `@dlt.table(comment="...")`. Verify by running DESCRIBE below.
+# MAGIC > the `comment` parameter in your SDP table definitions. Verify by running DESCRIBE below.
 
 # COMMAND ----------
 
