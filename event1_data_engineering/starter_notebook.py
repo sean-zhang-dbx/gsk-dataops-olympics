@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # Event 1: Data Engineering — Speed Sprint
 # MAGIC
-# MAGIC ## Challenge: Build a Production-Grade Data Pipeline
+# MAGIC ## Build a Production-Grade Medallion Pipeline
 # MAGIC **Time: 25 minutes** | **Max Points: 50**
 # MAGIC
 # MAGIC ---
@@ -14,34 +14,33 @@
 # MAGIC > Some records have data quality issues — missing ages, impossible blood pressure
 # MAGIC > readings, and duplicate events.
 # MAGIC >
-# MAGIC > **Your job:** Build a Medallion pipeline (Bronze -> Silver -> Gold) that ingests,
+# MAGIC > **Your job:** Build a Medallion pipeline (Bronze → Silver → Gold) that ingests,
 # MAGIC > cleans, and aggregates this data into a governed, analytics-ready table.
 # MAGIC
-# MAGIC ### Two Pathways (Choose One!)
+# MAGIC ### Choose Your Implementation
 # MAGIC
-# MAGIC | | **Path A: Spark Declarative Pipelines (SDP)** | **Path B: Interactive SQL** |
+# MAGIC The business logic is **the same** for both paths — only the implementation differs:
+# MAGIC
+# MAGIC | | **Path A: Spark Declarative Pipelines (SDP)** | **Path B: Interactive SQL/PySpark** |
 # MAGIC |---|---|---|
 # MAGIC | **Max Points** | **50 pts** | **31 pts** |
-# MAGIC | **Difficulty** | Harder — create a pipeline in Workflows UI | Easier — run SQL in this notebook |
-# MAGIC | **DQ Metrics** | Automatic from SDP expectations | Manual SQL computation |
+# MAGIC | **How** | Use the `sdp_pipeline_template` notebook via Workflows → Pipelines | Write code directly in this notebook |
+# MAGIC | **DQ Metrics** | Automatic — SDP expectations track pass/fail rates | Manual — write your own DQ queries |
 # MAGIC | **Gold Table** | Materialized View (auto-refreshes) | Regular Delta Table |
 # MAGIC | **Governance** | Comments defined in pipeline code | ALTER TABLE after creation |
-# MAGIC
-# MAGIC ### Vibe Coding Rules
-# MAGIC
-# MAGIC > Use **Databricks Assistant** (`Cmd+I` or the chat panel) to generate your code!
-# MAGIC > Each step describes the **business requirements** — your job is to prompt the
-# MAGIC > Assistant to write the correct implementation. The better your prompts, the faster you go.
+# MAGIC | **Lineage** | Pipeline UI shows full dependency graph | No automatic lineage |
 # MAGIC
 # MAGIC ### Raw Data Location
 # MAGIC ```
 # MAGIC /Volumes/dataops_olympics/default/raw_data/heart_events/
 # MAGIC   ├── intake_batch_001.json   (100 records, clean)
 # MAGIC   ├── intake_batch_002.json   (100 records, clean)
-# MAGIC   ├── intake_batch_003.json   (100 records, 8 dirty + 1 duplicate)
+# MAGIC   ├── intake_batch_003.json   (100 records, ~8 dirty + 1 duplicate)
 # MAGIC   ├── intake_batch_004.json   (100 records, clean)
-# MAGIC   └── intake_batch_005.json   (100 records, 4 dirty + 2 duplicates)
+# MAGIC   └── intake_batch_005.json   (100 records, ~4 dirty + 2 duplicates)
 # MAGIC ```
+# MAGIC
+# MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) to generate your code!
 
 # COMMAND ----------
 
@@ -57,15 +56,30 @@ TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name (e.g., "team_01")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 0: Explore the Raw Data
+# MAGIC # Pipeline Overview
+# MAGIC
+# MAGIC ```
+# MAGIC  NDJSON Files          Bronze              Silver              Gold
+# MAGIC ┌──────────┐     ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+# MAGIC │ batch_001│     │              │    │  Validated   │    │  Aggregated  │
+# MAGIC │ batch_002│────>│  Raw ingest  │───>│  Cleaned     │───>│  By age_group│
+# MAGIC │ batch_003│     │  ~500 rows   │    │  Deduplicated│    │  & diagnosis │
+# MAGIC │ batch_004│     │              │    │  ~485 rows   │    │  ~8 rows     │
+# MAGIC │ batch_005│     └──────────────┘    └──────────────┘    └──────────────┘
+# MAGIC └──────────┘
+# MAGIC ```
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC # Step 0: Explore the Raw Data
 # MAGIC
 # MAGIC Before building anything, understand what you're working with.
-# MAGIC Run these cells to explore the data and spot quality issues.
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- List the raw files in the Volume
 # MAGIC LIST '/Volumes/dataops_olympics/default/raw_data/heart_events/'
 
 # COMMAND ----------
@@ -84,8 +98,6 @@ print(f"Total raw records across all 5 batches: {df_all_raw.count()}")
 
 # MAGIC %md
 # MAGIC ### Data Profiling — Spot the Problems
-# MAGIC
-# MAGIC Run this cell to find the dirty data you need to clean in Silver.
 
 # COMMAND ----------
 
@@ -107,109 +119,104 @@ print(f"Duplicate event_ids: {dup_count}")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 1: Bronze — Ingest All Raw Data
+# MAGIC # Step 1: Bronze Layer — Raw Ingestion
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
 # MAGIC > Read **all 5 NDJSON batch files** from the Volume path
 # MAGIC > `/Volumes/dataops_olympics/default/raw_data/heart_events/` and save them
-# MAGIC > as a single Delta table called `{TEAM_NAME}_heart_bronze` in
-# MAGIC > `dataops_olympics.default`. No cleaning — Bronze is the raw landing zone.
+# MAGIC > as a single Delta table called `{TEAM_NAME}_heart_bronze`.
 # MAGIC >
-# MAGIC > The table should contain all ~500 records from all 5 files.
+# MAGIC > **No cleaning** — Bronze is the raw landing zone. All ~500 records should be present.
+# MAGIC >
+# MAGIC > *SDP Path: This is the `heart_bronze()` function in `sdp_pipeline_template`.*
 
 # COMMAND ----------
 
 # YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
-# Prompt idea: "Read all JSON files from /Volumes/dataops_olympics/default/raw_data/heart_events/
-#               and save as a Delta table called {TEAM_NAME}_heart_bronze"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 2: Choose Your Path!
-# MAGIC
-# MAGIC ### **Path A: Spark Declarative Pipelines (SDP) — 50 pts max**
-# MAGIC
-# MAGIC 1. Open the **`sdp_pipeline_template`** notebook (in this same folder)
-# MAGIC 2. Go to **Workflows -> Pipelines -> Create Pipeline**
-# MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
-# MAGIC    - Source: select the `sdp_pipeline_template` notebook
-# MAGIC    - Target catalog: `dataops_olympics`
-# MAGIC    - Target schema: `default`
-# MAGIC 3. Click **Start** and watch the pipeline run!
-# MAGIC
-# MAGIC After the pipeline completes, your tables will appear as:
-# MAGIC - `dataops_olympics.default.heart_bronze`
-# MAGIC - `dataops_olympics.default.heart_silver`
-# MAGIC - `dataops_olympics.default.heart_gold` (materialized view!)
-# MAGIC
-# MAGIC **Then skip to Step 4 (Governance).**
-# MAGIC
-# MAGIC ---
-# MAGIC
-# MAGIC ### **Path B: Interactive SQL — 31 pts max**
-# MAGIC
-# MAGIC Continue below to build Silver and Gold with SQL/PySpark in this notebook.
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ---
-# MAGIC ## Step 3B: Silver — Clean the Data (SQL Path)
+# MAGIC # Step 2: Silver Layer — Clean & Deduplicate
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
 # MAGIC > Create a Silver table called `{TEAM_NAME}_heart_silver` from the Bronze table.
-# MAGIC > The Silver table must:
+# MAGIC > Apply these data quality rules:
 # MAGIC >
 # MAGIC > 1. **Remove** rows where `age` is NULL
-# MAGIC > 2. **Remove** rows where `age` is outside the valid range of 1-120
-# MAGIC > 3. **Remove** rows where `trestbps` (blood pressure) is not between 50 and 300
+# MAGIC > 2. **Remove** rows where `age` is outside the valid range of 1–120
+# MAGIC > 3. **Remove** rows where `trestbps` (resting blood pressure) is not between 50 and 300
 # MAGIC > 4. **Remove** rows where `chol` (cholesterol) is negative
 # MAGIC > 5. **Deduplicate** on `event_id` — if multiple rows share the same `event_id`,
-# MAGIC >    keep only the one with the earliest `event_timestamp`
+# MAGIC >    keep only the one with the **earliest** `event_timestamp`
 # MAGIC > 6. Add an `ingested_at` column with the current timestamp
+# MAGIC >
+# MAGIC > *SDP Path: This is the `heart_silver()` function with `@dlt.expect_or_drop` expectations.*
 
 # COMMAND ----------
 
 # YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
-# Prompt idea: "Create a Silver table from my Bronze table that removes nulls,
-#               invalid values, and duplicates per the requirements above"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 3B (cont): Gold — Aggregate for Analytics (SQL Path)
+# MAGIC # Step 3: Gold Layer — Aggregate for Analytics
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
 # MAGIC > Create a Gold table called `{TEAM_NAME}_heart_gold` from the Silver table.
-# MAGIC > It should aggregate heart disease metrics **by age group and diagnosis**:
+# MAGIC > Aggregate heart disease metrics **by age group and diagnosis**:
 # MAGIC >
-# MAGIC > - `age_group`: bucket ages into "Under 40", "40-49", "50-59", "60+"
-# MAGIC > - `diagnosis`: map `target` column — 1 = "Heart Disease", 0 = "Healthy"
-# MAGIC > - `patient_count`: number of patients in each group
-# MAGIC > - `avg_cholesterol`: average of `chol` column, rounded to 1 decimal
-# MAGIC > - `avg_blood_pressure`: average of `trestbps` column, rounded to 1 decimal
-# MAGIC > - `avg_max_heart_rate`: average of `thalach` column, rounded to 1 decimal
+# MAGIC > | Column | Definition |
+# MAGIC > |--------|-----------|
+# MAGIC > | `age_group` | Bucket ages: "Under 40", "40-49", "50-59", "60+" |
+# MAGIC > | `diagnosis` | Map `target`: 1 = "Heart Disease", 0 = "Healthy" |
+# MAGIC > | `patient_count` | Number of patients in each group |
+# MAGIC > | `avg_cholesterol` | Average of `chol`, rounded to 1 decimal |
+# MAGIC > | `avg_blood_pressure` | Average of `trestbps`, rounded to 1 decimal |
+# MAGIC > | `avg_max_heart_rate` | Average of `thalach`, rounded to 1 decimal |
+# MAGIC >
+# MAGIC > *SDP Path: This is the `heart_gold()` materialized view function.*
 
 # COMMAND ----------
 
 # YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
-# Prompt idea: "Create a Gold aggregation table that groups heart disease data by
-#               age bucket and diagnosis with averages for cholesterol, BP, and heart rate"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 4: Governance — Add Metadata
+# MAGIC # SDP Path Instructions
+# MAGIC
+# MAGIC **If you chose Path A (SDP)**, your code goes in the `sdp_pipeline_template` notebook:
+# MAGIC
+# MAGIC 1. Open the **`sdp_pipeline_template`** notebook (in this same folder)
+# MAGIC 2. Go to **Workflows → Pipelines → Create Pipeline**
+# MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
+# MAGIC    - Source: select the `sdp_pipeline_template` notebook
+# MAGIC    - Target catalog: `dataops_olympics`
+# MAGIC    - Target schema: `default`
+# MAGIC 3. Click **Start** and watch all three layers (Bronze → Silver → Gold) run as one pipeline!
+# MAGIC
+# MAGIC After the pipeline completes, your tables will appear as:
+# MAGIC - `heart_bronze`, `heart_silver`, `heart_gold`
+# MAGIC
+# MAGIC The SDP pipeline template already implements the same business logic from
+# MAGIC Steps 1–3, but with built-in data quality expectations, automatic lineage,
+# MAGIC and a materialized view Gold layer.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC # Step 4: Governance — Add Metadata
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
@@ -220,52 +227,46 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > - Add a **table comment** describing what the table contains and its purpose
 # MAGIC >
 # MAGIC > **For the Silver table, add column comments on at least these columns:**
-# MAGIC > - `age` — what it means and its valid range
-# MAGIC > - `trestbps` — what it measures and its valid range
-# MAGIC > - `chol` — what it measures
-# MAGIC > - `target` — what 0 and 1 mean
-# MAGIC > - `event_id` — what it represents
+# MAGIC > - `age` — patient age in years, validated 1–120
+# MAGIC > - `trestbps` — resting blood pressure in mmHg, validated 50–300
+# MAGIC > - `chol` — serum cholesterol in mg/dL, validated >= 0
+# MAGIC > - `target` — diagnosis: 1 = heart disease present, 0 = healthy
+# MAGIC > - `event_id` — unique event identifier from the source system
 # MAGIC >
-# MAGIC > **SDP Path:** Your comments should already be in the pipeline code via
-# MAGIC > the `comment` parameter in your SDP table definitions. Verify by running DESCRIBE below.
+# MAGIC > *SDP Path: If you defined `comment=` in your `@dlt.table()` decorators, your
+# MAGIC > table comments are already applied. You may still want to add column comments.*
 
 # COMMAND ----------
 
 # YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
-# Prompt idea: "Add table comments and column comments to my heart disease pipeline tables.
-#               Use ALTER TABLE SET TBLPROPERTIES for table comments and
-#               ALTER TABLE ALTER COLUMN COMMENT for column comments."
 
 
 # COMMAND ----------
 
-# Verify your governance — run this to check your comments were applied
+# Verify governance — check that comments were applied
 display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_silver"))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 5: Data Quality Metrics
+# MAGIC # Step 5: Data Quality Report
 # MAGIC
-# MAGIC ### SDP Path — Your DQ metrics are FREE!
+# MAGIC ### SDP Path (automatic)
 # MAGIC
-# MAGIC After your pipeline runs, check the Pipeline UI for expectation results.
-# MAGIC You can also query the event log programmatically:
+# MAGIC Your DQ metrics are already captured by the pipeline! Check the Pipeline UI
+# MAGIC for expectation pass/fail rates.
 # MAGIC
-# MAGIC ```python
-# MAGIC display(spark.sql("SELECT * FROM event_log('YOUR_PIPELINE_ID') WHERE event_type = 'flow_progress'"))
-# MAGIC ```
-# MAGIC
-# MAGIC ### SQL Path — Compute DQ metrics manually
+# MAGIC ### SQL Path (manual)
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
-# MAGIC > Write a query against your **Bronze** table that produces a data quality report with:
+# MAGIC > Write a query against your **Bronze** table that produces a data quality report:
+# MAGIC >
 # MAGIC > - Total record count
 # MAGIC > - Count of null ages
-# MAGIC > - Count of invalid ages (outside 1-120)
-# MAGIC > - Count of invalid blood pressure readings (outside 50-300)
+# MAGIC > - Count of invalid ages (outside 1–120)
+# MAGIC > - Count of invalid blood pressure readings (outside 50–300)
 # MAGIC > - Count of negative cholesterol values
 # MAGIC > - Count of duplicate event_ids
 # MAGIC > - Percentage of clean records
@@ -273,18 +274,16 @@ display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}
 # COMMAND ----------
 
 # YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
-# Prompt idea: "Write a data quality report query that counts all the different types of
-#               dirty data in my Bronze table"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 6: Validation — Run This!
+# MAGIC # Step 6: Validation
 # MAGIC
-# MAGIC This cell checks your work and calculates your preliminary score.
-# MAGIC The organizer will run the official scoring script separately.
+# MAGIC Run this to check your work and get a preliminary score.
+# MAGIC The organizer will run the official `scoring.py` separately.
 
 # COMMAND ----------
 
@@ -357,12 +356,12 @@ print("=" * 60)
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC # Stretch Goals (Extra Credit)
 # MAGIC
 # MAGIC Finished early? Ask the Databricks Assistant to help you with these:
 # MAGIC
-# MAGIC 1. **Create a Genie space** on your Gold table — "Which age group has the highest heart disease rate?"
+# MAGIC 1. **Genie Space** — Create a Genie space on your Gold table and ask "Which age group has the highest heart disease rate?"
 # MAGIC 2. **Liquid Clustering** — Optimize your Silver table with `CLUSTER BY (age, target)`
-# MAGIC 3. **Change Data Feed** — Enable CDF on Silver so you can track row-level changes
-# MAGIC 4. **Time Travel** — Overwrite Silver with bad data, then restore it to the previous version
+# MAGIC 3. **Change Data Feed** — Enable CDF on Silver to track row-level changes
+# MAGIC 4. **Time Travel** — Overwrite Silver with bad data, then restore the previous version
 # MAGIC 5. **AI Functions** — Use `ai_classify()` to categorize cholesterol levels as Normal/Borderline/High
