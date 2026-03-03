@@ -1,70 +1,81 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # DataOps Olympics — Environment Setup & Data Loading
+# MAGIC # DataOps Olympics — One-Click Setup
 # MAGIC
-# MAGIC **Run this notebook FIRST** before starting any competition events.
+# MAGIC **Run All cells** to set up everything. That's it.
 # MAGIC
 # MAGIC This notebook will:
-# MAGIC 1. Verify your Databricks environment
-# MAGIC 2. Install required libraries
-# MAGIC 3. Set up the catalog/schema (Unity Catalog or hive_metastore fallback)
-# MAGIC 4. Load bundled data files into Delta tables
-# MAGIC 5. (Optional) Set up Unity Catalog Volumes
+# MAGIC 1. Clean up any previous Olympics data (tables, schema, staging files)
+# MAGIC 2. Install required Python libraries
+# MAGIC 3. Create catalog/schema (Unity Catalog or hive_metastore fallback)
+# MAGIC 4. Stage bundled data files from the `data/` folder
+# MAGIC 5. Create all Delta tables
 # MAGIC 6. Validate everything is ready
 # MAGIC
-# MAGIC ### Data Source
-# MAGIC All data files are **bundled in this repository** under the `data/` folder.
-# MAGIC No internet downloads required at runtime.
+# MAGIC **Estimated time: ~3 minutes**
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1. Environment Verification
+# MAGIC ## Configuration
+# MAGIC
+# MAGIC Edit the values below if needed, then **Run All**.
 
 # COMMAND ----------
 
-import sys
-import importlib
+CATALOG_NAME = "hive_metastore"   # Change to a UC catalog name if available
+SCHEMA_NAME  = "dataops_olympics"
+NUM_TEAMS    = 10
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 1: Clean Up Previous Runs
+
+# COMMAND ----------
 
 print("=" * 60)
-print("  DATABRICKS ENVIRONMENT CHECK")
+print("  CLEANUP — Removing previous DataOps Olympics data")
 print("=" * 60)
 
-print(f"\n  Python version: {sys.version.split()[0]}")
-
-try:
-    print(f"  Spark version:  {spark.version}")
-except:
-    raise RuntimeError("Spark not available — are you on a Databricks cluster?")
-
-# Check key libraries
-libs = {
-    "pandas": "pandas",
-    "numpy": "numpy",
-    "sklearn": "scikit-learn",
-    "mlflow": "mlflow",
-    "plotly": "plotly",
-    "delta": "delta-spark",
-}
-
-for import_name, pip_name in libs.items():
+# Drop the schema (and all tables in it)
+if CATALOG_NAME == "hive_metastore":
     try:
-        mod = importlib.import_module(import_name)
-        ver = getattr(mod, "__version__", "✓")
-        print(f"  ✅ {import_name}: {ver}")
-    except ImportError:
-        print(f"  ⚠️  {import_name}: not installed")
+        tables = spark.sql(f"SHOW TABLES IN {SCHEMA_NAME}").collect()
+        for t in tables:
+            spark.sql(f"DROP TABLE IF EXISTS {SCHEMA_NAME}.{t.tableName}")
+            print(f"  Dropped table: {SCHEMA_NAME}.{t.tableName}")
+        spark.sql(f"DROP DATABASE IF EXISTS {SCHEMA_NAME}")
+        print(f"  Dropped database: {SCHEMA_NAME}")
+    except Exception as e:
+        print(f"  No existing database to clean: {SCHEMA_NAME}")
+else:
+    try:
+        spark.sql(f"DROP SCHEMA IF EXISTS {CATALOG_NAME}.{SCHEMA_NAME} CASCADE")
+        print(f"  Dropped schema: {CATALOG_NAME}.{SCHEMA_NAME}")
+    except Exception as e:
+        print(f"  No existing schema to clean: {CATALOG_NAME}.{SCHEMA_NAME}")
 
-print("\n" + "=" * 60)
+# Clear staging files
+import shutil, os
+staging_dir = "/tmp/dataops_olympics"
+if os.path.exists(staging_dir):
+    shutil.rmtree(staging_dir)
+    print(f"  Cleared staging directory: {staging_dir}")
+else:
+    print(f"  Staging directory already clean: {staging_dir}")
+
+print("\n  Cleanup complete.")
+print("=" * 60)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2. Install Additional Libraries
+# MAGIC ## Step 2: Install Libraries
 
 # COMMAND ----------
 
-%pip install plotly chromadb sentence-transformers --quiet
+# MAGIC %pip install plotly chromadb sentence-transformers --quiet
 
 # COMMAND ----------
 
@@ -72,73 +83,52 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## 3. Configuration
-
-# COMMAND ----------
-
-# -------------------------------------------------------------------
-# EDIT THESE if needed
-# -------------------------------------------------------------------
-CATALOG_NAME = "dataops_olympics"
-SCHEMA_NAME  = "competition"
-NUM_TEAMS    = 10
-
-# Path to the bundled data/ folder inside this repo
-# When imported via Databricks Repos, the repo root is the notebook's CWD.
-import os, pathlib
-
-# Auto-detect repo root (works in Repos and Workspace)
-_nb_dir = os.getcwd()
-REPO_DATA_DIR = os.path.join(_nb_dir, "..", "data")
-if not os.path.isdir(REPO_DATA_DIR):
-    # Fallback: maybe the repo was cloned to /Workspace/...
-    REPO_DATA_DIR = "/Workspace/Repos/" + os.environ.get("USER", "user") + "/gsk-dataops-olympics/data"
-if not os.path.isdir(REPO_DATA_DIR):
-    REPO_DATA_DIR = None  # Will use /tmp fallback
-
-# Local staging area
-LOCAL_DATA_DIR = "/tmp/dataops_olympics/raw"
-
-print(f"Catalog:       {CATALOG_NAME}")
-print(f"Schema:        {SCHEMA_NAME}")
-print(f"Repo data dir: {REPO_DATA_DIR or '(not found, will generate)'}")
-print(f"Staging dir:   {LOCAL_DATA_DIR}")
+# Re-import config after Python restart
+CATALOG_NAME = "hive_metastore"
+SCHEMA_NAME  = "dataops_olympics"
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 4. Create Catalog / Schema
+# MAGIC ## Step 3: Create Schema
 
 # COMMAND ----------
 
-# Try Unity Catalog first, fall back to hive_metastore
-try:
-    spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG_NAME}")
-    spark.sql(f"USE CATALOG {CATALOG_NAME}")
-    spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
-    spark.sql(f"USE SCHEMA {SCHEMA_NAME}")
-    USING_UNITY_CATALOG = True
-    print(f"✅ Using Unity Catalog: {CATALOG_NAME}.{SCHEMA_NAME}")
-except Exception as e:
-    print(f"⚠️  Unity Catalog not available — falling back to hive_metastore")
+if CATALOG_NAME != "hive_metastore":
+    try:
+        spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG_NAME}")
+        spark.sql(f"USE CATALOG {CATALOG_NAME}")
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
+        spark.sql(f"USE SCHEMA {SCHEMA_NAME}")
+        USING_UC = True
+        print(f"  Using Unity Catalog: {CATALOG_NAME}.{SCHEMA_NAME}")
+    except Exception as e:
+        print(f"  Unity Catalog not available, falling back to hive_metastore")
+        CATALOG_NAME = "hive_metastore"
+        spark.sql(f"CREATE DATABASE IF NOT EXISTS {SCHEMA_NAME}")
+        spark.sql(f"USE {SCHEMA_NAME}")
+        USING_UC = False
+else:
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {SCHEMA_NAME}")
     spark.sql(f"USE {SCHEMA_NAME}")
-    USING_UNITY_CATALOG = False
-    print(f"✅ Using hive_metastore.{SCHEMA_NAME}")
+    USING_UC = False
+    print(f"  Using hive_metastore.{SCHEMA_NAME}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Stage Data Files
+# MAGIC ## Step 4: Stage Data Files
 # MAGIC
-# MAGIC Data is bundled in the `data/` folder of this repository.
-# MAGIC We copy it to a local staging path so all notebooks have a consistent path,
-# MAGIC and (optionally) upload to a Unity Catalog Volume.
+# MAGIC Copies bundled CSV/JSON files from the repo `data/` folder to a local staging path
+# MAGIC so all event notebooks have a consistent file location.
 
 # COMMAND ----------
 
-import shutil, os, json
+import os, shutil, json
+import pandas as pd
+import numpy as np
+
+LOCAL_DATA_DIR = "/tmp/dataops_olympics/raw"
 
 os.makedirs(f"{LOCAL_DATA_DIR}/heart_disease", exist_ok=True)
 os.makedirs(f"{LOCAL_DATA_DIR}/diabetes", exist_ok=True)
@@ -146,11 +136,36 @@ os.makedirs(f"{LOCAL_DATA_DIR}/life_expectancy", exist_ok=True)
 os.makedirs(f"{LOCAL_DATA_DIR}/drug_reviews", exist_ok=True)
 os.makedirs(f"{LOCAL_DATA_DIR}/clinical_notes", exist_ok=True)
 
-if REPO_DATA_DIR and os.path.isdir(REPO_DATA_DIR):
-    # Copy from bundled repo data/ to local staging
-    src = REPO_DATA_DIR
-    files_copied = 0
-    
+# Auto-detect the repo data/ folder
+_nb_dir = os.getcwd()
+REPO_DATA_DIR = None
+
+candidates = [
+    os.path.join(_nb_dir, "..", "data"),
+    os.path.join(_nb_dir, "data"),
+]
+
+# Also check common Workspace/Repos paths
+try:
+    user_email = spark.sql("SELECT current_user()").collect()[0][0]
+    candidates += [
+        f"/Workspace/Repos/{user_email}/gsk-dataops-olympics/data",
+        f"/Workspace/Users/{user_email}/gsk-dataops-olympics/data",
+    ]
+except:
+    pass
+
+for c in candidates:
+    if os.path.isdir(c) and os.path.isfile(os.path.join(c, "heart_disease.csv")):
+        REPO_DATA_DIR = os.path.abspath(c)
+        break
+
+print(f"  Repo data/ found: {REPO_DATA_DIR or 'NOT FOUND (will generate synthetic data)'}")
+
+# COMMAND ----------
+
+# Copy bundled data to staging, or generate if not found
+if REPO_DATA_DIR:
     copy_map = {
         "heart_disease.csv":           f"{LOCAL_DATA_DIR}/heart_disease/heart.csv",
         "heart_disease_batch_1.csv":   f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_1.csv",
@@ -162,39 +177,23 @@ if REPO_DATA_DIR and os.path.isdir(REPO_DATA_DIR):
         "drug_reviews.csv":            f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv",
         "clinical_notes.json":         f"{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json",
     }
-    
+    copied = 0
     for src_name, dst_path in copy_map.items():
-        src_path = os.path.join(src, src_name)
+        src_path = os.path.join(REPO_DATA_DIR, src_name)
         if os.path.isfile(src_path):
             shutil.copy2(src_path, dst_path)
-            files_copied += 1
-    
-    print(f"✅ Copied {files_copied} files from repo data/ to staging")
+            copied += 1
+    print(f"  Copied {copied}/{len(copy_map)} files from repo data/ to staging")
 else:
-    print("⚠️  Repo data/ folder not found — generating data at runtime...")
-    print("   (This is fine, but importing via Repos is recommended)")
-    exec(open("/dev/null").read())  # placeholder; generation logic below
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Generate Data (fallback if repo data/ not found)
-# MAGIC
-# MAGIC This cell only runs if the bundled data files weren't detected.
-# MAGIC It creates equivalent synthetic datasets.
-
-# COMMAND ----------
-
-import pandas as pd
-import numpy as np
+    print("  Generating synthetic data (repo data/ not found)...")
 
 np.random.seed(42)
 
-# ---------- Heart Disease ----------
+# Heart Disease
 heart_path = f"{LOCAL_DATA_DIR}/heart_disease/heart.csv"
-if not os.path.isfile(heart_path) or os.path.getsize(heart_path) < 100:
+if not os.path.isfile(heart_path):
     n = 500
-    df_heart = pd.DataFrame({
+    df_h = pd.DataFrame({
         "age": np.random.randint(29, 77, n), "sex": np.random.randint(0, 2, n),
         "cp": np.random.randint(0, 4, n), "trestbps": np.random.randint(94, 200, n),
         "chol": np.random.randint(126, 564, n), "fbs": np.random.randint(0, 2, n),
@@ -204,23 +203,19 @@ if not os.path.isfile(heart_path) or os.path.getsize(heart_path) < 100:
         "slope": np.random.randint(0, 3, n), "ca": np.random.randint(0, 4, n),
         "thal": np.random.choice([3, 6, 7], n), "target": np.random.randint(0, 2, n),
     })
-    df_heart.to_csv(heart_path, index=False)
-    print(f"  Generated heart_disease.csv: {n} rows")
-
-    # Batch files for DLT event
+    df_h.to_csv(heart_path, index=False)
     for batch in range(1, 4):
-        batch_df = df_heart.sample(50, random_state=batch)
-        # Inject quality issues
-        batch_df.loc[batch_df.sample(3, random_state=batch).index, "age"] = -1
-        batch_df.loc[batch_df.sample(2, random_state=batch+10).index, "trestbps"] = 999
-        batch_df.to_csv(f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_{batch}.csv", index=False)
-        print(f"  Generated heart_disease_batch_{batch}.csv: 50 rows")
+        b = df_h.sample(50, random_state=batch)
+        b.loc[b.sample(3, random_state=batch).index, "age"] = -1
+        b.loc[b.sample(2, random_state=batch+10).index, "trestbps"] = 999
+        b.to_csv(f"{LOCAL_DATA_DIR}/heart_disease/heart_disease_batch_{batch}.csv", index=False)
+    print(f"    Generated heart_disease.csv + 3 batches")
 
-# ---------- Diabetes / Readmission ----------
+# Diabetes / Readmission
 diab_path = f"{LOCAL_DATA_DIR}/diabetes/diabetes.csv"
-if not os.path.isfile(diab_path) or os.path.getsize(diab_path) < 100:
+if not os.path.isfile(diab_path):
     n = 768
-    df_diab = pd.DataFrame({
+    df_d = pd.DataFrame({
         "pregnancies": np.random.randint(0, 17, n),
         "glucose": np.random.randint(44, 199, n),
         "blood_pressure": np.random.randint(24, 122, n),
@@ -230,19 +225,19 @@ if not os.path.isfile(diab_path) or os.path.getsize(diab_path) < 100:
         "diabetes_pedigree": np.round(np.random.uniform(0.078, 2.42, n), 3),
         "age": np.random.randint(21, 81, n),
     })
-    risk = ((df_diab["glucose"] > 140).astype(float) * 0.3 +
-            (df_diab["bmi"] > 30).astype(float) * 0.25 +
-            (df_diab["age"] > 45).astype(float) * 0.15 +
-            (df_diab["diabetes_pedigree"] > 1.0).astype(float) * 0.15 +
-            (df_diab["pregnancies"] > 5).astype(float) * 0.1 +
+    risk = ((df_d["glucose"] > 140).astype(float) * 0.3 +
+            (df_d["bmi"] > 30).astype(float) * 0.25 +
+            (df_d["age"] > 45).astype(float) * 0.15 +
+            (df_d["diabetes_pedigree"] > 1.0).astype(float) * 0.15 +
+            (df_d["pregnancies"] > 5).astype(float) * 0.1 +
             np.random.uniform(0, 0.3, n))
-    df_diab["readmission_risk"] = (risk > 0.45).astype(int)
-    df_diab.to_csv(diab_path, index=False)
-    print(f"  Generated diabetes.csv: {n} rows")
+    df_d["readmission_risk"] = (risk > 0.45).astype(int)
+    df_d.to_csv(diab_path, index=False)
+    print(f"    Generated diabetes.csv")
 
-# ---------- Life Expectancy ----------
+# Life Expectancy
 life_path = f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy.csv"
-if not os.path.isfile(life_path) or os.path.getsize(life_path) < 100:
+if not os.path.isfile(life_path):
     countries = ["India","United States","United Kingdom","Germany","France","Brazil",
                  "Japan","China","Australia","South Africa","Nigeria","Mexico",
                  "Canada","Italy","Spain","Russia","South Korea","Indonesia","Turkey","Thailand"]
@@ -270,22 +265,22 @@ if not os.path.isfile(life_path) or os.path.getsize(life_path) < 100:
                 "schooling": round(np.random.uniform(2,20),1),
                 "status": np.random.choice(["Developing","Developed"], p=[0.7,0.3]),
             })
-    df_life = pd.DataFrame(rows)
-    df_life.to_csv(life_path, index=False)
-    df_life.head(100).to_json(
+    df_l = pd.DataFrame(rows)
+    df_l.to_csv(life_path, index=False)
+    df_l.head(100).to_json(
         f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy_sample.json", orient="records", indent=2)
-    print(f"  Generated life_expectancy.csv: {len(rows)} rows + JSON sample")
+    print(f"    Generated life_expectancy.csv + JSON sample")
 
-# ---------- Drug Reviews ----------
+# Drug Reviews
 reviews_path = f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv"
-if not os.path.isfile(reviews_path) or os.path.getsize(reviews_path) < 100:
+if not os.path.isfile(reviews_path):
     drugs = ["Metformin","Lisinopril","Atorvastatin","Amlodipine","Omeprazole",
              "Metoprolol","Losartan","Gabapentin","Hydrochlorothiazide","Sertraline",
              "Levothyroxine","Acetaminophen","Ibuprofen","Amoxicillin","Prednisone"]
     conditions = ["Type 2 Diabetes","Hypertension","High Cholesterol","Chest Pain",
                   "GERD","Heart Failure","Blood Pressure","Nerve Pain","Fluid Retention",
                   "Depression","Hypothyroidism","Pain","Inflammation","Bacterial Infection","Asthma"]
-    reviews_list = [
+    review_texts = [
         "This medication has been very effective for me with minimal side effects.",
         "I experienced some dizziness at first but it went away after a week.",
         "Great improvement in my condition since starting this drug.",
@@ -297,153 +292,150 @@ if not os.path.isfile(reviews_path) or os.path.getsize(reviews_path) < 100:
         "Works well in combination with my other medications.",
     ]
     n = 1000
-    df_rev = pd.DataFrame({
+    df_r = pd.DataFrame({
         "drug_name": np.random.choice(drugs, n),
         "condition": np.random.choice(conditions, n),
-        "review": np.random.choice(reviews_list, n),
+        "review": np.random.choice(review_texts, n),
         "rating": np.random.randint(1, 11, n),
         "date": pd.date_range("2020-01-01", periods=n, freq="8h").strftime("%Y-%m-%d").tolist(),
         "useful_count": np.random.randint(0, 200, n),
     })
-    df_rev.to_csv(reviews_path, index=False)
-    print(f"  Generated drug_reviews.csv: {n} rows")
+    df_r.to_csv(reviews_path, index=False)
+    print(f"    Generated drug_reviews.csv")
 
-# ---------- Clinical Notes ----------
+# Clinical Notes
 notes_path = f"{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json"
-if not os.path.isfile(notes_path) or os.path.getsize(notes_path) < 100:
-    print("  ⚠️  clinical_notes.json not found — expected from repo data/")
+if not os.path.isfile(notes_path):
+    notes = []
+    depts = ["Cardiology","Oncology","Neurology","Emergency","Pediatrics"]
+    note_types = ["Admission Note","Progress Note","Discharge Summary","Consultation"]
+    for i in range(20):
+        notes.append({
+            "note_id": f"NOTE_{i+1:03d}",
+            "patient_id": f"PAT_{np.random.randint(100,999)}",
+            "department": depts[i % len(depts)],
+            "note_type": note_types[i % len(note_types)],
+            "date": f"2024-{(i%12)+1:02d}-{(i%28)+1:02d}",
+            "text": f"Patient presents with symptoms consistent with {depts[i%len(depts)].lower()} condition. "
+                    f"Vitals stable. Treatment plan discussed with patient and family. "
+                    f"Follow-up scheduled in {np.random.choice([1,2,3,4])} weeks.",
+            "physician": f"Dr. {'Smith Jones Patel Chen Williams'.split()[i%5]}",
+        })
+    with open(notes_path, "w") as f:
+        json.dump(notes, f, indent=2)
+    print(f"    Generated clinical_notes.json")
 
-print("\n✅ Data staging complete!")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 6. (Optional) Upload to Unity Catalog Volume
-# MAGIC
-# MAGIC **Volumes** are the modern way to manage files in Databricks.
-# MAGIC This stores data under `/Volumes/catalog/schema/volume_name/`.
-
-# COMMAND ----------
-
-if USING_UNITY_CATALOG:
-    try:
-        spark.sql(f"""
-            CREATE VOLUME IF NOT EXISTS {CATALOG_NAME}.{SCHEMA_NAME}.raw_data
-            COMMENT 'Raw data files for DataOps Olympics'
-        """)
-        VOLUME_PATH = f"/Volumes/{CATALOG_NAME}/{SCHEMA_NAME}/raw_data"
-        
-        # Upload key files to the Volume
-        import glob
-        uploaded = 0
-        for local_file in glob.glob(f"{LOCAL_DATA_DIR}/**/*.*", recursive=True):
-            rel = os.path.relpath(local_file, LOCAL_DATA_DIR)
-            dest = f"{VOLUME_PATH}/{rel}"
-            try:
-                dbutils.fs.cp(f"file:{local_file}", dest)
-                uploaded += 1
-            except:
-                pass
-        
-        print(f"✅ UC Volume created: {VOLUME_PATH}")
-        print(f"   Uploaded {uploaded} files")
-        print(f"   Files are now accessible at {VOLUME_PATH}/")
-    except Exception as e:
-        print(f"⚠️  Volume creation skipped: {str(e)[:80]}")
-else:
-    print("ℹ️  Unity Catalog not available — skipping Volume creation")
-    print(f"   Data is available at file:{LOCAL_DATA_DIR}/")
+print("\n  Data staging complete!")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 7. Create Delta Tables
+# MAGIC ## Step 5: Create Delta Tables
 
 # COMMAND ----------
 
-import pandas as pd
+print("Creating Delta tables...\n")
 
-# ---- Heart Disease ----
+# Heart Disease
 df = pd.read_csv(f"{LOCAL_DATA_DIR}/heart_disease/heart.csv")
 sdf = spark.createDataFrame(df)
 sdf.write.format("delta").mode("overwrite").saveAsTable("heart_disease")
-print(f"✅ heart_disease: {sdf.count()} rows")
+cnt = sdf.count()
+print(f"  heart_disease: {cnt} rows")
 
 # COMMAND ----------
 
-# ---- Diabetes / Readmission ----
+# Diabetes / Readmission
 df = pd.read_csv(f"{LOCAL_DATA_DIR}/diabetes/diabetes.csv")
 sdf = spark.createDataFrame(df)
 sdf.write.format("delta").mode("overwrite").saveAsTable("diabetes_readmission")
-print(f"✅ diabetes_readmission: {sdf.count()} rows")
+cnt = sdf.count()
+print(f"  diabetes_readmission: {cnt} rows")
 
 # COMMAND ----------
 
-# ---- Life Expectancy ----
+# Life Expectancy
 df = pd.read_csv(f"{LOCAL_DATA_DIR}/life_expectancy/life_expectancy.csv")
 sdf = spark.createDataFrame(df)
 sdf.write.format("delta").mode("overwrite").saveAsTable("life_expectancy")
-print(f"✅ life_expectancy: {sdf.count()} rows")
+cnt = sdf.count()
+print(f"  life_expectancy: {cnt} rows")
 
 # COMMAND ----------
 
-# ---- Drug Reviews ----
+# Drug Reviews
 df = pd.read_csv(f"{LOCAL_DATA_DIR}/drug_reviews/drug_reviews.csv")
 sdf = spark.createDataFrame(df)
 sdf.write.format("delta").mode("overwrite").saveAsTable("drug_reviews")
-print(f"✅ drug_reviews: {sdf.count()} rows")
+cnt = sdf.count()
+print(f"  drug_reviews: {cnt} rows")
 
 # COMMAND ----------
 
-# ---- Clinical Notes ----
+# Clinical Notes
 sdf = spark.read.json(f"file:{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json")
 sdf.write.format("delta").mode("overwrite").saveAsTable("clinical_notes")
-print(f"✅ clinical_notes: {sdf.count()} rows")
+cnt = sdf.count()
+print(f"  clinical_notes: {cnt} rows")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 8. Final Validation
+# MAGIC ## Step 6: Validation
 
 # COMMAND ----------
 
+import os
+
 print("=" * 60)
-print("  SETUP VALIDATION")
+print("  SETUP COMPLETE — VALIDATION REPORT")
 print("=" * 60)
 
-tables = spark.sql("SHOW TABLES").collect()
-print(f"\n  📊 Tables created: {len(tables)}")
+# Check all tables
+expected_tables = {
+    "heart_disease": 500,
+    "diabetes_readmission": 768,
+    "life_expectancy": 480,
+    "drug_reviews": 1000,
+    "clinical_notes": 20,
+}
 
-all_good = True
-for table in tables:
-    tbl_name = table.tableName
+all_ok = True
+print("\n  TABLES:")
+for tbl, expected in expected_tables.items():
     try:
-        count = spark.sql(f"SELECT COUNT(*) as cnt FROM {tbl_name}").collect()[0].cnt
-        print(f"     ✅ {tbl_name}: {count:,} rows")
-    except:
-        print(f"     ❌ {tbl_name}: ERROR")
-        all_good = False
+        actual = spark.sql(f"SELECT COUNT(*) as cnt FROM {tbl}").collect()[0].cnt
+        status = "OK" if actual >= expected * 0.9 else "LOW"
+        if status != "OK":
+            all_ok = False
+        print(f"    {tbl:30s} {actual:>6,} rows  [{status}]")
+    except Exception as e:
+        print(f"    {tbl:30s}  ERROR: {str(e)[:40]}")
+        all_ok = False
 
-print(f"\n  🗄️  Unity Catalog: {'Yes' if USING_UNITY_CATALOG else 'No (hive_metastore)'}")
-print(f"  📁 Staging path:  file:{LOCAL_DATA_DIR}/")
-
-# List raw files
-total_bytes = 0
-file_count = 0
-for root, dirs, files in os.walk(LOCAL_DATA_DIR):
+# Check staging files
+print(f"\n  STAGING FILES:")
+total_files = 0
+for root, dirs, files in os.walk("/tmp/dataops_olympics/raw"):
     for f in files:
-        fpath = os.path.join(root, f)
-        size = os.path.getsize(fpath)
-        total_bytes += size
-        file_count += 1
+        total_files += 1
+print(f"    {total_files} files in /tmp/dataops_olympics/raw/")
 
-print(f"  📄 Raw files: {file_count} ({total_bytes:,} bytes)")
+# Key file paths for participants
+print(f"\n  KEY FILE PATHS FOR EVENTS:")
+print(f"    Heart CSV:           file:/tmp/dataops_olympics/raw/heart_disease/heart.csv")
+print(f"    Heart Batches:       file:/tmp/dataops_olympics/raw/heart_disease/heart_disease_batch_*.csv")
+print(f"    Life Expectancy JSON:file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json")
+print(f"    Drug Reviews CSV:    file:/tmp/dataops_olympics/raw/drug_reviews/drug_reviews.csv")
+print(f"    Clinical Notes JSON: file:/tmp/dataops_olympics/raw/clinical_notes/clinical_notes.json")
 
-print(f"\n{'='*60}")
-if all_good:
-    print("  🎉 SETUP COMPLETE! Ready for DataOps Olympics!")
+print(f"\n  SCHEMA: {CATALOG_NAME}.{SCHEMA_NAME}" if CATALOG_NAME != "hive_metastore" else f"\n  SCHEMA: {SCHEMA_NAME} (hive_metastore)")
+
+print(f"\n{'=' * 60}")
+if all_ok:
+    print("  READY FOR DATAOPS OLYMPICS!")
 else:
-    print("  ⚠️  Some issues detected — check table errors above")
+    print("  ISSUES DETECTED — check table errors above")
 print("=" * 60)
 
 # COMMAND ----------
@@ -451,20 +443,30 @@ print("=" * 60)
 # MAGIC %md
 # MAGIC ## Quick Reference Card
 # MAGIC
+# MAGIC ### Available Tables
+# MAGIC | Table | Rows | Description | Used In |
+# MAGIC |-------|------|-------------|---------|
+# MAGIC | `heart_disease` | ~500 | UCI heart disease clinical data | Events 1, 2, Warm-Up |
+# MAGIC | `diabetes_readmission` | 768 | Diabetes readmission risk | Event 3 |
+# MAGIC | `life_expectancy` | ~480 | WHO health indicators by country/year | Event 1 |
+# MAGIC | `drug_reviews` | 1,000 | Drug review ratings and text | Events 4, 5 |
+# MAGIC | `clinical_notes` | 20 | Synthetic clinical notes | Events 4, 5 |
+# MAGIC
+# MAGIC ### Raw Files (for ingestion events)
+# MAGIC | File | Path |
+# MAGIC |------|------|
+# MAGIC | Heart Disease CSV | `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` |
+# MAGIC | Heart Batches 1-3 | `file:/tmp/dataops_olympics/raw/heart_disease/heart_disease_batch_*.csv` |
+# MAGIC | Life Expectancy JSON | `file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json` |
+# MAGIC | Drug Reviews CSV | `file:/tmp/dataops_olympics/raw/drug_reviews/drug_reviews.csv` |
+# MAGIC | Clinical Notes JSON | `file:/tmp/dataops_olympics/raw/clinical_notes/clinical_notes.json` |
+# MAGIC
 # MAGIC ### Useful SQL
 # MAGIC ```sql
-# MAGIC -- List all tables
 # MAGIC SHOW TABLES;
-# MAGIC
-# MAGIC -- Explore a table
 # MAGIC DESCRIBE TABLE heart_disease;
 # MAGIC SELECT * FROM heart_disease LIMIT 10;
-# MAGIC
-# MAGIC -- Check Delta history
 # MAGIC DESCRIBE HISTORY heart_disease;
-# MAGIC
-# MAGIC -- Check table details (format, size, location)
-# MAGIC DESCRIBE DETAIL heart_disease;
 # MAGIC ```
 # MAGIC
 # MAGIC ### Key Python Imports
@@ -478,21 +480,3 @@ print("=" * 60)
 # MAGIC import mlflow.sklearn
 # MAGIC import plotly.express as px
 # MAGIC ```
-# MAGIC
-# MAGIC ### Available Tables
-# MAGIC | Table | Rows | Description |
-# MAGIC |-------|------|-------------|
-# MAGIC | `heart_disease` | ~500 | UCI heart disease clinical data |
-# MAGIC | `diabetes_readmission` | 768 | Diabetes readmission risk prediction |
-# MAGIC | `life_expectancy` | ~480 | WHO health indicators by country/year |
-# MAGIC | `drug_reviews` | 1,000 | Drug review ratings and text |
-# MAGIC | `clinical_notes` | 20 | Synthetic clinical notes (for NLP) |
-# MAGIC
-# MAGIC ### Raw Files (for DLT/ingestion events)
-# MAGIC | File | Path |
-# MAGIC |------|------|
-# MAGIC | Heart Disease CSV | `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` |
-# MAGIC | Heart Batch 1-3 | `file:/tmp/dataops_olympics/raw/heart_disease/heart_disease_batch_*.csv` |
-# MAGIC | Life Expectancy JSON | `file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json` |
-# MAGIC | Drug Reviews CSV | `file:/tmp/dataops_olympics/raw/drug_reviews/drug_reviews.csv` |
-# MAGIC | Clinical Notes JSON | `file:/tmp/dataops_olympics/raw/clinical_notes/clinical_notes.json` |
