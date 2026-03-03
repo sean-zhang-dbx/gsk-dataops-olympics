@@ -105,7 +105,7 @@ import os, shutil, json
 import pandas as pd
 import numpy as np
 
-sub_dirs = ["heart_disease", "diabetes", "life_expectancy", "drug_reviews", "clinical_notes"]
+sub_dirs = ["heart_disease", "heart_events", "diabetes", "life_expectancy", "drug_reviews", "clinical_notes"]
 for d in sub_dirs:
     os.makedirs(f"{VOLUME_PATH}/{d}", exist_ok=True)
 
@@ -153,7 +153,18 @@ if REPO_DATA_DIR:
         if os.path.isfile(src_path):
             shutil.copy2(src_path, dst_path)
             copied += 1
-    print(f"  Copied {copied}/{len(copy_map)} files from repo data/ to Volume")
+
+    # Copy NDJSON heart event files for Event 1
+    heart_events_dir = os.path.join(REPO_DATA_DIR, "heart_events")
+    if os.path.isdir(heart_events_dir):
+        for fname in sorted(os.listdir(heart_events_dir)):
+            if fname.endswith(".json"):
+                shutil.copy2(
+                    os.path.join(heart_events_dir, fname),
+                    f"{VOLUME_PATH}/heart_events/{fname}"
+                )
+                copied += 1
+    print(f"  Copied {copied} files from repo data/ to Volume")
 else:
     print("  Generating synthetic data (repo data/ not found)...")
 
@@ -179,6 +190,35 @@ else:
         b.loc[b.sample(2, random_state=batch+10).index, "trestbps"] = 999
         b.to_csv(f"{VOLUME_PATH}/heart_disease/heart_disease_batch_{batch}.csv", index=False)
     print(f"    Generated heart_disease.csv + 3 batches")
+
+    # Heart Events (NDJSON for Event 1)
+    import random as _rnd, datetime as _dt
+    _rnd.seed(42)
+    _rows = df_h.to_dict("records")
+    _rnd.shuffle(_rows)
+    _base_time = _dt.datetime(2024, 11, 15, 8, 0, 0)
+    _evt = 0
+    for _bi in range(5):
+        _batch = _rows[_bi*100:(_bi+1)*100]
+        _bt = _base_time + _dt.timedelta(hours=_bi*3)
+        _lines = []
+        for _i, _r in enumerate(_batch):
+            _evt += 1
+            rec = {"event_id": f"EVT-{_evt:05d}",
+                   "event_timestamp": (_bt + _dt.timedelta(seconds=_rnd.randint(0, 10800))).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                   "source_system": _rnd.choice(["hospital_ehr", "clinic_intake", "emergency_dept"]),
+                   "record_version": 1, "patient_id": f"PT-{_evt:04d}"}
+            rec.update({k: (float(v) if isinstance(v, float) else int(v)) for k, v in _r.items()})
+            if _bi == 2 and _i < 5:
+                rec["age"] = None if _i < 3 else rec["age"]
+                if _i >= 3: rec["trestbps"] = 999
+            if _bi == 4 and _i < 4:
+                rec["age"] = None if _i < 2 else rec["age"]
+                if _i >= 2: rec["trestbps"] = -1
+            _lines.append(json.dumps(rec))
+        with open(f"{VOLUME_PATH}/heart_events/intake_batch_{_bi+1:03d}.json", "w") as _f:
+            _f.write("\n".join(_lines) + "\n")
+    print(f"    Generated 5 NDJSON heart event batches")
 
     # Diabetes / Readmission
     n = 768
@@ -440,11 +480,12 @@ for root, dirs, files in os.walk(VOLUME_PATH):
 print(f"    {total_files} files in {VOLUME_PATH}")
 
 print(f"\n  KEY FILE PATHS FOR EVENTS:")
-print(f"    Heart CSV:            {VOLUME_PATH}/heart_disease/heart.csv")
-print(f"    Heart Batches:        {VOLUME_PATH}/heart_disease/heart_disease_batch_*.csv")
-print(f"    Life Expectancy JSON: {VOLUME_PATH}/life_expectancy/life_expectancy_sample.json")
-print(f"    Drug Reviews CSV:     {VOLUME_PATH}/drug_reviews/drug_reviews.csv")
-print(f"    Clinical Notes JSON:  {VOLUME_PATH}/clinical_notes/clinical_notes.json")
+print(f"    Heart Events (NDJSON): {VOLUME_PATH}/heart_events/intake_batch_*.json  [EVENT 1]")
+print(f"    Heart CSV:             {VOLUME_PATH}/heart_disease/heart.csv")
+print(f"    Heart Batches:         {VOLUME_PATH}/heart_disease/heart_disease_batch_*.csv")
+print(f"    Life Expectancy JSON:  {VOLUME_PATH}/life_expectancy/life_expectancy_sample.json")
+print(f"    Drug Reviews CSV:      {VOLUME_PATH}/drug_reviews/drug_reviews.csv")
+print(f"    Clinical Notes JSON:   {VOLUME_PATH}/clinical_notes/clinical_notes.json")
 
 print(f"\n  CATALOG.SCHEMA: {CATALOG_NAME}.{SCHEMA_NAME}")
 
