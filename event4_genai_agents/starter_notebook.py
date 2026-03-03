@@ -21,7 +21,22 @@
 # MAGIC - `heart_disease` table — Patient clinical data (from Events 1-2)
 # MAGIC - Your Genie space from Event 2 (if set up)
 # MAGIC
-# MAGIC > **Tip:** Use the Databricks Assistant to help you write prompts and code!
+# MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) for prompt engineering and agent code!
+# MAGIC
+# MAGIC ### Databricks Assistant — Prompt Gallery
+# MAGIC
+# MAGIC Try these prompts in the Assistant panel:
+# MAGIC
+# MAGIC | Task | Prompt to Try |
+# MAGIC |------|--------------|
+# MAGIC | **System prompt** | "Write a system prompt for a clinical decision support agent that has access to heart disease data, drug reviews, and clinical notes" |
+# MAGIC | **SQL routing** | "Write a function that takes a question string and determines which table to query: heart_disease, drug_reviews, or clinical_notes" |
+# MAGIC | **Agent function** | "Create a clinical_agent function that routes questions to the right SQL query and returns a formatted answer" |
+# MAGIC | **Semantic search** | "Set up ChromaDB to index clinical notes and search by semantic similarity" |
+# MAGIC | **Error handling** | "Add error handling and safety guardrails to this agent function — refuse to give medical advice if data is insufficient" |
+# MAGIC | **Genie setup** | "Write Genie space instructions for tables: heart_disease, drug_reviews, clinical_notes — include column descriptions and common question patterns" |
+# MAGIC
+# MAGIC *For Agent mode (if skills are installed): try "Build a Genie space with heart_disease and drug_reviews tables".*
 
 # COMMAND ----------
 
@@ -226,6 +241,20 @@ for i, prompt in enumerate(test_prompts, 1):
         print(f"ERROR: {e}")
 
 print("\n" + "=" * 60)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC
+# MAGIC Finished early? Try these with the Databricks Assistant:
+# MAGIC
+# MAGIC 1. **RAG with ChromaDB** — Ask: *"Set up ChromaDB to index all clinical notes, embed them with sentence-transformers, and add semantic search to the agent"*
+# MAGIC 2. **Multi-step reasoning** — Ask: *"Enhance the agent to break complex questions into sub-queries — e.g., 'Are heart disease patients on well-rated drugs?' queries both tables"*
+# MAGIC 3. **Safety guardrails** — Ask: *"Add input validation and safety guardrails: refuse inappropriate questions, add confidence scores, cite data sources in responses"*
+# MAGIC 4. **Foundation Model API** — Ask: *"Connect the agent to the Databricks Foundation Model API (meta-llama) to generate natural language responses from the SQL results"*
+# MAGIC 5. **Agent evaluation** — Ask: *"Create an evaluation framework that scores agent responses on accuracy, relevance, and completeness for each test prompt"*
+# MAGIC 6. **Conversation memory** — Ask: *"Add conversation history so the agent can handle follow-up questions like 'What about for women only?'"*
 
 # COMMAND ----------
 

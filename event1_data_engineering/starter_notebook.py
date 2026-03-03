@@ -19,7 +19,22 @@
 # MAGIC - **Heart Disease** (`/tmp/dataops_olympics/raw/heart_disease/heart.csv`) — 500 rows CSV
 # MAGIC - **Life Expectancy** (`/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json`) — 100 rows JSON
 # MAGIC
-# MAGIC > **Tip:** Use the Databricks Assistant to help you code faster!
+# MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) to generate code from prompts!
+# MAGIC
+# MAGIC ### Databricks Assistant — Prompt Gallery
+# MAGIC
+# MAGIC Try these prompts in the Assistant panel to speed through the challenge:
+# MAGIC
+# MAGIC | Task | Prompt to Try |
+# MAGIC |------|--------------|
+# MAGIC | **Read CSV** | "Read the CSV at `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` with headers and infer schema into a DataFrame" |
+# MAGIC | **Create Delta** | "Write this DataFrame as a Delta table called `team_XX_heart_disease`" |
+# MAGIC | **Add governance** | "Add a table comment and column comments for age, chol, and target on the `team_XX_heart_disease` table" |
+# MAGIC | **Silver table** | "Create a Silver table from `team_XX_heart_disease` that filters out rows with age outside 0-120 or blood pressure outside 50-300" |
+# MAGIC | **Gold table** | "Create a Gold aggregation table from the Silver table grouped by age group and heart disease status with avg cholesterol" |
+# MAGIC | **Explain code** | Select any cell and ask "Explain what this code does" |
+# MAGIC
+# MAGIC *The more context you give the Assistant (table names, column meanings, what output you want), the better the result.*
 
 # COMMAND ----------
 
@@ -213,3 +228,16 @@ print(f"\nChecks passed: {score}/5")
 if score == 5:
     print("\nALL CHECKS PASSED! RAISE YOUR HAND!")
 print("=" * 60)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC
+# MAGIC Finished early? Try these with the Databricks Assistant:
+# MAGIC
+# MAGIC 1. **Liquid Clustering** — Ask: *"Alter the Silver table to use liquid clustering on age and target columns"*
+# MAGIC 2. **Change Data Feed** — Ask: *"Enable Change Data Feed on the Silver table and show me how to query the changes"*
+# MAGIC 3. **Time Travel** — Ask: *"Show me how to query the previous version of my Silver table using Delta time travel"*
+# MAGIC 4. **AI Functions** — Ask: *"Use ai_classify() in SQL to classify heart disease risk as 'High', 'Medium', 'Low' based on the cholesterol and age columns"*
+# MAGIC 5. **Data Quality Dashboard** — Ask: *"Create a data quality report showing null counts, value ranges, and outliers for each column in the Silver table"*

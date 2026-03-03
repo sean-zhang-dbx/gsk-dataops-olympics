@@ -19,7 +19,22 @@
 # MAGIC 5. Any sklearn or Spark ML algorithm is allowed
 # MAGIC 6. Feature engineering is encouraged!
 # MAGIC
-# MAGIC > **Tip:** Use the Databricks Assistant to help you try different models!
+# MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) to iterate on models faster!
+# MAGIC
+# MAGIC ### Databricks Assistant — Prompt Gallery
+# MAGIC
+# MAGIC Try these prompts in the Assistant panel:
+# MAGIC
+# MAGIC | Task | Prompt to Try |
+# MAGIC |------|--------------|
+# MAGIC | **Explore data** | "Show me the distribution of each column in the diabetes_readmission table and highlight any class imbalance" |
+# MAGIC | **Feature ideas** | "Suggest 5 feature engineering ideas for predicting readmission risk from columns: pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, diabetes_pedigree, age" |
+# MAGIC | **Train model** | "Train a GradientBoostingClassifier with MLflow logging, try 3 different hyperparameter combos, and print F1 scores" |
+# MAGIC | **Compare models** | "Train RandomForest, GradientBoosting, and LogisticRegression, log all to MLflow, and print a comparison table of F1 and AUC" |
+# MAGIC | **Tune hyperparams** | "Use GridSearchCV to find the best RandomForest hyperparameters (n_estimators, max_depth, min_samples_split) and log the best to MLflow" |
+# MAGIC | **Explain results** | "Show SHAP feature importance for this model and explain which features matter most" |
+# MAGIC
+# MAGIC *Ask the Assistant "What's wrong with my F1 score?" if your model underperforms — it can suggest fixes.*
 
 # COMMAND ----------
 
@@ -194,6 +209,20 @@ print(f"    FN={cm[1][0]}  TP={cm[1][1]}")
 
 print(f"\n  F1 SCORE TO REPORT: {final_f1:.4f}")
 print("=" * 60)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC
+# MAGIC Finished early? Try these with the Databricks Assistant:
+# MAGIC
+# MAGIC 1. **SHAP Explainability** — Ask: *"Add SHAP feature importance plots for my best model and log the chart to MLflow as an artifact"*
+# MAGIC 2. **Ensemble Model** — Ask: *"Create a VotingClassifier that combines my RandomForest, GradientBoosting, and LogisticRegression models"*
+# MAGIC 3. **Cross-Validation** — Ask: *"Replace the single train/test split with 5-fold stratified cross-validation and log each fold's metrics to MLflow"*
+# MAGIC 4. **Automated Feature Selection** — Ask: *"Use recursive feature elimination to find the optimal feature subset and retrain the model"*
+# MAGIC 5. **Threshold Tuning** — Ask: *"Plot the precision-recall curve and find the optimal classification threshold for maximizing F1"*
+# MAGIC 6. **Compare MLflow Runs** — Ask: *"Query the MLflow tracking API to create a comparison table of all my experiment runs sorted by F1 score"*
 
 # COMMAND ----------
 

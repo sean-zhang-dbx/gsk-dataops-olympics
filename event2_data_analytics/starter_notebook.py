@@ -17,7 +17,22 @@
 # MAGIC You'll use the heart disease tables from Event 1. If your team didn't complete Event 1,
 # MAGIC the organizer will clone the reference tables to your workspace.
 # MAGIC
-# MAGIC > **Tip:** Use the Databricks Assistant to help you write SQL faster!
+# MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) to generate SQL and visualizations!
+# MAGIC
+# MAGIC ### Databricks Assistant — Prompt Gallery
+# MAGIC
+# MAGIC Try these prompts in the Assistant panel:
+# MAGIC
+# MAGIC | Task | Prompt to Try |
+# MAGIC |------|--------------|
+# MAGIC | **SQL query** | "Write a SQL query on `team_XX_heart_disease` that shows the heart disease rate by age group (Under 40, 40-49, 50-59, 60+)" |
+# MAGIC | **Complex SQL** | "Write a query showing avg cholesterol and max heart rate by sex and heart disease status, with a total row" |
+# MAGIC | **Plotly chart** | "Create a Plotly grouped bar chart from this SQL result showing patient count by age group, colored by heart disease status" |
+# MAGIC | **Dashboard help** | "What visualizations should I include in a heart disease analytics dashboard for a hospital administrator?" |
+# MAGIC | **Genie instructions** | "Write Genie space instructions for the heart_disease table explaining what each column means" |
+# MAGIC | **Benchmark answers** | Paste a question and say "Write a SQL query to answer: [question]" |
+# MAGIC
+# MAGIC *You can paste SQL errors directly into the Assistant and ask "Fix this error" — it reads the context.*
 
 # COMMAND ----------
 
@@ -219,6 +234,19 @@ print("=" * 60)
 for q, a in answers.items():
     print(f"  {q}: {a}")
 print("=" * 60)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC
+# MAGIC Finished early? Try these with the Databricks Assistant:
+# MAGIC
+# MAGIC 1. **Cross-table analysis** — Ask: *"Join heart_disease and life_expectancy tables and create a scatter plot comparing avg cholesterol by country life expectancy"*
+# MAGIC 2. **Statistical tests** — Ask: *"Run a chi-squared test to determine if chest pain type is statistically associated with heart disease"*
+# MAGIC 3. **Advanced dashboard** — Ask: *"What are the best dashboard design practices for healthcare data? Suggest a layout for my heart disease dashboard"*
+# MAGIC 4. **Genie optimization** — Ask: *"Write comprehensive Genie instructions that include example questions, column descriptions, and common calculation patterns"*
+# MAGIC 5. **AI Functions in SQL** — Ask: *"Use ai_query() to generate a natural language summary of the heart disease statistics"*
 
 # COMMAND ----------
 
