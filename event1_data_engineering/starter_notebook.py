@@ -25,8 +25,10 @@
 # MAGIC |---|---|---|
 # MAGIC | **Max Points** | **50 pts** | **31 pts** |
 # MAGIC | **How** | Use the `sdp_pipeline_template` notebook via Workflows → Pipelines | Write code directly in this notebook |
+# MAGIC | **Ingestion** | Auto Loader (streaming, incremental) | Batch `spark.read.json` |
+# MAGIC | **Bronze & Silver** | Streaming Tables | Regular Delta Tables |
+# MAGIC | **Gold** | Materialized View (auto-refreshes) | Regular Delta Table |
 # MAGIC | **DQ Metrics** | Automatic — SDP expectations track pass/fail rates | Manual — write your own DQ queries |
-# MAGIC | **Gold Table** | Materialized View (auto-refreshes) | Regular Delta Table |
 # MAGIC | **Governance** | Comments defined in pipeline code | ALTER TABLE after creation |
 # MAGIC | **Lineage** | Pipeline UI shows full dependency graph | No automatic lineage |
 # MAGIC
@@ -206,11 +208,13 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC 3. Click **Start** and watch all three layers (Bronze → Silver → Gold) run as one pipeline!
 # MAGIC
 # MAGIC After the pipeline completes, your tables will appear as:
-# MAGIC - `heart_bronze`, `heart_silver`, `heart_gold`
+# MAGIC - `heart_bronze` — **Streaming Table** (Auto Loader ingestion)
+# MAGIC - `heart_silver` — **Streaming Table** (cleaned with DQ expectations)
+# MAGIC - `heart_gold` — **Materialized View** (auto-refreshing aggregation)
 # MAGIC
-# MAGIC The SDP pipeline template already implements the same business logic from
-# MAGIC Steps 1–3, but with built-in data quality expectations, automatic lineage,
-# MAGIC and a materialized view Gold layer.
+# MAGIC The SDP pipeline template implements the same business logic from
+# MAGIC Steps 1–3, but with streaming ingestion via Auto Loader, built-in data quality
+# MAGIC expectations, automatic lineage, and a materialized view Gold layer.
 
 # COMMAND ----------
 

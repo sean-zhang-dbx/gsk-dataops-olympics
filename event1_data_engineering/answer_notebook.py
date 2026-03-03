@@ -172,31 +172,34 @@ display(dq)
 # MAGIC This is the same code as `sdp_pipeline_template.py`. It must be run as a Pipeline,
 # MAGIC not interactively. Shown here for reference.
 # MAGIC
+# MAGIC - **Bronze & Silver** = Streaming Tables (incremental ingestion)
+# MAGIC - **Gold** = Materialized View (auto-refreshing aggregation)
+# MAGIC
 # MAGIC ```python
 # MAGIC import dlt
 # MAGIC from pyspark.sql.functions import *
-# MAGIC from pyspark.sql.window import Window
 # MAGIC
-# MAGIC @dlt.table(comment="Raw patient intake events from hospital EHR system")
+# MAGIC # Bronze — Streaming Table via Auto Loader
+# MAGIC @dlt.table(comment="Raw patient intake events — streaming ingestion via Auto Loader")
 # MAGIC def heart_bronze():
-# MAGIC     return spark.read.json(
-# MAGIC         "/Volumes/dataops_olympics/default/raw_data/heart_events/*.json"
-# MAGIC     )
+# MAGIC     return (spark.readStream
+# MAGIC         .format("cloudFiles")
+# MAGIC         .option("cloudFiles.format", "json")
+# MAGIC         .option("cloudFiles.inferColumnTypes", "true")
+# MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_events/"))
 # MAGIC
+# MAGIC # Silver — Streaming Table with DQ expectations
 # MAGIC @dlt.table(comment="Cleaned patient intake data — validated and deduplicated")
 # MAGIC @dlt.expect_or_drop("valid_age", "age IS NOT NULL AND age BETWEEN 1 AND 120")
 # MAGIC @dlt.expect_or_drop("valid_blood_pressure", "trestbps BETWEEN 50 AND 300")
 # MAGIC @dlt.expect_or_drop("non_negative_cholesterol", "chol >= 0")
 # MAGIC @dlt.expect("has_event_id", "event_id IS NOT NULL")
 # MAGIC def heart_silver():
-# MAGIC     bronze = dlt.read("heart_bronze")
-# MAGIC     w = Window.partitionBy("event_id").orderBy("event_timestamp")
-# MAGIC     return (bronze
-# MAGIC         .withColumn("_rn", row_number().over(w))
-# MAGIC         .filter(col("_rn") == 1)
-# MAGIC         .drop("_rn")
+# MAGIC     return (dlt.read_stream("heart_bronze")
+# MAGIC         .dropDuplicates(["event_id"])
 # MAGIC         .withColumn("ingested_at", current_timestamp()))
 # MAGIC
+# MAGIC # Gold — Materialized View (non-streaming read)
 # MAGIC @dlt.table(comment="Heart disease metrics by age group — materialized view")
 # MAGIC def heart_gold():
 # MAGIC     return (dlt.read("heart_silver")
@@ -219,8 +222,9 @@ display(dq)
 # MAGIC
 # MAGIC | Feature | SDP (Path A) | SQL (Path B) |
 # MAGIC |---------|-------------|-------------|
+# MAGIC | **Ingestion** | Auto Loader (streaming, incremental) | Batch `spark.read.json` |
+# MAGIC | **Table Types** | Streaming Tables (Bronze/Silver) + Materialized View (Gold) | Regular Delta Tables |
 # MAGIC | **Data Quality** | Automatic — SDP expectations track pass/fail rates | Manual — must write COUNT/CASE queries |
-# MAGIC | **Gold Table** | Materialized View — auto-refreshes when Silver changes | Static table — must manually rebuild |
 # MAGIC | **Governance** | Comments in code = infrastructure-as-code | ALTER TABLE after the fact |
 # MAGIC | **Lineage** | Pipeline UI shows full dependency graph | No automatic lineage |
 # MAGIC | **Monitoring** | Built-in event log with metrics history | None |

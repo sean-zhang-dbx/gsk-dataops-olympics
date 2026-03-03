@@ -5,45 +5,45 @@
 # MAGIC **This notebook is meant to be run as a Spark Declarative Pipeline (SDP), NOT interactively.**
 # MAGIC
 # MAGIC ### How to Use
-# MAGIC 1. Copy this notebook to your own workspace folder
-# MAGIC 2. Update `TEAM_NAME` below
-# MAGIC 3. Go to **Workflows → Pipelines → Create Pipeline**
+# MAGIC 1. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
 # MAGIC    - Source code: select this notebook
 # MAGIC    - Destination: catalog = `dataops_olympics`, schema = `default`
-# MAGIC 4. Click **Start** to run the pipeline
+# MAGIC 2. Click **Start** to run the pipeline
 # MAGIC
 # MAGIC ### What This Creates
-# MAGIC - `heart_bronze` — Raw ingestion of all 5 NDJSON batch files
-# MAGIC - `heart_silver` — Cleaned data with data quality expectations
-# MAGIC - `heart_gold` — Materialized view with aggregated heart disease metrics
+# MAGIC - `heart_bronze` — **Streaming table** — Raw ingestion via Auto Loader
+# MAGIC - `heart_silver` — **Streaming table** — Cleaned data with DQ expectations
+# MAGIC - `heart_gold` — **Materialized view** — Aggregated heart disease metrics
 
 # COMMAND ----------
 
 import dlt
-from pyspark.sql.functions import col, count, avg, round as _round, when, current_timestamp, row_number
-from pyspark.sql.window import Window
+from pyspark.sql.functions import col, count, avg, round as _round, when, current_timestamp
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Bronze — Raw Ingestion
+# MAGIC ## Bronze — Streaming Table (Auto Loader)
 
 # COMMAND ----------
 
 @dlt.table(
-    comment="Raw patient intake events from hospital EHR system — 5 NDJSON batches, unmodified"
+    comment="Raw patient intake events from hospital EHR system — streaming ingestion via Auto Loader"
 )
 def heart_bronze():
     return (
-        spark.read
-        .json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
+        spark.readStream
+        .format("cloudFiles")
+        .option("cloudFiles.format", "json")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .load("/Volumes/dataops_olympics/default/raw_data/heart_events/")
     )
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Silver — Cleaned + Deduplicated
+# MAGIC ## Silver — Streaming Table (Cleaned + Deduplicated)
 # MAGIC
 # MAGIC Data quality expectations:
 # MAGIC - `valid_age`: age must be between 1 and 120 (DROP rows that fail)
@@ -61,20 +61,16 @@ def heart_bronze():
 @dlt.expect_or_drop("non_negative_cholesterol", "chol >= 0")
 @dlt.expect("has_event_id", "event_id IS NOT NULL")
 def heart_silver():
-    bronze = dlt.read("heart_bronze")
-    w = Window.partitionBy("event_id").orderBy("event_timestamp")
     return (
-        bronze
-        .withColumn("_rn", row_number().over(w))
-        .filter(col("_rn") == 1)
-        .drop("_rn")
+        dlt.read_stream("heart_bronze")
+        .dropDuplicates(["event_id"])
         .withColumn("ingested_at", current_timestamp())
     )
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Gold — Aggregated Materialized View
+# MAGIC ## Gold — Materialized View (Aggregated)
 
 # COMMAND ----------
 
