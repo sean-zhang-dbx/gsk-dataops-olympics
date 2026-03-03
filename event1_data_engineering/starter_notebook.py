@@ -131,7 +131,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC >
 # MAGIC > **No cleaning** — Bronze is the raw landing zone. All ~500 records should be present.
 # MAGIC >
-# MAGIC > *SDP Path: This is the `heart_bronze()` function in `sdp_pipeline_template`.*
+# MAGIC > *SDP Path: This is the `heart_bronze` streaming table in `sdp_pipeline_template` — uses Auto Loader.*
 
 # COMMAND ----------
 
@@ -157,7 +157,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC >    keep only the one with the **earliest** `event_timestamp`
 # MAGIC > 6. Add an `ingested_at` column with the current timestamp
 # MAGIC >
-# MAGIC > *SDP Path: This is the `heart_silver()` function with `@dlt.expect_or_drop` expectations.*
+# MAGIC > *SDP Path: This is the `heart_silver` streaming table with `@dp.expect_or_drop` expectations.*
 
 # COMMAND ----------
 
@@ -184,7 +184,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > | `avg_blood_pressure` | Average of `trestbps`, rounded to 1 decimal |
 # MAGIC > | `avg_max_heart_rate` | Average of `thalach`, rounded to 1 decimal |
 # MAGIC >
-# MAGIC > *SDP Path: This is the `heart_gold()` materialized view function.*
+# MAGIC > *SDP Path: This is the `heart_gold` materialized view via `@dp.materialized_view`.*
 
 # COMMAND ----------
 
@@ -195,26 +195,39 @@ print(f"Duplicate event_ids: {dup_count}")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC # SDP Path Instructions
+# MAGIC # SDP Path — Build Your Pipeline with AI
 # MAGIC
-# MAGIC **If you chose Path A (SDP)**, your code goes in the `sdp_pipeline_template` notebook:
+# MAGIC **If you chose Path A (SDP)**, here's your workflow:
 # MAGIC
+# MAGIC ### Step A: Fill in the template with AI
 # MAGIC 1. Open the **`sdp_pipeline_template`** notebook (in this same folder)
-# MAGIC 2. Go to **Workflows → Pipelines → Create Pipeline**
+# MAGIC 2. Read the business requirements for each layer (Bronze, Silver, Gold)
+# MAGIC 3. Use **Databricks Assistant** (`Cmd+I`) to generate the code — Python or SQL!
+# MAGIC    - The template shows syntax hints for both languages
+# MAGIC    - The SDP Python API: `from pyspark import pipelines as dp`
+# MAGIC    - Streaming tables: `@dp.table` / `CREATE OR REFRESH STREAMING TABLE`
+# MAGIC    - Materialized views: `@dp.materialized_view` / `CREATE OR REFRESH MATERIALIZED VIEW`
+# MAGIC    - Expectations: `@dp.expect_or_drop(...)` / `CONSTRAINT ... ON VIOLATION DROP ROW`
+# MAGIC
+# MAGIC ### Step B: Create and run the pipeline
+# MAGIC 1. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
 # MAGIC    - Source: select the `sdp_pipeline_template` notebook
 # MAGIC    - Target catalog: `dataops_olympics`
 # MAGIC    - Target schema: `default`
-# MAGIC 3. Click **Start** and watch all three layers (Bronze → Silver → Gold) run as one pipeline!
+# MAGIC 2. Click **Validate** first (dry-run to catch errors)
+# MAGIC 3. Click **Start** to execute the full pipeline
 # MAGIC
-# MAGIC After the pipeline completes, your tables will appear as:
+# MAGIC ### What you get
 # MAGIC - `heart_bronze` — **Streaming Table** (Auto Loader ingestion)
 # MAGIC - `heart_silver` — **Streaming Table** (cleaned with DQ expectations)
 # MAGIC - `heart_gold` — **Materialized View** (auto-refreshing aggregation)
+# MAGIC - **Automatic DQ metrics** in the Pipeline UI
+# MAGIC - **Full lineage graph** showing Bronze → Silver → Gold
 # MAGIC
-# MAGIC The SDP pipeline template implements the same business logic from
-# MAGIC Steps 1–3, but with streaming ingestion via Auto Loader, built-in data quality
-# MAGIC expectations, automatic lineage, and a materialized view Gold layer.
+# MAGIC ### Step C: Come back here
+# MAGIC After the pipeline completes, return to this notebook for Steps 4–6
+# MAGIC (governance, DQ report, validation).
 
 # COMMAND ----------
 
@@ -237,8 +250,8 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > - `target` — diagnosis: 1 = heart disease present, 0 = healthy
 # MAGIC > - `event_id` — unique event identifier from the source system
 # MAGIC >
-# MAGIC > *SDP Path: If you defined `comment=` in your `@dlt.table()` decorators, your
-# MAGIC > table comments are already applied. You may still want to add column comments.*
+# MAGIC > *SDP Path: If you defined `comment=` in your `@dp.table()` / `@dp.materialized_view()`
+# MAGIC > decorators, your table comments are already applied. You may still want to add column comments.*
 
 # COMMAND ----------
 

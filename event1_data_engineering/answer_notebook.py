@@ -175,12 +175,13 @@ display(dq)
 # MAGIC - **Bronze & Silver** = Streaming Tables (incremental ingestion)
 # MAGIC - **Gold** = Materialized View (auto-refreshing aggregation)
 # MAGIC
+# MAGIC ### Python version
 # MAGIC ```python
-# MAGIC import dlt
+# MAGIC from pyspark import pipelines as dp
 # MAGIC from pyspark.sql.functions import *
 # MAGIC
 # MAGIC # Bronze — Streaming Table via Auto Loader
-# MAGIC @dlt.table(comment="Raw patient intake events — streaming ingestion via Auto Loader")
+# MAGIC @dp.table(comment="Raw patient intake events — streaming ingestion via Auto Loader")
 # MAGIC def heart_bronze():
 # MAGIC     return (spark.readStream
 # MAGIC         .format("cloudFiles")
@@ -189,20 +190,20 @@ display(dq)
 # MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_events/"))
 # MAGIC
 # MAGIC # Silver — Streaming Table with DQ expectations
-# MAGIC @dlt.table(comment="Cleaned patient intake data — validated and deduplicated")
-# MAGIC @dlt.expect_or_drop("valid_age", "age IS NOT NULL AND age BETWEEN 1 AND 120")
-# MAGIC @dlt.expect_or_drop("valid_blood_pressure", "trestbps BETWEEN 50 AND 300")
-# MAGIC @dlt.expect_or_drop("non_negative_cholesterol", "chol >= 0")
-# MAGIC @dlt.expect("has_event_id", "event_id IS NOT NULL")
+# MAGIC @dp.table(comment="Cleaned patient intake data — validated and deduplicated")
+# MAGIC @dp.expect_or_drop("valid_age", "age IS NOT NULL AND age BETWEEN 1 AND 120")
+# MAGIC @dp.expect_or_drop("valid_blood_pressure", "trestbps BETWEEN 50 AND 300")
+# MAGIC @dp.expect_or_drop("non_negative_cholesterol", "chol >= 0")
+# MAGIC @dp.expect("has_event_id", "event_id IS NOT NULL")
 # MAGIC def heart_silver():
-# MAGIC     return (dlt.read_stream("heart_bronze")
+# MAGIC     return (spark.readStream.table("heart_bronze")
 # MAGIC         .dropDuplicates(["event_id"])
 # MAGIC         .withColumn("ingested_at", current_timestamp()))
 # MAGIC
-# MAGIC # Gold — Materialized View (non-streaming read)
-# MAGIC @dlt.table(comment="Heart disease metrics by age group — materialized view")
+# MAGIC # Gold — Materialized View
+# MAGIC @dp.materialized_view(comment="Heart disease metrics by age group — materialized view")
 # MAGIC def heart_gold():
-# MAGIC     return (dlt.read("heart_silver")
+# MAGIC     return (spark.table("heart_silver")
 # MAGIC         .withColumn("age_group",
 # MAGIC             when(col("age") < 40, "Under 40")
 # MAGIC             .when(col("age") < 50, "40-49")
@@ -216,6 +217,39 @@ display(dq)
 # MAGIC             round(avg("chol"), 1).alias("avg_cholesterol"),
 # MAGIC             round(avg("trestbps"), 1).alias("avg_blood_pressure"),
 # MAGIC             round(avg("thalach"), 1).alias("avg_max_heart_rate")))
+# MAGIC ```
+# MAGIC
+# MAGIC ### SQL version
+# MAGIC ```sql
+# MAGIC CREATE OR REFRESH STREAMING TABLE heart_bronze
+# MAGIC COMMENT 'Raw patient intake events — streaming ingestion via Auto Loader'
+# MAGIC AS SELECT * FROM STREAM read_files(
+# MAGIC   '/Volumes/dataops_olympics/default/raw_data/heart_events/',
+# MAGIC   format => 'json'
+# MAGIC );
+# MAGIC
+# MAGIC CREATE OR REFRESH STREAMING TABLE heart_silver (
+# MAGIC   CONSTRAINT valid_age EXPECT (age IS NOT NULL AND age BETWEEN 1 AND 120) ON VIOLATION DROP ROW,
+# MAGIC   CONSTRAINT valid_blood_pressure EXPECT (trestbps BETWEEN 50 AND 300) ON VIOLATION DROP ROW,
+# MAGIC   CONSTRAINT non_negative_cholesterol EXPECT (chol >= 0) ON VIOLATION DROP ROW,
+# MAGIC   CONSTRAINT has_event_id EXPECT (event_id IS NOT NULL)
+# MAGIC )
+# MAGIC COMMENT 'Cleaned patient intake data — validated and deduplicated'
+# MAGIC AS SELECT *, current_timestamp() AS ingested_at
+# MAGIC FROM STREAM(heart_bronze);
+# MAGIC
+# MAGIC CREATE OR REFRESH MATERIALIZED VIEW heart_gold
+# MAGIC COMMENT 'Heart disease metrics by age group — materialized view'
+# MAGIC AS SELECT
+# MAGIC   CASE WHEN age < 40 THEN 'Under 40' WHEN age < 50 THEN '40-49'
+# MAGIC        WHEN age < 60 THEN '50-59' ELSE '60+' END AS age_group,
+# MAGIC   CASE WHEN target = 1 THEN 'Heart Disease' ELSE 'Healthy' END AS diagnosis,
+# MAGIC   COUNT(*) AS patient_count,
+# MAGIC   ROUND(AVG(chol), 1) AS avg_cholesterol,
+# MAGIC   ROUND(AVG(trestbps), 1) AS avg_blood_pressure,
+# MAGIC   ROUND(AVG(thalach), 1) AS avg_max_heart_rate
+# MAGIC FROM heart_silver
+# MAGIC GROUP BY 1, 2;
 # MAGIC ```
 # MAGIC
 # MAGIC ### SDP Advantages Demonstrated

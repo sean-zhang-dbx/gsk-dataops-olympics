@@ -150,36 +150,40 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC ### SDP Pipeline Definition (What it looks like)
 # MAGIC
 # MAGIC ```python
-# MAGIC import dlt
+# MAGIC from pyspark import pipelines as dp
 # MAGIC from pyspark.sql.functions import *
 # MAGIC
-# MAGIC # BRONZE: Raw ingestion from Volume
-# MAGIC @dlt.table(comment="Raw heart disease data from UCI dataset")
+# MAGIC # BRONZE: Streaming table — Auto Loader ingestion from Volume
+# MAGIC @dp.table(comment="Raw heart disease data from hospital EHR system")
 # MAGIC def heart_bronze():
-# MAGIC     return (spark.read
-# MAGIC         .format("csv")
-# MAGIC         .option("header", "true")
-# MAGIC         .option("inferSchema", "true")
-# MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"))
+# MAGIC     return (spark.readStream
+# MAGIC         .format("cloudFiles")
+# MAGIC         .option("cloudFiles.format", "json")
+# MAGIC         .option("cloudFiles.inferColumnTypes", "true")
+# MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_events/"))
 # MAGIC
-# MAGIC # SILVER: Cleaned with data quality expectations
-# MAGIC @dlt.table(comment="Cleaned heart disease data with quality checks")
-# MAGIC @dlt.expect_or_drop("valid_age", "age BETWEEN 1 AND 120")
-# MAGIC @dlt.expect_or_drop("valid_bp", "trestbps BETWEEN 50 AND 300")
-# MAGIC @dlt.expect("valid_cholesterol", "chol BETWEEN 50 AND 600")
+# MAGIC # SILVER: Streaming table — Cleaned with data quality expectations
+# MAGIC @dp.table(comment="Cleaned heart disease data with quality checks")
+# MAGIC @dp.expect_or_drop("valid_age", "age IS NOT NULL AND age BETWEEN 1 AND 120")
+# MAGIC @dp.expect_or_drop("valid_bp", "trestbps BETWEEN 50 AND 300")
+# MAGIC @dp.expect("valid_cholesterol", "chol >= 0")
 # MAGIC def heart_silver():
-# MAGIC     return dlt.read("heart_bronze").withColumn("ingested_at", current_timestamp())
+# MAGIC     return (spark.readStream.table("heart_bronze")
+# MAGIC         .dropDuplicates(["event_id"])
+# MAGIC         .withColumn("ingested_at", current_timestamp()))
 # MAGIC
-# MAGIC # GOLD: Business-ready aggregation
-# MAGIC @dlt.table(comment="Heart disease metrics by age group")
+# MAGIC # GOLD: Materialized view — Business-ready aggregation
+# MAGIC @dp.materialized_view(comment="Heart disease metrics by age group")
 # MAGIC def heart_gold():
-# MAGIC     return (dlt.read("heart_silver")
+# MAGIC     return (spark.table("heart_silver")
 # MAGIC         .withColumn("age_group",
-# MAGIC             when(col("age") < 40, "1. Under 40")
-# MAGIC             .when(col("age") < 50, "2. 40-49")
-# MAGIC             .when(col("age") < 60, "3. 50-59")
-# MAGIC             .otherwise("4. 60+"))
-# MAGIC         .groupBy("age_group", "target")
+# MAGIC             when(col("age") < 40, "Under 40")
+# MAGIC             .when(col("age") < 50, "40-49")
+# MAGIC             .when(col("age") < 60, "50-59")
+# MAGIC             .otherwise("60+"))
+# MAGIC         .withColumn("diagnosis",
+# MAGIC             when(col("target") == 1, "Heart Disease").otherwise("Healthy"))
+# MAGIC         .groupBy("age_group", "diagnosis")
 # MAGIC         .agg(
 # MAGIC             count("*").alias("patients"),
 # MAGIC             round(avg("chol"), 1).alias("avg_cholesterol"),
@@ -188,8 +192,8 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC ```
 # MAGIC
 # MAGIC > **Say this:** "Notice three things:
-# MAGIC > 1. Each table is a Python function decorated with `@dlt.table` (the SDP Python API)
-# MAGIC > 2. Silver has SDP expectations — these are data quality rules. If age is invalid, the row is dropped.
+# MAGIC > 1. `@dp.table` creates streaming tables, `@dp.materialized_view` creates a materialized view
+# MAGIC > 2. Silver has SDP expectations — `@dp.expect_or_drop` drops invalid rows automatically
 # MAGIC > 3. No `write` calls — the pipeline handles all the orchestration."
 
 # COMMAND ----------
