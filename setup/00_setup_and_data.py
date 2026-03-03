@@ -372,8 +372,12 @@ print(f"  drug_reviews: {cnt} rows")
 
 # COMMAND ----------
 
-# Clinical Notes
-sdf = spark.read.json(f"file:{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json")
+# Clinical Notes (JSON array format — read with Python, then create DataFrame)
+import json as _json
+with open(f"{LOCAL_DATA_DIR}/clinical_notes/clinical_notes.json", "r") as _f:
+    _notes = _json.load(_f)
+import pandas as _pd
+sdf = spark.createDataFrame(_pd.DataFrame(_notes))
 sdf.write.format("delta").mode("overwrite").saveAsTable("clinical_notes")
 cnt = sdf.count()
 print(f"  clinical_notes: {cnt} rows")

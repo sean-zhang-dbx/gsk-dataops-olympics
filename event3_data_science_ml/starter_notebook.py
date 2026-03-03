@@ -123,7 +123,8 @@ print(f"Test set:     {X_test.shape[0]} samples")
 # COMMAND ----------
 
 TEAM_NAME = "_____"  # e.g., "team_01"
-mlflow.set_experiment(f"/dataops_olympics/{TEAM_NAME}_ml_challenge")
+_user = spark.sql("SELECT current_user()").collect()[0][0]
+mlflow.set_experiment(f"/Users/{_user}/{TEAM_NAME}_ml_challenge")
 
 # COMMAND ----------
 

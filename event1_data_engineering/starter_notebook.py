@@ -77,7 +77,7 @@ print(f"Created table: {TEAM_NAME}_heart_disease")
 # TODO: Read the JSON file and write as Delta
 json_path = "file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json"
 
-df_life = _____  # YOUR CODE HERE
+df_life = _____  # YOUR CODE HERE — Hint: use .option("multiLine", "true") for JSON arrays
 
 df_life.write.format("delta").mode("overwrite").saveAsTable(f"{TEAM_NAME}_life_expectancy")
 
