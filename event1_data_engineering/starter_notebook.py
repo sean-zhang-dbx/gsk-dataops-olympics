@@ -14,7 +14,7 @@
 # MAGIC > Some records have data quality issues — missing ages, impossible blood pressure
 # MAGIC > readings, and duplicate events.
 # MAGIC >
-# MAGIC > **Your job:** Build a Medallion pipeline (Bronze → Silver → Gold) that ingests,
+# MAGIC > **Your job:** Build a Medallion pipeline (Bronze -> Silver -> Gold) that ingests,
 # MAGIC > cleans, and aggregates this data into a governed, analytics-ready table.
 # MAGIC
 # MAGIC ### Two Pathways (Choose One!)
@@ -27,7 +27,11 @@
 # MAGIC | **Gold Table** | Materialized View (auto-refreshes) | Regular Delta Table |
 # MAGIC | **Governance** | Comments defined in pipeline code | ALTER TABLE after creation |
 # MAGIC
-# MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) to generate code!
+# MAGIC ### Vibe Coding Rules
+# MAGIC
+# MAGIC > Use **Databricks Assistant** (`Cmd+I` or the chat panel) to generate your code!
+# MAGIC > Each step describes the **business requirements** — your job is to prompt the
+# MAGIC > Assistant to write the correct implementation. The better your prompts, the faster you go.
 # MAGIC
 # MAGIC ### Raw Data Location
 # MAGIC ```
@@ -47,7 +51,7 @@
 
 # COMMAND ----------
 
-TEAM_NAME = "_____"  # e.g., "team_01" — SET THIS FIRST!
+TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name (e.g., "team_01")
 
 # COMMAND ----------
 
@@ -56,6 +60,7 @@ TEAM_NAME = "_____"  # e.g., "team_01" — SET THIS FIRST!
 # MAGIC ## Step 0: Explore the Raw Data
 # MAGIC
 # MAGIC Before building anything, understand what you're working with.
+# MAGIC Run these cells to explore the data and spot quality issues.
 
 # COMMAND ----------
 
@@ -65,7 +70,6 @@ TEAM_NAME = "_____"  # e.g., "team_01" — SET THIS FIRST!
 
 # COMMAND ----------
 
-# Preview one batch — notice the NDJSON format (one JSON object per line)
 df_peek = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/intake_batch_001.json")
 print(f"Schema of a single batch:")
 df_peek.printSchema()
@@ -73,7 +77,6 @@ print(f"Records in batch 1: {df_peek.count()}")
 
 # COMMAND ----------
 
-# Read ALL batches at once using a wildcard path
 df_all_raw = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
 print(f"Total raw records across all 5 batches: {df_all_raw.count()}")
 
@@ -97,7 +100,6 @@ profile = df_all_raw.select(
 )
 display(profile)
 
-# Check for duplicate event_ids
 dup_count = df_all_raw.count() - df_all_raw.dropDuplicates(["event_id"]).count()
 print(f"Duplicate event_ids: {dup_count}")
 
@@ -107,19 +109,21 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC ---
 # MAGIC ## Step 1: Bronze — Ingest All Raw Data
 # MAGIC
-# MAGIC Load all 5 NDJSON files into a single Bronze Delta table. **No cleaning yet** — Bronze is the raw landing zone.
+# MAGIC ### Business Requirement
+# MAGIC
+# MAGIC > Read **all 5 NDJSON batch files** from the Volume path
+# MAGIC > `/Volumes/dataops_olympics/default/raw_data/heart_events/` and save them
+# MAGIC > as a single Delta table called `{TEAM_NAME}_heart_bronze` in
+# MAGIC > `dataops_olympics.default`. No cleaning — Bronze is the raw landing zone.
+# MAGIC >
+# MAGIC > The table should contain all ~500 records from all 5 files.
 
 # COMMAND ----------
 
-# TODO: Read all NDJSON files from the heart_events folder and save as Bronze table
-# Hint: spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# Prompt idea: "Read all JSON files from /Volumes/dataops_olympics/default/raw_data/heart_events/
+#               and save as a Delta table called {TEAM_NAME}_heart_bronze"
 
-df_bronze = _____  # YOUR CODE HERE
-
-df_bronze.write.format("delta").mode("overwrite").saveAsTable(
-    f"dataops_olympics.default.{TEAM_NAME}_heart_bronze"
-)
-print(f"Bronze table created: {TEAM_NAME}_heart_bronze ({df_bronze.count()} rows)")
 
 # COMMAND ----------
 
@@ -130,14 +134,12 @@ print(f"Bronze table created: {TEAM_NAME}_heart_bronze ({df_bronze.count()} rows
 # MAGIC ### **Path A: Spark Declarative Pipelines (SDP) — 50 pts max**
 # MAGIC
 # MAGIC 1. Open the **`sdp_pipeline_template`** notebook (in this same folder)
-# MAGIC 2. Update `TEAM_NAME` at the top
-# MAGIC 3. Customize the expectations and Gold aggregation
-# MAGIC 4. Go to **Workflows → Pipelines → Create Pipeline**
-# MAGIC    - Name: `{TEAM_NAME}_heart_pipeline`
-# MAGIC    - Source: point to your copy of the SDP template notebook
+# MAGIC 2. Go to **Workflows -> Pipelines -> Create Pipeline**
+# MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
+# MAGIC    - Source: select the `sdp_pipeline_template` notebook
 # MAGIC    - Target catalog: `dataops_olympics`
 # MAGIC    - Target schema: `default`
-# MAGIC 5. Click **Start** and watch the pipeline run!
+# MAGIC 3. Click **Start** and watch the pipeline run!
 # MAGIC
 # MAGIC After the pipeline completes, your tables will appear as:
 # MAGIC - `dataops_olympics.default.heart_bronze`
@@ -150,7 +152,7 @@ print(f"Bronze table created: {TEAM_NAME}_heart_bronze ({df_bronze.count()} rows
 # MAGIC
 # MAGIC ### **Path B: Interactive SQL — 31 pts max**
 # MAGIC
-# MAGIC Continue below to build Silver and Gold with SQL in this notebook.
+# MAGIC Continue below to build Silver and Gold with SQL/PySpark in this notebook.
 
 # COMMAND ----------
 
@@ -158,32 +160,25 @@ print(f"Bronze table created: {TEAM_NAME}_heart_bronze ({df_bronze.count()} rows
 # MAGIC ---
 # MAGIC ## Step 3B: Silver — Clean the Data (SQL Path)
 # MAGIC
-# MAGIC **TODO:** Create a Silver table that:
-# MAGIC 1. Removes rows with NULL age
-# MAGIC 2. Removes rows with invalid blood pressure (not between 50 and 300)
-# MAGIC 3. Removes rows with negative cholesterol
-# MAGIC 4. Deduplicates on `event_id` (keep the first occurrence)
-# MAGIC 5. Adds an `ingested_at` timestamp column
+# MAGIC ### Business Requirement
+# MAGIC
+# MAGIC > Create a Silver table called `{TEAM_NAME}_heart_silver` from the Bronze table.
+# MAGIC > The Silver table must:
+# MAGIC >
+# MAGIC > 1. **Remove** rows where `age` is NULL
+# MAGIC > 2. **Remove** rows where `age` is outside the valid range of 1-120
+# MAGIC > 3. **Remove** rows where `trestbps` (blood pressure) is not between 50 and 300
+# MAGIC > 4. **Remove** rows where `chol` (cholesterol) is negative
+# MAGIC > 5. **Deduplicate** on `event_id` — if multiple rows share the same `event_id`,
+# MAGIC >    keep only the one with the earliest `event_timestamp`
+# MAGIC > 6. Add an `ingested_at` column with the current timestamp
 
 # COMMAND ----------
 
-# TODO: Fill in the WHERE clause and deduplication logic
-spark.sql(f"""
-    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver AS
-    SELECT *, current_timestamp() as ingested_at
-    FROM (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) as _rn
-        FROM dataops_olympics.default.{TEAM_NAME}_heart_bronze
-    )
-    WHERE _rn = 1
-      AND _____   -- TODO: age filter
-      AND _____   -- TODO: blood pressure filter
-      AND _____   -- TODO: cholesterol filter
-""")
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# Prompt idea: "Create a Silver table from my Bronze table that removes nulls,
+#               invalid values, and duplicates per the requirements above"
 
-silver_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
-bronze_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_bronze").count()
-print(f"Silver: {silver_count} rows (filtered {bronze_count - silver_count} dirty/duplicate rows)")
 
 # COMMAND ----------
 
@@ -191,36 +186,24 @@ print(f"Silver: {silver_count} rows (filtered {bronze_count - silver_count} dirt
 # MAGIC ---
 # MAGIC ## Step 3B (cont): Gold — Aggregate for Analytics (SQL Path)
 # MAGIC
-# MAGIC **TODO:** Create a Gold table with heart disease metrics aggregated by age group.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC The Gold table should have these columns:
-# MAGIC - `age_group`: "Under 40", "40-49", "50-59", "60+"
-# MAGIC - `diagnosis`: "Heart Disease" or "Healthy" (based on `target`)
-# MAGIC - `patient_count`: count of patients
-# MAGIC - `avg_cholesterol`: average cholesterol
-# MAGIC - `avg_blood_pressure`: average resting blood pressure
-# MAGIC - `avg_max_heart_rate`: average max heart rate (thalach)
+# MAGIC > Create a Gold table called `{TEAM_NAME}_heart_gold` from the Silver table.
+# MAGIC > It should aggregate heart disease metrics **by age group and diagnosis**:
+# MAGIC >
+# MAGIC > - `age_group`: bucket ages into "Under 40", "40-49", "50-59", "60+"
+# MAGIC > - `diagnosis`: map `target` column — 1 = "Heart Disease", 0 = "Healthy"
+# MAGIC > - `patient_count`: number of patients in each group
+# MAGIC > - `avg_cholesterol`: average of `chol` column, rounded to 1 decimal
+# MAGIC > - `avg_blood_pressure`: average of `trestbps` column, rounded to 1 decimal
+# MAGIC > - `avg_max_heart_rate`: average of `thalach` column, rounded to 1 decimal
 
 # COMMAND ----------
 
-# TODO: Fill in the Gold aggregation query
-spark.sql(f"""
-    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_gold AS
-    SELECT
-        CASE
-            WHEN age < 40 THEN 'Under 40'
-            WHEN age < 50 THEN '40-49'
-            WHEN age < 60 THEN '50-59'
-            ELSE '60+'
-        END as age_group,
-        CASE WHEN target = 1 THEN 'Heart Disease' ELSE 'Healthy' END as diagnosis,
-        _____  -- TODO: aggregations (COUNT, AVG for chol, trestbps, thalach)
-    FROM dataops_olympics.default.{TEAM_NAME}_heart_silver
-    GROUP BY 1, 2
-    ORDER BY 1, 2
-""")
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# Prompt idea: "Create a Gold aggregation table that groups heart disease data by
+#               age bucket and diagnosis with averages for cholesterol, BP, and heart rate"
 
-display(spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold"))
 
 # COMMAND ----------
 
@@ -228,39 +211,35 @@ display(spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold"))
 # MAGIC ---
 # MAGIC ## Step 4: Governance — Add Metadata
 # MAGIC
-# MAGIC Every production table needs documentation. Add comments so your colleagues
-# MAGIC understand what the data means.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC **SDP Path:** Your comments should already be in the pipeline code (`@dlt.table(comment="...")`).
-# MAGIC Verify them below.
-# MAGIC
-# MAGIC **SQL Path:** Add comments with ALTER TABLE.
+# MAGIC > Every production table needs documentation. Add table-level and column-level
+# MAGIC > comments so that other teams can understand the data without asking you.
+# MAGIC >
+# MAGIC > **For each of your 3 tables (Bronze, Silver, Gold):**
+# MAGIC > - Add a **table comment** describing what the table contains and its purpose
+# MAGIC >
+# MAGIC > **For the Silver table, add column comments on at least these columns:**
+# MAGIC > - `age` — what it means and its valid range
+# MAGIC > - `trestbps` — what it measures and its valid range
+# MAGIC > - `chol` — what it measures
+# MAGIC > - `target` — what 0 and 1 mean
+# MAGIC > - `event_id` — what it represents
+# MAGIC >
+# MAGIC > **SDP Path:** Your comments should already be in the pipeline code via
+# MAGIC > `@dlt.table(comment="...")`. Verify by running DESCRIBE below.
 
 # COMMAND ----------
 
-# SQL Path: Add governance metadata
-# TODO: Fill in meaningful descriptions
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# Prompt idea: "Add table comments and column comments to my heart disease pipeline tables.
+#               Use ALTER TABLE SET TBLPROPERTIES for table comments and
+#               ALTER TABLE ALTER COLUMN COMMENT for column comments."
 
-spark.sql(f"""
-    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_bronze
-    SET TBLPROPERTIES ('comment' = '_____')
-""")
-
-spark.sql(f"""
-    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver
-    SET TBLPROPERTIES ('comment' = '_____')
-""")
-
-# Column comments on Silver
-spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver ALTER COLUMN age COMMENT 'Patient age in years (validated 1-120)'")
-spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver ALTER COLUMN trestbps COMMENT 'Resting blood pressure in mmHg (validated 50-300)'")
-spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver ALTER COLUMN target COMMENT 'Diagnosis: 1 = heart disease present, 0 = healthy'")
-
-print("Governance comments added!")
 
 # COMMAND ----------
 
-# Verify governance
+# Verify your governance — run this to check your comments were applied
 display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_silver"))
 
 # COMMAND ----------
@@ -275,34 +254,28 @@ display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}
 # MAGIC You can also query the event log programmatically:
 # MAGIC
 # MAGIC ```python
-# MAGIC # Find your pipeline's event log (replace with your pipeline ID)
 # MAGIC display(spark.sql("SELECT * FROM event_log('YOUR_PIPELINE_ID') WHERE event_type = 'flow_progress'"))
 # MAGIC ```
 # MAGIC
 # MAGIC ### SQL Path — Compute DQ metrics manually
+# MAGIC
+# MAGIC ### Business Requirement
+# MAGIC
+# MAGIC > Write a query against your **Bronze** table that produces a data quality report with:
+# MAGIC > - Total record count
+# MAGIC > - Count of null ages
+# MAGIC > - Count of invalid ages (outside 1-120)
+# MAGIC > - Count of invalid blood pressure readings (outside 50-300)
+# MAGIC > - Count of negative cholesterol values
+# MAGIC > - Count of duplicate event_ids
+# MAGIC > - Percentage of clean records
 
 # COMMAND ----------
 
-# Data Quality Report (works for both paths — run on your Bronze table)
-dq_report = spark.sql(f"""
-    SELECT
-        COUNT(*) as total_records,
-        SUM(CASE WHEN age IS NULL THEN 1 ELSE 0 END) as null_age_count,
-        SUM(CASE WHEN age IS NOT NULL AND age NOT BETWEEN 1 AND 120 THEN 1 ELSE 0 END) as invalid_age_count,
-        SUM(CASE WHEN trestbps NOT BETWEEN 50 AND 300 THEN 1 ELSE 0 END) as invalid_bp_count,
-        SUM(CASE WHEN chol < 0 THEN 1 ELSE 0 END) as negative_chol_count,
-        COUNT(*) - COUNT(DISTINCT event_id) as duplicate_event_ids,
-        ROUND(
-            (COUNT(*) - SUM(CASE WHEN age IS NULL OR (age NOT BETWEEN 1 AND 120) OR trestbps NOT BETWEEN 50 AND 300 OR chol < 0 THEN 1 ELSE 0 END))
-            * 100.0 / COUNT(*), 1
-        ) as clean_record_pct
-    FROM dataops_olympics.default.{TEAM_NAME}_heart_bronze
-""")
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# Prompt idea: "Write a data quality report query that counts all the different types of
+#               dirty data in my Bronze table"
 
-print("=" * 60)
-print("  DATA QUALITY REPORT")
-print("=" * 60)
-display(dq_report)
 
 # COMMAND ----------
 
@@ -320,7 +293,6 @@ print(f"  EVENT 1 VALIDATION — {TEAM_NAME}")
 print("=" * 60)
 score = 0
 
-# Bronze checks
 try:
     cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_bronze").count()
     if cnt >= 490:
@@ -332,7 +304,6 @@ try:
 except Exception as e:
     print(f"  [FAIL] Bronze table missing: {e}")
 
-# Silver checks
 try:
     s_cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
     if s_cnt < cnt:
@@ -344,7 +315,6 @@ try:
 except Exception as e:
     print(f"  [FAIL] Silver table missing: {e}")
 
-# Gold checks
 try:
     g = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold")
     g_cnt = g.count()
@@ -361,7 +331,6 @@ try:
 except Exception as e:
     print(f"  [FAIL] Gold table missing: {e}")
 
-# Governance checks
 try:
     desc = spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_silver").collect()
     has_tbl_comment = any("comment" in str(r).lower() and r[1] and len(str(r[1])) > 5 for r in desc)
@@ -390,40 +359,10 @@ print("=" * 60)
 # MAGIC ---
 # MAGIC ## Stretch Goals (Extra Credit)
 # MAGIC
-# MAGIC Finished early? Try these with the Databricks Assistant:
+# MAGIC Finished early? Ask the Databricks Assistant to help you with these:
 # MAGIC
 # MAGIC 1. **Create a Genie space** on your Gold table — "Which age group has the highest heart disease rate?"
-# MAGIC 2. **Liquid Clustering** — `ALTER TABLE ... CLUSTER BY (age, target)`
-# MAGIC 3. **Change Data Feed** — Enable CDF on Silver: `ALTER TABLE ... SET TBLPROPERTIES (delta.enableChangeDataFeed = true)`
-# MAGIC 4. **Time Travel** — Overwrite Silver with bad data, then `RESTORE TABLE ... TO VERSION AS OF 0`
-# MAGIC 5. **AI Functions** — `SELECT ai_classify(chol, ARRAY('Normal', 'Borderline', 'High')) FROM ...`
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Answers
-# MAGIC
-# MAGIC <details>
-# MAGIC <summary>Click to reveal answers (try without peeking first!)</summary>
-# MAGIC
-# MAGIC **Step 1 (Bronze):**
-# MAGIC ```python
-# MAGIC df_bronze = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
-# MAGIC ```
-# MAGIC
-# MAGIC **Step 3B Silver WHERE clause:**
-# MAGIC ```sql
-# MAGIC AND age IS NOT NULL AND age BETWEEN 1 AND 120
-# MAGIC AND trestbps BETWEEN 50 AND 300
-# MAGIC AND chol >= 0
-# MAGIC ```
-# MAGIC
-# MAGIC **Step 3B Gold aggregations:**
-# MAGIC ```sql
-# MAGIC COUNT(*) as patient_count,
-# MAGIC ROUND(AVG(chol), 1) as avg_cholesterol,
-# MAGIC ROUND(AVG(trestbps), 1) as avg_blood_pressure,
-# MAGIC ROUND(AVG(thalach), 1) as avg_max_heart_rate
-# MAGIC ```
-# MAGIC
-# MAGIC </details>
+# MAGIC 2. **Liquid Clustering** — Optimize your Silver table with `CLUSTER BY (age, target)`
+# MAGIC 3. **Change Data Feed** — Enable CDF on Silver so you can track row-level changes
+# MAGIC 4. **Time Travel** — Overwrite Silver with bad data, then restore it to the previous version
+# MAGIC 5. **AI Functions** — Use `ai_classify()` to categorize cholesterol levels as Normal/Borderline/High
