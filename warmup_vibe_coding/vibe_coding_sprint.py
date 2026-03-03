@@ -27,7 +27,7 @@
 # MAGIC **Build a complete analytics notebook using only the Databricks Assistant.**
 # MAGIC
 # MAGIC Your notebook must:
-# MAGIC 1. **Read** the heart disease CSV file from `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv`
+# MAGIC 1. **Read** the heart disease CSV file from `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv`
 # MAGIC 2. **Create** a Delta table called `{your_team_name}_warmup`
 # MAGIC 3. **Run 3 SQL queries** that reveal something interesting about the data
 # MAGIC 4. **Create 1 Plotly visualization** (any chart type)
@@ -48,7 +48,7 @@
 # MAGIC ### Prompting Tips
 # MAGIC
 # MAGIC **Be specific.** Instead of "read a file", say:
-# MAGIC > "Read the CSV file at `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` with headers and infer schema, and display the first 10 rows"
+# MAGIC > "Read the CSV file at `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv` with headers and infer schema, and display the first 10 rows"
 # MAGIC
 # MAGIC **Give context.** Instead of "write a query", say:
 # MAGIC > "Write a SQL query on the table `team_01_warmup` that shows the average age and cholesterol grouped by heart disease status (target column, where 1 = disease)"
@@ -75,9 +75,9 @@
 # MAGIC ### Prompt Idea 1: Load the Data
 # MAGIC
 # MAGIC Try asking the Assistant:
-# MAGIC > "Read the CSV file at `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv`
+# MAGIC > "Read the CSV file at `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv`
 # MAGIC > with headers and inferSchema into a Spark DataFrame called df_heart,
-# MAGIC > then save it as a Delta table called `team_XX_warmup` and display it"
+# MAGIC > then save it as a Delta table called `dataops_olympics.default.team_XX_warmup` and display it"
 
 # COMMAND ----------
 

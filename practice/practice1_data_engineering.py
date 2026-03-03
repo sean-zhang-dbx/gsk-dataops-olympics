@@ -10,10 +10,10 @@
 # MAGIC ---
 # MAGIC
 # MAGIC ### What You'll Do
-# MAGIC 1. Read a CSV file into a Spark DataFrame
+# MAGIC 1. Read a CSV file from a Unity Catalog Volume
 # MAGIC 2. Save it as a Delta table
 # MAGIC 3. Add a governance comment
-# MAGIC 4. Create a Silver (cleaned) table
+# MAGIC 4. Create a Silver (cleaned) table with data quality filters
 # MAGIC 5. Run the validation check
 
 # COMMAND ----------
@@ -23,21 +23,26 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+# MAGIC %sql
+# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE SCHEMA default;
+
+# COMMAND ----------
+
 TEAM_NAME = "practice"
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Exercise 1: Read a CSV File
+# MAGIC ## Exercise 1: Read a CSV File from a Volume
 # MAGIC
-# MAGIC Fill in the blank to read the heart disease CSV.
+# MAGIC Fill in the blank to read the heart disease CSV from the Unity Catalog Volume.
 # MAGIC
 # MAGIC **Hint:** The format is `"csv"` and you need `header` and `inferSchema` options.
 
 # COMMAND ----------
 
-csv_path = "file:/tmp/dataops_olympics/raw/heart_disease/heart.csv"
+csv_path = "/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"
 
 # FILL IN: Replace _____ with the correct format string
 df_heart = (spark.read
@@ -61,9 +66,8 @@ display(df_heart.limit(5))
 # COMMAND ----------
 
 # FILL IN: Replace _____ with the correct format
-df_heart.write.format("_____").mode("overwrite").saveAsTable(f"{TEAM_NAME}_heart_disease")
-
-print(f"Created table: {TEAM_NAME}_heart_disease")
+df_heart.write.format("_____").mode("overwrite").saveAsTable(f"dataops_olympics.default.{TEAM_NAME}_heart_disease")
+print(f"Created table: dataops_olympics.default.{TEAM_NAME}_heart_disease")
 
 # COMMAND ----------
 
@@ -78,12 +82,12 @@ print(f"Created table: {TEAM_NAME}_heart_disease")
 
 # FILL IN: Replace _____ with a meaningful table description
 spark.sql(f"""
-    ALTER TABLE {TEAM_NAME}_heart_disease
+    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease
     SET TBLPROPERTIES ('comment' = '_____')
 """)
 
-spark.sql(f"ALTER TABLE {TEAM_NAME}_heart_disease ALTER COLUMN age COMMENT 'Patient age in years'")
-spark.sql(f"ALTER TABLE {TEAM_NAME}_heart_disease ALTER COLUMN target COMMENT 'Diagnosis: 1=disease, 0=healthy'")
+spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease ALTER COLUMN age COMMENT 'Patient age in years'")
+spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease ALTER COLUMN target COMMENT 'Diagnosis: 1=disease, 0=healthy'")
 
 print("Governance comments added!")
 
@@ -97,19 +101,21 @@ print("Governance comments added!")
 # MAGIC **Hint:** Keep only rows where:
 # MAGIC - `age` is between 1 and 120
 # MAGIC - `trestbps` (blood pressure) is between 50 and 300
+# MAGIC
+# MAGIC > In a Spark Declarative Pipeline, this would be `@dlt.expect_or_drop("valid_age", "age BETWEEN 1 AND 120")`
 
 # COMMAND ----------
 
 # FILL IN: Replace _____ with the correct filter conditions
 spark.sql(f"""
-    CREATE OR REPLACE TABLE {TEAM_NAME}_heart_silver AS
+    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver AS
     SELECT *
-    FROM {TEAM_NAME}_heart_disease
+    FROM dataops_olympics.default.{TEAM_NAME}_heart_disease
     WHERE age BETWEEN 1 AND 120
       AND _____
 """)
 
-silver_count = spark.table(f"{TEAM_NAME}_heart_silver").count()
+silver_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
 print(f"Silver table created: {silver_count} rows (cleaned)")
 
 # COMMAND ----------
@@ -125,32 +131,29 @@ print("=" * 55)
 
 score = 0
 
-# Check 1: Bronze table exists
 try:
-    cnt = spark.table(f"{TEAM_NAME}_heart_disease").count()
+    cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_disease").count()
     if cnt > 400:
         print(f"  [PASS] Bronze table: {cnt} rows")
         score += 1
     else:
         print(f"  [FAIL] Bronze table has only {cnt} rows")
-except:
-    print("  [FAIL] Bronze table not found")
+except Exception as e:
+    print(f"  [FAIL] Bronze table not found: {e}")
 
-# Check 2: Format is Delta
 try:
-    detail = spark.sql(f"DESCRIBE DETAIL {TEAM_NAME}_heart_disease").collect()[0]
+    detail = spark.sql(f"DESCRIBE DETAIL dataops_olympics.default.{TEAM_NAME}_heart_disease").collect()[0]
     fmt = detail["format"]
     if fmt == "delta":
         print(f"  [PASS] Format is Delta")
         score += 1
     else:
         print(f"  [FAIL] Format is {fmt}, expected delta")
-except:
-    print("  [FAIL] Could not check format")
+except Exception as e:
+    print(f"  [FAIL] Could not check format: {e}")
 
-# Check 3: Governance comment exists
 try:
-    props = spark.sql(f"DESCRIBE TABLE EXTENDED {TEAM_NAME}_heart_disease").collect()
+    props = spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_disease").collect()
     has_comment = any("comment" in str(row).lower() and row[1] and len(str(row[1])) > 5
                       for row in props)
     if has_comment:
@@ -158,19 +161,18 @@ try:
         score += 1
     else:
         print(f"  [FAIL] No governance comment")
-except:
-    print("  [FAIL] Could not check governance")
+except Exception as e:
+    print(f"  [FAIL] Could not check governance: {e}")
 
-# Check 4: Silver table
 try:
-    cnt = spark.table(f"{TEAM_NAME}_heart_silver").count()
+    cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
     if cnt > 0:
         print(f"  [PASS] Silver table: {cnt} rows")
         score += 1
     else:
         print(f"  [FAIL] Silver table is empty")
-except:
-    print("  [FAIL] Silver table not found")
+except Exception as e:
+    print(f"  [FAIL] Silver table not found: {e}")
 
 print(f"\n  Score: {score}/4")
 if score == 4:

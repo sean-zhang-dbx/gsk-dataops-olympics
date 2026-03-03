@@ -23,7 +23,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 import pandas as pd
 import numpy as np
@@ -144,7 +145,7 @@ try:
     if uc_catalog:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {uc_catalog}.dataops_olympics")
         _model_name = f"{uc_catalog}.dataops_olympics.practice_readmission_model"
-except:
+except Exception:
     pass
 
 # FILL IN: Replace _____ with the correct MLflow function to register
@@ -173,7 +174,7 @@ try:
     assert len(df) > 700
     print(f"  [PASS] Data loaded: {len(df)} rows")
     score += 1
-except:
+except Exception:
     print("  [FAIL] Data not loaded correctly")
 
 # Check 2: Model trained
@@ -182,7 +183,7 @@ try:
     preds = model.predict(X_test[:5])
     print(f"  [PASS] Model trained and can predict")
     score += 1
-except:
+except Exception:
     print("  [FAIL] Model not trained")
 
 # Check 3: F1 score reasonable
@@ -190,7 +191,7 @@ try:
     assert f1 > 0.3, f"F1 too low: {f1:.4f}"
     print(f"  [PASS] F1 score: {f1:.4f}")
     score += 1
-except:
+except Exception:
     print(f"  [FAIL] F1 score issue: {f1:.4f}" if 'f1' in dir() else "  [FAIL] F1 not calculated")
 
 # Check 4: MLflow experiment exists
@@ -199,7 +200,7 @@ try:
     assert len(runs) > 0
     print(f"  [PASS] MLflow experiment has {len(runs)} run(s)")
     score += 1
-except:
+except Exception:
     print("  [FAIL] MLflow experiment not found")
 
 print(f"\n  Score: {score}/4")

@@ -23,7 +23,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 # COMMAND ----------
 
@@ -178,7 +179,7 @@ try:
     score += 1
 except AssertionError as e:
     print(f"  [FAIL] System prompt issue: {e}")
-except:
+except Exception:
     print("  [FAIL] System prompt not defined")
 
 # Check 2: Agent answers heart disease questions

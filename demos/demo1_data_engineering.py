@@ -10,11 +10,11 @@
 # MAGIC | Time | Section | What You'll See |
 # MAGIC |------|---------|----------------|
 # MAGIC | 0:00 | **The Problem** | Why pipelines matter in pharma |
-# MAGIC | 1:00 | **Ingest** | CSV + JSON → Spark DataFrames |
+# MAGIC | 1:00 | **Ingest** | CSV + JSON → Spark DataFrames from UC Volumes |
 # MAGIC | 4:00 | **Delta Lake** | Write to Delta, explain ACID + time travel |
 # MAGIC | 7:00 | **Governance** | Table & column comments in Unity Catalog |
-# MAGIC | 9:00 | **Medallion** | Bronze → Silver → Gold in 3 SQL statements |
-# MAGIC | 13:00 | **Wow Moment** | Time travel — query yesterday's data today |
+# MAGIC | 9:00 | **SDP Pipeline** | Bronze → Silver → Gold with Spark Declarative Pipelines |
+# MAGIC | 13:00 | **Wow Moment** | Data quality expectations + time travel |
 # MAGIC | 14:00 | **Your Turn** | Preview of the practice notebook |
 
 # COMMAND ----------
@@ -28,19 +28,36 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+# MAGIC %md
+# MAGIC ## 1. Data Lives in Unity Catalog Volumes
+# MAGIC
+# MAGIC > **Say this:** "First — where does your raw data live? In Databricks, we use
+# MAGIC > Unity Catalog Volumes. Think of it as governed cloud storage that's part of your catalog.
+# MAGIC > No more dumping files in /tmp or local paths."
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE SCHEMA default;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Let's see what's in our Volume
+# MAGIC LIST '/Volumes/dataops_olympics/default/raw_data/heart_disease/'
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 1. Ingest Raw Data (CSV)
+# MAGIC ## 2. Ingest Raw Data (CSV from Volume)
 # MAGIC
 # MAGIC > **Say this:** "Step one — read the file. Spark handles CSV, JSON, Parquet, and more.
-# MAGIC > Three options, one line of code."
+# MAGIC > One line of code, and notice the path starts with /Volumes — this is governed storage."
 
 # COMMAND ----------
 
-csv_path = "file:/tmp/dataops_olympics/raw/heart_disease/heart.csv"
+csv_path = "/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"
 
 df_heart = (spark.read
     .format("csv")
@@ -48,7 +65,7 @@ df_heart = (spark.read
     .option("inferSchema", "true")
     .load(csv_path))
 
-print(f"Loaded {df_heart.count()} rows × {len(df_heart.columns)} columns")
+print(f"Loaded {df_heart.count()} rows x {len(df_heart.columns)} columns")
 display(df_heart.limit(5))
 
 # COMMAND ----------
@@ -56,26 +73,6 @@ display(df_heart.limit(5))
 # MAGIC %md
 # MAGIC > **Say this:** "That's it. One line. Spark inferred all the data types — age is integer,
 # MAGIC > cholesterol is integer, oldpeak is double. No pandas, no manual parsing."
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 2. Ingest JSON Data
-# MAGIC
-# MAGIC > **Say this:** "What about JSON? Same pattern, different format option.
-# MAGIC > This file is a JSON array, so we add multiLine."
-
-# COMMAND ----------
-
-json_path = "file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json"
-
-df_life = (spark.read
-    .format("json")
-    .option("multiLine", "true")
-    .load(json_path))
-
-print(f"Loaded {df_life.count()} rows × {len(df_life.columns)} columns")
-display(df_life.limit(5))
 
 # COMMAND ----------
 
@@ -88,14 +85,13 @@ display(df_life.limit(5))
 
 # COMMAND ----------
 
-df_heart.write.format("delta").mode("overwrite").saveAsTable("demo_heart_bronze")
+df_heart.write.format("delta").mode("overwrite").saveAsTable("dataops_olympics.default.demo_heart_bronze")
 print("Saved as Delta table: demo_heart_bronze")
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Let's see what we just created
-# MAGIC DESCRIBE DETAIL demo_heart_bronze
+# MAGIC DESCRIBE DETAIL dataops_olympics.default.demo_heart_bronze
 
 # COMMAND ----------
 
@@ -115,19 +111,18 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC ALTER TABLE demo_heart_bronze SET TBLPROPERTIES (
+# MAGIC ALTER TABLE dataops_olympics.default.demo_heart_bronze SET TBLPROPERTIES (
 # MAGIC   'comment' = 'UCI Heart Disease dataset: 500 patients, 14 clinical features, target=1 means disease present'
 # MAGIC );
 # MAGIC
-# MAGIC ALTER TABLE demo_heart_bronze ALTER COLUMN age COMMENT 'Patient age in years (29-77)';
-# MAGIC ALTER TABLE demo_heart_bronze ALTER COLUMN chol COMMENT 'Serum cholesterol in mg/dL';
-# MAGIC ALTER TABLE demo_heart_bronze ALTER COLUMN target COMMENT 'Diagnosis: 1 = heart disease, 0 = healthy';
+# MAGIC ALTER TABLE dataops_olympics.default.demo_heart_bronze ALTER COLUMN age COMMENT 'Patient age in years (29-77)';
+# MAGIC ALTER TABLE dataops_olympics.default.demo_heart_bronze ALTER COLUMN chol COMMENT 'Serum cholesterol in mg/dL';
+# MAGIC ALTER TABLE dataops_olympics.default.demo_heart_bronze ALTER COLUMN target COMMENT 'Diagnosis: 1 = heart disease, 0 = healthy';
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Now anyone can discover what this data means
-# MAGIC DESCRIBE TABLE demo_heart_bronze
+# MAGIC DESCRIBE TABLE dataops_olympics.default.demo_heart_bronze
 
 # COMMAND ----------
 
@@ -138,19 +133,82 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. Medallion Architecture (Bronze → Silver → Gold)
+# MAGIC ## 5. Spark Declarative Pipelines (The Modern Way)
 # MAGIC
-# MAGIC > **Say this:** "The standard pattern in data engineering is the Medallion Architecture.
-# MAGIC > Bronze is raw data. Silver is cleaned. Gold is business-ready aggregations.
-# MAGIC > Let me build all three layers in 60 seconds."
+# MAGIC > **Say this:** "Now here's the modern approach to building medallion pipelines.
+# MAGIC > Instead of writing imperative Spark code, we **declare** our tables and let
+# MAGIC > Databricks handle the orchestration. This is called Spark Declarative Pipelines —
+# MAGIC > it used to be called Delta Live Tables (DLT)."
+# MAGIC
+# MAGIC > "With SDP, you define WHAT you want, not HOW to run it. You also get
+# MAGIC > built-in data quality expectations — like unit tests for your data."
+# MAGIC
+# MAGIC Let me show you what an SDP pipeline notebook looks like:
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### SDP Pipeline Definition (What it looks like)
+# MAGIC
+# MAGIC ```python
+# MAGIC import dlt
+# MAGIC from pyspark.sql.functions import *
+# MAGIC
+# MAGIC # BRONZE: Raw ingestion from Volume
+# MAGIC @dlt.table(comment="Raw heart disease data from UCI dataset")
+# MAGIC def heart_bronze():
+# MAGIC     return (spark.read
+# MAGIC         .format("csv")
+# MAGIC         .option("header", "true")
+# MAGIC         .option("inferSchema", "true")
+# MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"))
+# MAGIC
+# MAGIC # SILVER: Cleaned with data quality expectations
+# MAGIC @dlt.table(comment="Cleaned heart disease data with quality checks")
+# MAGIC @dlt.expect_or_drop("valid_age", "age BETWEEN 1 AND 120")
+# MAGIC @dlt.expect_or_drop("valid_bp", "trestbps BETWEEN 50 AND 300")
+# MAGIC @dlt.expect("valid_cholesterol", "chol BETWEEN 50 AND 600")
+# MAGIC def heart_silver():
+# MAGIC     return dlt.read("heart_bronze").withColumn("ingested_at", current_timestamp())
+# MAGIC
+# MAGIC # GOLD: Business-ready aggregation
+# MAGIC @dlt.table(comment="Heart disease metrics by age group")
+# MAGIC def heart_gold():
+# MAGIC     return (dlt.read("heart_silver")
+# MAGIC         .withColumn("age_group",
+# MAGIC             when(col("age") < 40, "1. Under 40")
+# MAGIC             .when(col("age") < 50, "2. 40-49")
+# MAGIC             .when(col("age") < 60, "3. 50-59")
+# MAGIC             .otherwise("4. 60+"))
+# MAGIC         .groupBy("age_group", "target")
+# MAGIC         .agg(
+# MAGIC             count("*").alias("patients"),
+# MAGIC             round(avg("chol"), 1).alias("avg_cholesterol"),
+# MAGIC             round(avg("trestbps"), 1).alias("avg_blood_pressure"),
+# MAGIC             round(avg("thalach"), 1).alias("avg_max_heart_rate")))
+# MAGIC ```
+# MAGIC
+# MAGIC > **Say this:** "Notice three things:
+# MAGIC > 1. Each table is a Python function decorated with `@dlt.table`
+# MAGIC > 2. Silver has `@dlt.expect` — these are data quality rules. If age is invalid, the row is dropped.
+# MAGIC > 3. No `write` calls — the pipeline handles all the orchestration."
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Let's Build the Medallion with SQL (Interactive Demo)
+# MAGIC
+# MAGIC > **Say this:** "Since we can't run an SDP pipeline interactively in this notebook,
+# MAGIC > let me show you the equivalent medallion flow in SQL — same logic, same result.
+# MAGIC > In the competition, you'll create an actual SDP pipeline."
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- SILVER: Clean the data (remove invalid records)
-# MAGIC CREATE OR REPLACE TABLE demo_heart_silver AS
-# MAGIC SELECT *
-# MAGIC FROM demo_heart_bronze
+# MAGIC -- SILVER: Clean the data (same logic as @dlt.expect_or_drop)
+# MAGIC CREATE OR REPLACE TABLE dataops_olympics.default.demo_heart_silver AS
+# MAGIC SELECT *, current_timestamp() as ingested_at
+# MAGIC FROM dataops_olympics.default.demo_heart_bronze
 # MAGIC WHERE age BETWEEN 1 AND 120
 # MAGIC   AND trestbps BETWEEN 50 AND 300
 # MAGIC   AND chol BETWEEN 50 AND 600
@@ -159,15 +217,16 @@ print("Saved as Delta table: demo_heart_bronze")
 
 # MAGIC %sql
 # MAGIC SELECT
-# MAGIC   (SELECT COUNT(*) FROM demo_heart_bronze) as bronze_rows,
-# MAGIC   (SELECT COUNT(*) FROM demo_heart_silver) as silver_rows,
-# MAGIC   (SELECT COUNT(*) FROM demo_heart_bronze) - (SELECT COUNT(*) FROM demo_heart_silver) as rows_removed
+# MAGIC   (SELECT COUNT(*) FROM dataops_olympics.default.demo_heart_bronze) as bronze_rows,
+# MAGIC   (SELECT COUNT(*) FROM dataops_olympics.default.demo_heart_silver) as silver_rows,
+# MAGIC   (SELECT COUNT(*) FROM dataops_olympics.default.demo_heart_bronze) -
+# MAGIC   (SELECT COUNT(*) FROM dataops_olympics.default.demo_heart_silver) as rows_filtered
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- GOLD: Business-ready aggregation
-# MAGIC CREATE OR REPLACE TABLE demo_heart_gold AS
+# MAGIC CREATE OR REPLACE TABLE dataops_olympics.default.demo_heart_gold AS
 # MAGIC SELECT
 # MAGIC     CASE
 # MAGIC         WHEN age < 40 THEN '1. Under 40'
@@ -180,20 +239,21 @@ print("Saved as Delta table: demo_heart_bronze")
 # MAGIC     ROUND(AVG(chol), 1) as avg_cholesterol,
 # MAGIC     ROUND(AVG(trestbps), 1) as avg_blood_pressure,
 # MAGIC     ROUND(AVG(thalach), 1) as avg_max_heart_rate
-# MAGIC FROM demo_heart_silver
+# MAGIC FROM dataops_olympics.default.demo_heart_silver
 # MAGIC GROUP BY 1, 2
 # MAGIC ORDER BY 1, 2
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT * FROM demo_heart_gold
+# MAGIC SELECT * FROM dataops_olympics.default.demo_heart_gold
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > **Say this:** "Three SQL statements. Raw → Clean → Aggregated. That's the Medallion
-# MAGIC > Architecture. In production, this runs on a schedule. Today, you'll build it by hand."
+# MAGIC > **Say this:** "Three tables. Raw → Clean → Aggregated. That's the Medallion
+# MAGIC > Architecture. With SDP, Databricks manages dependencies, retries, and scheduling.
+# MAGIC > You just declare the tables and the quality rules."
 
 # COMMAND ----------
 
@@ -206,14 +266,13 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- "Oops" — overwrite with garbage
-# MAGIC INSERT OVERWRITE demo_heart_silver SELECT * FROM demo_heart_bronze WHERE age < 0
+# MAGIC INSERT OVERWRITE dataops_olympics.default.demo_heart_silver
+# MAGIC SELECT *, current_timestamp() as ingested_at FROM dataops_olympics.default.demo_heart_bronze WHERE age < 0
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- The table looks empty!
-# MAGIC SELECT COUNT(*) as current_rows FROM demo_heart_silver
+# MAGIC SELECT COUNT(*) as current_rows FROM dataops_olympics.default.demo_heart_silver
 
 # COMMAND ----------
 
@@ -224,20 +283,17 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Time travel: see the version history
-# MAGIC DESCRIBE HISTORY demo_heart_silver
+# MAGIC DESCRIBE HISTORY dataops_olympics.default.demo_heart_silver
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Restore to the previous version
-# MAGIC RESTORE TABLE demo_heart_silver TO VERSION AS OF 0
+# MAGIC RESTORE TABLE dataops_olympics.default.demo_heart_silver TO VERSION AS OF 0
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Data is back!
-# MAGIC SELECT COUNT(*) as restored_rows FROM demo_heart_silver
+# MAGIC SELECT COUNT(*) as restored_rows FROM dataops_olympics.default.demo_heart_silver
 
 # COMMAND ----------
 
@@ -253,17 +309,19 @@ print("Saved as Delta table: demo_heart_bronze")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DROP TABLE IF EXISTS demo_heart_bronze;
-# MAGIC DROP TABLE IF EXISTS demo_heart_silver;
-# MAGIC DROP TABLE IF EXISTS demo_heart_gold;
+# MAGIC DROP TABLE IF EXISTS dataops_olympics.default.demo_heart_bronze;
+# MAGIC DROP TABLE IF EXISTS dataops_olympics.default.demo_heart_silver;
+# MAGIC DROP TABLE IF EXISTS dataops_olympics.default.demo_heart_gold;
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Key Takeaways for Participants
 # MAGIC
-# MAGIC 1. **Spark reads any format** — CSV, JSON, Parquet, etc. with one line
-# MAGIC 2. **Delta Lake** = ACID transactions + time travel + schema enforcement
-# MAGIC 3. **Unity Catalog governance** = table/column comments so your data is self-documenting
-# MAGIC 4. **Medallion Architecture** = Bronze (raw) → Silver (clean) → Gold (aggregated)
-# MAGIC 5. **Use the Databricks Assistant** (`Cmd+I`) to generate all of this code from English prompts
+# MAGIC 1. **Unity Catalog Volumes** — governed cloud storage for raw files (`/Volumes/catalog/schema/volume/`)
+# MAGIC 2. **Spark reads any format** — CSV, JSON, Parquet, etc. with one line
+# MAGIC 3. **Delta Lake** = ACID transactions + time travel + schema enforcement
+# MAGIC 4. **Unity Catalog governance** = table/column comments so your data is self-documenting
+# MAGIC 5. **Spark Declarative Pipelines** = declare tables with `@dlt.table`, add quality rules with `@dlt.expect`
+# MAGIC 6. **Medallion Architecture** = Bronze (raw) → Silver (clean) → Gold (aggregated)
+# MAGIC 7. **Use the Databricks Assistant** (`Cmd+I`) to generate all of this code from English prompts

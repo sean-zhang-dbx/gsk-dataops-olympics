@@ -66,6 +66,12 @@
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE SCHEMA default;
+
+# COMMAND ----------
+
 TEAM_NAME = "_____"  # e.g., "team_01"
 
 # --- BUILD YOUR PIPELINE HERE ---
@@ -193,7 +199,7 @@ for suffix in ["_drug_bronze", "_drug_silver", "_drug_gold", "_drugs_bronze", "_
         tbl = f"{TEAM_NAME}{suffix}"
         cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM {tbl}").collect()[0].cnt
         pipeline_tables.append((tbl, cnt))
-    except:
+    except Exception:
         pass
 
 if len(pipeline_tables) >= 2:
@@ -213,7 +219,7 @@ else:
                 cnt = spark.sql(f"SELECT COUNT(*) FROM {t.tableName}").collect()[0][0]
                 print(f"    - {t.tableName}: {cnt} rows")
                 score += 2
-    except:
+    except Exception:
         pass
 
 if score == 0:

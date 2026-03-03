@@ -29,7 +29,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 # COMMAND ----------
 

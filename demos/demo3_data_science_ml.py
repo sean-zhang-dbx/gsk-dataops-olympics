@@ -34,7 +34,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 import pandas as pd
 import numpy as np
@@ -200,7 +201,7 @@ try:
     if uc_catalog:
         spark.sql(f"CREATE SCHEMA IF NOT EXISTS {uc_catalog}.dataops_olympics")
         _model_name = f"{uc_catalog}.dataops_olympics.demo_readmission_model"
-except:
+except Exception:
     pass
 
 try:

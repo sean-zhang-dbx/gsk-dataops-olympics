@@ -46,7 +46,7 @@ df_new["smoking_status"] = np.random.choice([0, 1, 2], len(df_new), p=[0.4, 0.35
 df_new = df_new.drop(columns=["thal"])
 
 # Save as the "new source"
-new_path = "/tmp/dataops_olympics/raw/heart_disease/heart_v2.csv"
+new_path = "/Volumes/dataops_olympics/default/raw_data/heart_disease/heart_v2.csv"
 df_new.to_csv(new_path, index=False)
 
 sdf_new = spark.createDataFrame(df_new)

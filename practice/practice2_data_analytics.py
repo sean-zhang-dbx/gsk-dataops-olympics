@@ -22,7 +22,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 # COMMAND ----------
 
@@ -140,7 +141,7 @@ try:
     if len(result) == 2:
         print(f"  [PASS] Prevalence query works: {result[0].cnt} healthy, {result[1].cnt} diseased")
         score += 1
-except:
+except Exception:
     print("  [FAIL] Prevalence query failed")
 
 # Check 3: Can compute by age group
@@ -155,7 +156,7 @@ try:
     if len(result) == 4:
         print(f"  [PASS] Age group analysis works ({len(result)} groups)")
         score += 1
-except:
+except Exception:
     print("  [FAIL] Age group query failed")
 
 # Check 4: Plotly is available
@@ -163,7 +164,7 @@ try:
     import plotly.express as px
     print(f"  [PASS] Plotly imported successfully")
     score += 1
-except:
+except Exception:
     print("  [FAIL] Plotly not available")
 
 print(f"\n  Score: {score}/4")

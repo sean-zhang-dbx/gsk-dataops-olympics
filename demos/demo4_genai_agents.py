@@ -30,7 +30,8 @@
 
 # COMMAND ----------
 
-spark.sql("USE dataops_olympics")
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
 
 # COMMAND ----------
 
@@ -229,7 +230,7 @@ try:
     client = chromadb.Client()
     try:
         client.delete_collection("clinical_notes")
-    except:
+    except Exception:
         pass
     collection = client.create_collection("clinical_notes")
 

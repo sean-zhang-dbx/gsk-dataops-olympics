@@ -36,6 +36,12 @@
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE SCHEMA default;
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Step 1: Verify Your Data
 # MAGIC

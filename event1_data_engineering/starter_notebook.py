@@ -6,18 +6,18 @@
 # MAGIC **Build Time: ~20 minutes**
 # MAGIC
 # MAGIC ### Objective
-# MAGIC Build a complete data pipeline that:
-# MAGIC 1. Ingests CSV and JSON healthcare data
+# MAGIC Build a complete data pipeline using **Spark Declarative Pipelines (SDP)** that:
+# MAGIC 1. Ingests CSV and JSON healthcare data from Unity Catalog Volumes
 # MAGIC 2. Creates governed Delta tables with Unity Catalog
 # MAGIC 3. Adds table and column comments for governance
-# MAGIC 4. Builds a basic medallion flow (Bronze -> Silver -> Gold)
+# MAGIC 4. Builds a Medallion flow (Bronze → Silver → Gold) with data quality expectations
 # MAGIC
 # MAGIC ### How You Win
 # MAGIC **First team to complete all steps wins Gold!**
 # MAGIC
-# MAGIC ### Datasets
-# MAGIC - **Heart Disease** (`/tmp/dataops_olympics/raw/heart_disease/heart.csv`) — 500 rows CSV
-# MAGIC - **Life Expectancy** (`/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json`) — 100 rows JSON
+# MAGIC ### Datasets (in Unity Catalog Volumes)
+# MAGIC - **Heart Disease** (`/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv`) — 500 rows CSV
+# MAGIC - **Life Expectancy** (`/Volumes/dataops_olympics/default/raw_data/life_expectancy/life_expectancy_sample.json`) — 100 rows JSON
 # MAGIC
 # MAGIC > **Tip:** Use the Databricks Assistant (`Cmd+I`) to generate code from prompts!
 # MAGIC
@@ -27,43 +27,42 @@
 # MAGIC
 # MAGIC | Task | Prompt to Try |
 # MAGIC |------|--------------|
-# MAGIC | **Read CSV** | "Read the CSV at `file:/tmp/dataops_olympics/raw/heart_disease/heart.csv` with headers and infer schema into a DataFrame" |
-# MAGIC | **Create Delta** | "Write this DataFrame as a Delta table called `team_XX_heart_disease`" |
-# MAGIC | **Add governance** | "Add a table comment and column comments for age, chol, and target on the `team_XX_heart_disease` table" |
-# MAGIC | **Silver table** | "Create a Silver table from `team_XX_heart_disease` that filters out rows with age outside 0-120 or blood pressure outside 50-300" |
-# MAGIC | **Gold table** | "Create a Gold aggregation table from the Silver table grouped by age group and heart disease status with avg cholesterol" |
+# MAGIC | **Read CSV** | "Read the CSV at `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv` with headers and infer schema" |
+# MAGIC | **Create Delta** | "Write this DataFrame as a Delta table called `dataops_olympics.default.team_XX_heart_disease`" |
+# MAGIC | **Add governance** | "Add a table comment and column comments for age, chol, and target" |
+# MAGIC | **SDP Pipeline** | "Create a Spark Declarative Pipeline notebook with Bronze, Silver (with expectations), and Gold tables for heart disease data" |
 # MAGIC | **Explain code** | Select any cell and ask "Explain what this code does" |
-# MAGIC
-# MAGIC *The more context you give the Assistant (table names, column meanings, what output you want), the better the result.*
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE SCHEMA default;
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Step 1: Ingest CSV Data (Heart Disease)
 # MAGIC
-# MAGIC **TODO:** Read the Heart Disease CSV file and create a Delta table.
+# MAGIC **TODO:** Read the Heart Disease CSV file from the Volume and create a Delta table.
 
 # COMMAND ----------
 
-# TODO: Read the heart disease CSV into a Spark DataFrame
-# Hint: spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(...)
-
 TEAM_NAME = "_____"  # e.g., "team_01"
 
-csv_path = "file:/tmp/dataops_olympics/raw/heart_disease/heart.csv"
+csv_path = "/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"
 
+# TODO: Read the heart disease CSV into a Spark DataFrame
+# Hint: spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(csv_path)
 df_heart = _____  # YOUR CODE HERE
 
 display(df_heart)
 
 # COMMAND ----------
 
-# TODO: Write as a Delta table
-# Hint: df.write.format("delta").mode("overwrite").saveAsTable("table_name")
-
-df_heart.write.format("delta").mode("overwrite").saveAsTable(f"{TEAM_NAME}_heart_disease")
-
-print(f"Created table: {TEAM_NAME}_heart_disease")
+# TODO: Write as a Delta table with fully qualified name
+df_heart.write.format("delta").mode("overwrite").saveAsTable(f"dataops_olympics.default.{TEAM_NAME}_heart_disease")
+print(f"Created table: dataops_olympics.default.{TEAM_NAME}_heart_disease")
 
 # COMMAND ----------
 
@@ -74,13 +73,12 @@ print(f"Created table: {TEAM_NAME}_heart_disease")
 
 # COMMAND ----------
 
-# TODO: Read the JSON file and write as Delta
-json_path = "file:/tmp/dataops_olympics/raw/life_expectancy/life_expectancy_sample.json"
+json_path = "/Volumes/dataops_olympics/default/raw_data/life_expectancy/life_expectancy_sample.json"
 
-df_life = _____  # YOUR CODE HERE — Hint: use .option("multiLine", "true") for JSON arrays
+# TODO: Read the JSON file — Hint: use .option("multiLine", "true") for JSON arrays
+df_life = _____  # YOUR CODE HERE
 
-df_life.write.format("delta").mode("overwrite").saveAsTable(f"{TEAM_NAME}_life_expectancy")
-
+df_life.write.format("delta").mode("overwrite").saveAsTable(f"dataops_olympics.default.{TEAM_NAME}_life_expectancy")
 display(df_life)
 
 # COMMAND ----------
@@ -93,55 +91,88 @@ display(df_life)
 
 # COMMAND ----------
 
-# TODO: Add table-level comments
 spark.sql(f"""
-    ALTER TABLE {TEAM_NAME}_heart_disease
+    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease
     SET TBLPROPERTIES ('comment' = '______')
 """)
 
-# TODO: Add column-level comments (at least 3)
-spark.sql(f"ALTER TABLE {TEAM_NAME}_heart_disease ALTER COLUMN age COMMENT '______'")
-spark.sql(f"ALTER TABLE {TEAM_NAME}_heart_disease ALTER COLUMN chol COMMENT '______'")
-spark.sql(f"ALTER TABLE {TEAM_NAME}_heart_disease ALTER COLUMN target COMMENT '______'")
+spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease ALTER COLUMN age COMMENT '______'")
+spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease ALTER COLUMN chol COMMENT '______'")
+spark.sql(f"ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease ALTER COLUMN target COMMENT '______'")
 
 print("Governance comments added!")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 4: Build a Medallion Flow (Bronze -> Silver -> Gold)
+# MAGIC ## Step 4: Build a Medallion Pipeline
 # MAGIC
-# MAGIC **TODO:** Transform raw data through medallion layers.
+# MAGIC ### Option A: Spark Declarative Pipelines (Recommended)
 # MAGIC
-# MAGIC - **Bronze:** Raw ingested data (already done above)
-# MAGIC - **Silver:** Cleaned data — remove invalid records, standardize types
-# MAGIC - **Gold:** Aggregated/business-ready data
+# MAGIC Create a **new notebook** with the SDP pipeline definition below, then create a Pipeline
+# MAGIC in the Databricks UI to run it.
+# MAGIC
+# MAGIC ```python
+# MAGIC import dlt
+# MAGIC from pyspark.sql.functions import *
+# MAGIC
+# MAGIC TEAM_NAME = "team_XX"  # Change this!
+# MAGIC
+# MAGIC @dlt.table(comment="Raw heart disease data from UCI dataset")
+# MAGIC def heart_bronze():
+# MAGIC     return (spark.read
+# MAGIC         .format("csv")
+# MAGIC         .option("header", "true")
+# MAGIC         .option("inferSchema", "true")
+# MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv"))
+# MAGIC
+# MAGIC @dlt.table(comment="Cleaned heart disease data")
+# MAGIC @dlt.expect_or_drop("valid_age", "age BETWEEN 1 AND 120")
+# MAGIC @dlt.expect_or_drop("valid_bp", "trestbps BETWEEN 50 AND 300")
+# MAGIC @dlt.expect("valid_cholesterol", "chol BETWEEN 50 AND 600")
+# MAGIC def heart_silver():
+# MAGIC     return dlt.read("heart_bronze").withColumn("ingested_at", current_timestamp())
+# MAGIC
+# MAGIC @dlt.table(comment="Heart disease metrics by age group")
+# MAGIC def heart_gold():
+# MAGIC     return (dlt.read("heart_silver")
+# MAGIC         .withColumn("age_group",
+# MAGIC             when(col("age") < 40, "Under 40")
+# MAGIC             .when(col("age") < 50, "40-49")
+# MAGIC             .when(col("age") < 60, "50-59")
+# MAGIC             .otherwise("60+"))
+# MAGIC         .groupBy("age_group", "target")
+# MAGIC         .agg(
+# MAGIC             count("*").alias("patient_count"),
+# MAGIC             round(avg("chol"), 1).alias("avg_cholesterol"),
+# MAGIC             round(avg("trestbps"), 1).alias("avg_blood_pressure"),
+# MAGIC             round(avg("thalach"), 1).alias("avg_max_heart_rate")))
+# MAGIC ```
+# MAGIC
+# MAGIC ### Option B: Interactive SQL (If Pipeline not available)
+# MAGIC
+# MAGIC If you can't create an SDP pipeline, build the medallion with SQL:
 
 # COMMAND ----------
 
-# TODO: Create Silver table — clean the heart disease data
-# Hints:
-#   - Filter out rows where age < 0 or age > 120
-#   - Filter out rows where trestbps (resting blood pressure) > 300 or < 50
-#   - Cast columns to proper types if needed
-
-df_silver = spark.sql(f"""
+# Silver table — clean the data (same logic as SDP expectations)
+spark.sql(f"""
+    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease_silver AS
     SELECT *
-    FROM {TEAM_NAME}_heart_disease
-    WHERE _____
+    FROM dataops_olympics.default.{TEAM_NAME}_heart_disease
+    WHERE age BETWEEN 1 AND 120
+      AND trestbps BETWEEN 50 AND 300
+      AND chol BETWEEN 50 AND 600
 """)
 
-df_silver.write.format("delta").mode("overwrite").saveAsTable(f"{TEAM_NAME}_heart_disease_silver")
-
-print(f"Silver table: {df_silver.count()} rows (cleaned from raw)")
+silver_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_disease_silver").count()
+print(f"Silver table: {silver_count} rows (cleaned from raw)")
 
 # COMMAND ----------
 
-# TODO: Create Gold table — aggregated view for analytics
-# Hint: Aggregate by age group and heart disease status
-
+# Gold table — aggregated view for analytics
 spark.sql(f"""
-    CREATE OR REPLACE TABLE {TEAM_NAME}_heart_disease_gold AS
+    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_disease_gold AS
     SELECT
         CASE
             WHEN age < 40 THEN 'Under 40'
@@ -154,12 +185,12 @@ spark.sql(f"""
         AVG(chol) as avg_cholesterol,
         AVG(trestbps) as avg_blood_pressure,
         AVG(thalach) as avg_max_heart_rate
-    FROM {TEAM_NAME}_heart_disease_silver
+    FROM dataops_olympics.default.{TEAM_NAME}_heart_disease_silver
     GROUP BY 1, 2
     ORDER BY 1, 2
 """)
 
-display(spark.table(f"{TEAM_NAME}_heart_disease_gold"))
+display(spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_disease_gold"))
 
 # COMMAND ----------
 
@@ -177,49 +208,44 @@ print("=" * 60)
 checks = []
 score = 0
 
-# Check 1: Heart disease table
 try:
-    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM {TEAM_NAME}_heart_disease").collect()[0].cnt
+    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM dataops_olympics.default.{TEAM_NAME}_heart_disease").collect()[0].cnt
     checks.append(f"  Bronze (heart_disease): {cnt} rows")
     score += 1
-except:
-    checks.append("  Bronze (heart_disease): MISSING")
+except Exception as e:
+    checks.append(f"  Bronze (heart_disease): MISSING - {e}")
 
-# Check 2: Life expectancy table
 try:
-    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM {TEAM_NAME}_life_expectancy").collect()[0].cnt
+    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM dataops_olympics.default.{TEAM_NAME}_life_expectancy").collect()[0].cnt
     checks.append(f"  Bronze (life_expectancy): {cnt} rows")
     score += 1
-except:
-    checks.append("  Bronze (life_expectancy): MISSING")
+except Exception as e:
+    checks.append(f"  Bronze (life_expectancy): MISSING - {e}")
 
-# Check 3: Silver table
 try:
-    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM {TEAM_NAME}_heart_disease_silver").collect()[0].cnt
+    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM dataops_olympics.default.{TEAM_NAME}_heart_disease_silver").collect()[0].cnt
     checks.append(f"  Silver (cleaned): {cnt} rows")
     score += 1
-except:
-    checks.append("  Silver table: MISSING")
+except Exception as e:
+    checks.append(f"  Silver table: MISSING - {e}")
 
-# Check 4: Gold table
 try:
-    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM {TEAM_NAME}_heart_disease_gold").collect()[0].cnt
+    cnt = spark.sql(f"SELECT COUNT(*) as cnt FROM dataops_olympics.default.{TEAM_NAME}_heart_disease_gold").collect()[0].cnt
     checks.append(f"  Gold (aggregated): {cnt} rows")
     score += 1
-except:
-    checks.append("  Gold table: MISSING")
+except Exception as e:
+    checks.append(f"  Gold table: MISSING - {e}")
 
-# Check 5: Governance
 try:
-    props = spark.sql(f"DESCRIBE TABLE EXTENDED {TEAM_NAME}_heart_disease").collect()
+    props = spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_disease").collect()
     has_comment = any("comment" in str(row).lower() and row[1] and len(str(row[1])) > 5 for row in props)
     if has_comment:
         checks.append("  Governance: Comments configured")
         score += 1
     else:
         checks.append("  Governance: Comments NOT found")
-except:
-    checks.append("  Governance: Could not verify")
+except Exception as e:
+    checks.append(f"  Governance: Could not verify - {e}")
 
 for c in checks:
     print(c)
@@ -236,8 +262,8 @@ print("=" * 60)
 # MAGIC
 # MAGIC Finished early? Try these with the Databricks Assistant:
 # MAGIC
-# MAGIC 1. **Liquid Clustering** — Ask: *"Alter the Silver table to use liquid clustering on age and target columns"*
-# MAGIC 2. **Change Data Feed** — Ask: *"Enable Change Data Feed on the Silver table and show me how to query the changes"*
-# MAGIC 3. **Time Travel** — Ask: *"Show me how to query the previous version of my Silver table using Delta time travel"*
-# MAGIC 4. **AI Functions** — Ask: *"Use ai_classify() in SQL to classify heart disease risk as 'High', 'Medium', 'Low' based on the cholesterol and age columns"*
-# MAGIC 5. **Data Quality Dashboard** — Ask: *"Create a data quality report showing null counts, value ranges, and outliers for each column in the Silver table"*
+# MAGIC 1. **Create an actual SDP Pipeline** — Create a new notebook with the `@dlt.table` code from Step 4, then go to Workflows > Pipelines > Create Pipeline
+# MAGIC 2. **Liquid Clustering** — Ask: *"Alter the Silver table to use liquid clustering on age and target columns"*
+# MAGIC 3. **Change Data Feed** — Ask: *"Enable Change Data Feed on the Silver table and show me how to query the changes"*
+# MAGIC 4. **Time Travel** — Ask: *"Show me how to query the previous version of my Silver table using Delta time travel"*
+# MAGIC 5. **AI Functions** — Ask: *"Use ai_classify() in SQL to classify heart disease risk as 'High', 'Medium', 'Low' based on the cholesterol and age columns"*

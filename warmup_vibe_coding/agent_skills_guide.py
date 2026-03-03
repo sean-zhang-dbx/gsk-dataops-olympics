@@ -105,7 +105,7 @@
 # This cell has bugs — run it, then ask the Assistant to fix it!
 from pyspark.sql import function as F  # wrong import name
 
-df_test = spark.read.format("csv").option("headers", "true").load("file:/tmp/dataops_olympics/raw/heart_disease/heart.csv")  # wrong option name
+df_test = spark.read.format("csv").option("headers", "true").load("/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv")  # wrong option name
 
 df_test = df_test.withColumn("age_group"
     F.when(F.col("age") < 40, "Under 40")
