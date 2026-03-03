@@ -49,6 +49,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, classification_report, confusion_matrix, roc_auc_score
 import mlflow
 import mlflow.sklearn
+from mlflow.models import infer_signature
 
 # Load the dataset
 df = spark.table("diabetes_readmission").toPandas()
@@ -154,8 +155,9 @@ with mlflow.start_run(run_name=f"{TEAM_NAME}_attempt_1"):
     mlflow.log_metric("f1_score", f1)
     mlflow.log_metric("auc_roc", auc)
 
-    # Log the model
-    mlflow.sklearn.log_model(model, "model")
+    # Log the model (signature required for UC Model Registry)
+    sig = infer_signature(X_train, model.predict(X_train))
+    mlflow.sklearn.log_model(model, "model", signature=sig, input_example=X_test[:3])
 
     print(f"F1 Score: {f1:.4f}")
     print(f"AUC-ROC:  {auc:.4f}")
@@ -173,11 +175,19 @@ with mlflow.start_run(run_name=f"{TEAM_NAME}_attempt_1"):
 
 # TODO: Register the model
 # Option 1: From the MLflow UI — click "Register Model" on your best run
-# Option 2: Programmatically:
+# Option 2: Programmatically (Unity Catalog requires 3-level names):
 
-# run_id = mlflow.active_run().info.run_id  # or get from MLflow UI
+# run_id = "YOUR_RUN_ID"  # Copy from the MLflow experiment UI
 # model_uri = f"runs:/{run_id}/model"
-# mlflow.register_model(model_uri, f"{TEAM_NAME}_readmission_model")
+#
+# Auto-detect a catalog for registration:
+# catalogs = [r.catalog for r in spark.sql("SHOW CATALOGS").collect()]
+# uc_catalog = next((c for c in catalogs if "sandbox" in c.lower()), None)
+# if uc_catalog:
+#     model_name = f"{uc_catalog}.dataops_olympics.{TEAM_NAME}_readmission_model"
+# else:
+#     model_name = f"{TEAM_NAME}_readmission_model"
+# mlflow.register_model(model_uri, model_name)
 
 # YOUR CODE HERE
 
