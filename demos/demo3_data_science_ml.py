@@ -122,7 +122,7 @@ with mlflow.start_run(run_name="logistic_regression"):
     y_pred = model_lr.predict(X_test)
     f1_lr = f1_score(y_test, y_pred)
     sig = infer_signature(X_train, y_pred)
-    mlflow.log_params({"model": "LogisticRegression", "max_iter": 1000})
+    mlflow.log_params({"model": "LogisticRegression", "max_iter": 2000})
     mlflow.log_metric("f1_score", f1_lr)
     mlflow.sklearn.log_model(model_lr, "model", signature=sig, input_example=X_test[:3])
     print(f"Logistic Regression — F1: {f1_lr:.4f}")

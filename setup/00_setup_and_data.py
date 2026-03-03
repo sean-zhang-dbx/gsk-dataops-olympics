@@ -328,7 +328,10 @@ import json as _json
 with open(f"{VOLUME_PATH}/clinical_notes/clinical_notes.json", "r") as _f:
     _notes = _json.load(_f)
 import pandas as _pd
-sdf = spark.createDataFrame(_pd.DataFrame(_notes))
+_df_notes = _pd.DataFrame(_notes)
+if "note_id" not in _df_notes.columns:
+    _df_notes.insert(0, "note_id", [f"NOTE_{i+1:03d}" for i in range(len(_df_notes))])
+sdf = spark.createDataFrame(_df_notes)
 sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.clinical_notes")
 print(f"  clinical_notes: {sdf.count()} rows")
 

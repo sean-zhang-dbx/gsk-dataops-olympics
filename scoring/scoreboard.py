@@ -14,6 +14,11 @@
 
 # COMMAND ----------
 
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
+
+# COMMAND ----------
+
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -361,8 +366,8 @@ print("=" * 60)
 
 # Save final results as Delta table
 df_results = spark.createDataFrame(scoreboard_sorted.reset_index())
-df_results.write.format("delta").mode("overwrite").saveAsTable("dataops_olympics_results")
-print("✅ Results saved to 'dataops_olympics_results' table")
+df_results.write.format("delta").mode("overwrite").saveAsTable("dataops_olympics.default.dataops_olympics_results")
+print("Results saved to 'dataops_olympics.default.dataops_olympics_results' table")
 
 # COMMAND ----------
 
@@ -373,19 +378,20 @@ print("✅ Results saved to 'dataops_olympics_results' table")
 
 for i, (_, row) in enumerate(scoreboard_sorted.head(3).iterrows()):
     place = ["FIRST", "SECOND", "THIRD"][i]
-    medal = ["🥇", "🥈", "🥉"][i]
+    medal = ["GOLD", "SILVER", "BRONZE"][i]
+    score_str = f"{row['total']:.1f}"
     
-    print("╔" + "═" * 58 + "╗")
-    print(f"║{' ' * 58}║")
-    print(f"║{' '*10}DATAOPS OLYMPICS CERTIFICATE{' '*20}║")
-    print(f"║{' ' * 58}║")
-    print(f"║{' '*5}{medal} {place} PLACE {medal}{' '*(45-len(place))}║")
-    print(f"║{' ' * 58}║")
-    print(f"║{' '*5}Awarded to: {row['team']:<42}║")
-    print(f"║{' '*5}Score: {row['total']:.1f} points{' '*(42-len(f'{row[chr(39)+chr(39)}:.1f}'))}║")
-    print(f"║{' ' * 58}║")
-    print(f"║{' '*5}GSK India x Databricks{' '*31}║")
-    print(f"║{' '*5}{datetime.now().strftime('%B %d, %Y'):<48}║")
-    print(f"║{' ' * 58}║")
-    print("╚" + "═" * 58 + "╝")
+    print("+" + "=" * 58 + "+")
+    print(f"|{' ' * 58}|")
+    print(f"|{' '*10}DATAOPS OLYMPICS CERTIFICATE{' '*20}|")
+    print(f"|{' ' * 58}|")
+    print(f"|{' '*5}{medal} - {place} PLACE{' '*(46-len(place)-len(medal))}|")
+    print(f"|{' ' * 58}|")
+    print(f"|{' '*5}Awarded to: {row['team']:<42}|")
+    print(f"|{' '*5}Score: {score_str} points{' '*(46-len(score_str))}|")
+    print(f"|{' ' * 58}|")
+    print(f"|{' '*5}GSK India x Databricks{' '*31}|")
+    print(f"|{' '*5}{datetime.now().strftime('%B %d, %Y'):<48}|")
+    print(f"|{' ' * 58}|")
+    print("+" + "=" * 58 + "+")
     print()
