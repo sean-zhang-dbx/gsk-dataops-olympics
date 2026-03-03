@@ -2,18 +2,18 @@
 # MAGIC %md
 # MAGIC # Practice 3: Machine Learning with MLflow
 # MAGIC
-# MAGIC **Time: ~10 minutes** | Fill in the blanks, run each cell, check your work at the end.
+# MAGIC **Time: ~10 minutes** | Use the Databricks Assistant to generate all your code from the business requirements.
 # MAGIC
 # MAGIC You just saw the lightning talk — now try it yourself!
-# MAGIC Fill in the `_____` blanks below. Use the **Databricks Assistant** (`Cmd+I`) if you get stuck.
+# MAGIC Each exercise describes **what** needs to happen. Use `Cmd+I` to prompt the Assistant.
 # MAGIC
 # MAGIC ---
 # MAGIC
 # MAGIC ### What You'll Do
-# MAGIC 1. Load the diabetes readmission dataset
-# MAGIC 2. Split into train/test
-# MAGIC 3. Train a RandomForest model with MLflow tracking
-# MAGIC 4. Check your F1 score
+# MAGIC 1. Load the diabetes readmission dataset and define features/target
+# MAGIC 2. Train a RandomForest model with MLflow tracking
+# MAGIC 3. Visualize feature importance
+# MAGIC 4. Register the model
 # MAGIC 5. Run the validation check
 
 # COMMAND ----------
@@ -36,7 +36,7 @@ import mlflow.sklearn
 from mlflow.models import infer_signature
 
 df = spark.table("diabetes_readmission").toPandas()
-print(f"Loaded {df.shape[0]} patients × {df.shape[1]} features")
+print(f"Loaded {df.shape[0]} patients x {df.shape[1]} features")
 print(f"Readmission rate: {df['readmission_risk'].mean():.1%}")
 
 # COMMAND ----------
@@ -44,117 +44,76 @@ print(f"Readmission rate: {df['readmission_risk'].mean():.1%}")
 # MAGIC %md
 # MAGIC ## Exercise 1: Define Features and Split
 # MAGIC
-# MAGIC Fill in the target column name. The column we want to predict is `readmission_risk`.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC **Hint:** Look at the column names printed above.
+# MAGIC > From the `diabetes_readmission` dataset, define the feature columns
+# MAGIC > (pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi,
+# MAGIC > diabetes_pedigree, age) and the target column (`readmission_risk`).
+# MAGIC >
+# MAGIC > Split the data into 80% training and 20% test sets using
+# MAGIC > `random_state=42` and stratify by the target column.
+# MAGIC > Print the sizes of each split.
 
 # COMMAND ----------
 
-feature_cols = ["pregnancies", "glucose", "blood_pressure", "skin_thickness",
-                "insulin", "bmi", "diabetes_pedigree", "age"]
+# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
 
-X = df[feature_cols]
-
-# FILL IN: Replace _____ with the target column name
-y = df["_____"]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42, stratify=y
-)
-print(f"Train: {len(X_train)} | Test: {len(X_test)}")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Exercise 2: Train a Model with MLflow
 # MAGIC
-# MAGIC Fill in the model constructor. We'll use a RandomForestClassifier.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC **Hint:** `RandomForestClassifier(n_estimators=100, random_state=42)`
+# MAGIC > Train a `RandomForestClassifier` with 100 trees and `random_state=42`.
+# MAGIC > Use MLflow to track the experiment:
+# MAGIC > - Set the experiment path to `/Users/{your_email}/practice_ml`
+# MAGIC > - Log the model type and hyperparameters
+# MAGIC > - Log the F1 score metric
+# MAGIC > - Log the model with a signature (use `infer_signature`)
+# MAGIC >
+# MAGIC > Print the F1 score and classification report.
 
 # COMMAND ----------
 
-_user = spark.sql("SELECT current_user()").collect()[0][0]
-mlflow.set_experiment(f"/Users/{_user}/practice_ml")
+# YOUR CODE HERE
 
-with mlflow.start_run(run_name="practice_random_forest"):
-    # FILL IN: Replace _____ with RandomForestClassifier(n_estimators=100, random_state=42)
-    model = _____
-
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    f1 = f1_score(y_test, y_pred)
-
-    sig = infer_signature(X_train, model.predict(X_train))
-    mlflow.log_param("model", "RandomForest")
-    mlflow.log_param("n_estimators", 100)
-    mlflow.log_metric("f1_score", f1)
-    mlflow.sklearn.log_model(model, "model", signature=sig, input_example=X_test[:3])
-
-    print(f"F1 Score: {f1:.4f}")
-    print(f"\n{classification_report(y_test, y_pred)}")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Exercise 3: Feature Importance
 # MAGIC
-# MAGIC Fill in the correct attribute to get feature importances from the trained model.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC **Hint:** RandomForest models have a `.feature_importances_` attribute.
+# MAGIC > Create a Plotly bar chart showing which features are most important
+# MAGIC > for predicting readmission risk. Use the trained model's
+# MAGIC > `feature_importances_` attribute. Label axes clearly.
 
 # COMMAND ----------
 
-import plotly.express as px
+# YOUR CODE HERE
 
-# FILL IN: Replace _____ with model.feature_importances_
-importances = _____
-
-fig = px.bar(x=feature_cols, y=importances,
-             title="Which Features Predict Readmission?",
-             labels={"x": "Feature", "y": "Importance"},
-             template="plotly_white")
-fig.update_layout(xaxis_tickangle=-45)
-fig.show()
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Exercise 4: Register the Model
 # MAGIC
-# MAGIC Fill in the function name to register the model.
+# MAGIC ### Business Requirement
 # MAGIC
-# MAGIC **Hint:** Use `mlflow.register_model(model_uri, model_name)`
+# MAGIC > Register your trained model in the MLflow Model Registry.
+# MAGIC > Find the best run from the experiment and register it.
+# MAGIC > Use `mlflow.register_model(model_uri, model_name)`.
+# MAGIC >
+# MAGIC > Note: Unity Catalog requires 3-level model names (catalog.schema.model).
+# MAGIC > If registration fails due to permissions, that's OK — the model is still tracked in MLflow.
 
 # COMMAND ----------
 
-run_id = mlflow.search_runs(
-    experiment_names=[f"/Users/{_user}/practice_ml"],
-    order_by=["metrics.f1_score DESC"],
-    max_results=1
-).iloc[0].run_id
+# YOUR CODE HERE
 
-model_uri = f"runs:/{run_id}/model"
-
-# Auto-detect model name (UC requires 3-level names like catalog.schema.model)
-_model_name = "practice_readmission_model"
-try:
-    catalogs = [r.catalog for r in spark.sql("SHOW CATALOGS").collect()]
-    uc_catalog = next((c for c in catalogs if "sandbox" in c.lower()), None)
-    if uc_catalog:
-        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {uc_catalog}.dataops_olympics")
-        _model_name = f"{uc_catalog}.dataops_olympics.practice_readmission_model"
-except Exception:
-    pass
-
-# FILL IN: Replace _____ with the correct MLflow function to register
-try:
-    result = mlflow._____(model_uri, _model_name)
-    print(f"Registered: {result.name} v{result.version}")
-except Exception as e:
-    print(f"Note: {str(e)[:100]}")
-    print("Model is tracked in MLflow — registration is optional.")
 
 # COMMAND ----------
 
@@ -169,7 +128,6 @@ print("=" * 55)
 
 score = 0
 
-# Check 1: Data loaded
 try:
     assert len(df) > 700
     print(f"  [PASS] Data loaded: {len(df)} rows")
@@ -177,25 +135,23 @@ try:
 except Exception:
     print("  [FAIL] Data not loaded correctly")
 
-# Check 2: Model trained
 try:
     assert hasattr(model, 'predict')
     preds = model.predict(X_test[:5])
     print(f"  [PASS] Model trained and can predict")
     score += 1
 except Exception:
-    print("  [FAIL] Model not trained")
+    print("  [FAIL] Model not trained (variable 'model' not found)")
 
-# Check 3: F1 score reasonable
 try:
     assert f1 > 0.3, f"F1 too low: {f1:.4f}"
     print(f"  [PASS] F1 score: {f1:.4f}")
     score += 1
 except Exception:
-    print(f"  [FAIL] F1 score issue: {f1:.4f}" if 'f1' in dir() else "  [FAIL] F1 not calculated")
+    print(f"  [FAIL] F1 score issue")
 
-# Check 4: MLflow experiment exists
 try:
+    _user = spark.sql("SELECT current_user()").collect()[0][0]
     runs = mlflow.search_runs(experiment_names=[f"/Users/{_user}/practice_ml"])
     assert len(runs) > 0
     print(f"  [PASS] MLflow experiment has {len(runs)} run(s)")
@@ -211,18 +167,3 @@ elif score >= 2:
 else:
     print("\n  Ask the Databricks Assistant for help!")
 print("=" * 55)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Answers (for reference — try without peeking!)
-# MAGIC
-# MAGIC <details>
-# MAGIC <summary>Click to reveal answers</summary>
-# MAGIC
-# MAGIC - **Exercise 1:** `readmission_risk`
-# MAGIC - **Exercise 2:** `RandomForestClassifier(n_estimators=100, random_state=42)`
-# MAGIC - **Exercise 3:** `model.feature_importances_`
-# MAGIC - **Exercise 4:** `register_model`
-# MAGIC
-# MAGIC </details>
