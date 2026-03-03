@@ -192,10 +192,10 @@ display(df_test)
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Option A: Pre-Installed by Organizer (Recommended)
+# MAGIC ## Option A: Already Installed via Setup (Recommended)
 # MAGIC
-# MAGIC If the organizer ran the install script during setup, skills are already deployed
-# MAGIC to your workspace. Check:
+# MAGIC If the setup notebook (`setup/00_setup_and_data.py`) was run, skills are already
+# MAGIC installed in your workspace. Let's verify:
 
 # COMMAND ----------
 

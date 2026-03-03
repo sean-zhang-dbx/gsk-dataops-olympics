@@ -10,9 +10,10 @@
 # MAGIC 3. Create a Unity Catalog Volume for raw data files
 # MAGIC 4. Upload bundled data files from the `data/` folder to the Volume
 # MAGIC 5. Create all Delta tables
-# MAGIC 6. Validate everything is ready
+# MAGIC 6. Install Agent Skills for the Databricks Assistant
+# MAGIC 7. Validate everything is ready
 # MAGIC
-# MAGIC **Estimated time: ~3 minutes**
+# MAGIC **Estimated time: ~5 minutes**
 
 # COMMAND ----------
 
@@ -334,7 +335,71 @@ print(f"  clinical_notes: {sdf.count()} rows")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 6: Validation
+# MAGIC ## Step 6: Install Agent Skills for Databricks Assistant
+# MAGIC
+# MAGIC Downloads skills from the [ai-dev-kit](https://github.com/databricks-solutions/ai-dev-kit)
+# MAGIC repo and installs them into your workspace so the **Databricks Assistant Agent mode**
+# MAGIC can build dashboards, pipelines, Genie spaces, and more.
+
+# COMMAND ----------
+
+# MAGIC %sh
+# MAGIC rm -rf /tmp/ai-dev-kit
+# MAGIC git clone --depth 1 https://github.com/databricks-solutions/ai-dev-kit.git /tmp/ai-dev-kit 2>&1 | tail -1
+
+# COMMAND ----------
+
+import os, shutil
+
+user_email = spark.sql("SELECT current_user()").collect()[0][0]
+skills_target = f"/Workspace/Users/{user_email}/.assistant/skills"
+
+SKILLS_TO_INSTALL = [
+    "databricks-spark-declarative-pipelines",
+    "databricks-unity-catalog",
+    "databricks-aibi-dashboards",
+    "databricks-genie",
+    "databricks-agent-bricks",
+    "databricks-model-serving",
+    "databricks-dbsql",
+    "databricks-vector-search",
+    "databricks-mlflow-evaluation",
+    "databricks-jobs",
+    "databricks-docs",
+]
+
+skills_source = "/tmp/ai-dev-kit/databricks-skills"
+
+print("=" * 60)
+print("  AGENT SKILLS — Installing to Databricks Assistant")
+print("=" * 60)
+print(f"  Target: {skills_target}")
+print()
+
+installed = 0
+for skill_name in SKILLS_TO_INSTALL:
+    src = os.path.join(skills_source, skill_name)
+    dst = os.path.join(skills_target, skill_name)
+    if not os.path.isdir(src):
+        print(f"  SKIP  {skill_name} (not found in repo)")
+        continue
+    try:
+        if os.path.exists(dst):
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
+        installed += 1
+        print(f"  OK    {skill_name}")
+    except Exception as e:
+        print(f"  FAIL  {skill_name}: {e}")
+
+print(f"\n  Installed {installed}/{len(SKILLS_TO_INSTALL)} skills")
+print(f"\n  To use: open the Assistant sidebar → switch to 'Agent' mode")
+print("=" * 60)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 7: Validation
 
 # COMMAND ----------
 
