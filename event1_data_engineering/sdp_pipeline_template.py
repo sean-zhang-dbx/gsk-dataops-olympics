@@ -4,14 +4,25 @@
 # MAGIC
 # MAGIC **Your goal: create ONE file (`pipeline.py` or `pipeline.sql`) containing the entire pipeline.**
 # MAGIC
-# MAGIC This notebook is your **instructions sheet**. Read the requirements below, then:
+# MAGIC ### Important: All tables go to `dataops_olympics.default`
+# MAGIC
+# MAGIC > **Catalog:** `dataops_olympics`
+# MAGIC > **Schema:** `default`
+# MAGIC >
+# MAGIC > All tables created by this pipeline (Bronze, Silver, Gold) will be saved to
+# MAGIC > `dataops_olympics.default`. This is set when you configure the pipeline destination,
+# MAGIC > NOT in your code. Your code just defines the table names (`heart_bronze`, etc.)
+# MAGIC > and the pipeline writes them to the configured catalog/schema.
+# MAGIC
+# MAGIC ### Instructions
 # MAGIC
 # MAGIC 1. **Create a new notebook** called `pipeline` (Python or SQL — your choice)
 # MAGIC 2. Use the **Databricks Assistant** (`Cmd+I`) to generate all the code in that single file
 # MAGIC 3. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
 # MAGIC    - Source: select your `pipeline` notebook
-# MAGIC    - Destination: catalog = `dataops_olympics`, schema = `default`
+# MAGIC    - **Destination catalog: `dataops_olympics`**
+# MAGIC    - **Destination schema: `default`**
 # MAGIC 4. Click **Validate** (dry-run) → then **Start**
 # MAGIC 5. Return to the **starter notebook** for governance and validation
 # MAGIC
