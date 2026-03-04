@@ -444,12 +444,24 @@ print("Results saved to dataops_olympics.default.event1_scores")
 
 # COMMAND ----------
 
-spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
-spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 1: Data Engineering'")
+_LB = "dataops_olympics.default.olympics_leaderboard"
+_RT = "dataops_olympics.default.registered_teams"
+spark.sql(f"CREATE TABLE IF NOT EXISTS {_LB} (team STRING, event STRING, category STRING, points DOUBLE, max_points DOUBLE, scored_at TIMESTAMP)")
+spark.sql(f"CREATE TABLE IF NOT EXISTS {_RT} (team STRING)")
 
-for _, row in df_scores.iterrows():
-    spark.sql(f"""
-        INSERT INTO dataops_olympics.default.olympics_leaderboard
-        VALUES ('{row['Team']}', 'Event 1: Data Engineering', {row['Total']}, 55)
-    """)
-print("Leaderboard updated for Event 1")
+from datetime import datetime as _dt
+_now = _dt.now()
+_event = "Event 1: Data Engineering"
+
+for r in results:
+    _t = r["team"]
+    if spark.sql(f"SELECT 1 FROM {_RT} WHERE team = '{_t}'").count() == 0:
+        spark.sql(f"INSERT INTO {_RT} VALUES ('{_t}')")
+    for cat, pts, mx in [
+        ("Bronze", r["bronze"], 10), ("Silver", r["silver"], 15),
+        ("Gold", r["gold"], 15), ("DQ", r["dq"], 5),
+        ("Governance", r["governance"], 5), ("Bonus", r["bonus"], 5),
+    ]:
+        spark.sql(f"INSERT INTO {_LB} VALUES ('{_t}', '{_event}', '{cat}', {pts}, {mx}, '{_now}')")
+
+print(f"Leaderboard updated: {len(results)} teams × 6 categories")

@@ -271,12 +271,24 @@ print("Saved to dataops_olympics.default.event4_scores")
 
 # COMMAND ----------
 
-spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
-spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 4: GenAI Agents'")
+_LB = "dataops_olympics.default.olympics_leaderboard"
+_RT = "dataops_olympics.default.registered_teams"
+spark.sql(f"CREATE TABLE IF NOT EXISTS {_LB} (team STRING, event STRING, category STRING, points DOUBLE, max_points DOUBLE, scored_at TIMESTAMP)")
+spark.sql(f"CREATE TABLE IF NOT EXISTS {_RT} (team STRING)")
 
-for _, row in df_scores.iterrows():
-    spark.sql(f"""
-        INSERT INTO dataops_olympics.default.olympics_leaderboard
-        VALUES ('{row['Team']}', 'Event 4: GenAI Agents', {row['Total']}, 48)
-    """)
-print("Leaderboard updated for Event 4")
+from datetime import datetime as _dt
+_now = _dt.now()
+_event = "Event 4: GenAI Agents"
+
+for r in results:
+    _t = r["team"]
+    if spark.sql(f"SELECT 1 FROM {_RT} WHERE team = '{_t}'").count() == 0:
+        spark.sql(f"INSERT INTO {_RT} VALUES ('{_t}')")
+    for cat, pts, mx in [
+        ("Exploration", r["exploration"], 3), ("SystemPrompt", r["system_prompt"], 5),
+        ("AgentFunction", r["agent_function"], 12), ("AIFunctions", r["ai_functions"], 10),
+        ("TestPrompts", r["test_prompts"], 10), ("Bonus", r["bonus"], 8),
+    ]:
+        spark.sql(f"INSERT INTO {_LB} VALUES ('{_t}', '{_event}', '{cat}', {pts}, {mx}, '{_now}')")
+
+print(f"Leaderboard updated: {len(results)} teams × 6 categories")
