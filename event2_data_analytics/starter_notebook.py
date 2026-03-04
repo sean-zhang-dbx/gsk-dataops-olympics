@@ -282,41 +282,117 @@ display(spark.table(f"{CATALOG}.default.heart_gold"))
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Record Your Answers
+# MAGIC ## Submit Your Answers
 # MAGIC
-# MAGIC Fill in your answers below. The organizer will collect these for scoring.
+# MAGIC Use the `submit_answer()` function below to record your answers.
+# MAGIC Each call saves to `{CATALOG}.default.event2_submissions` — the scoring
+# MAGIC notebook reads this table automatically. **No manual reporting needed!**
+# MAGIC
+# MAGIC You can submit multiple times per question — only the latest answer counts.
 
 # COMMAND ----------
 
-answers = {
-    "Q1": "",  # fill in your answer
-    "Q2": "",
-    "Q3": "",
-    "Q4": "",
-    "Q5": "",
-    "Q6": "",
-    "Q7": "",
-    "Q8": "",
-}
+from datetime import datetime as _dt
 
-method_used = {
-    "Q1": "",  # "SQL" or "Genie"
-    "Q2": "",
-    "Q3": "",
-    "Q4": "",
-    "Q5": "",
-    "Q6": "",
-    "Q7": "",
-    "Q8": "",
-}
+spark.sql(f"""
+    CREATE TABLE IF NOT EXISTS {CATALOG}.default.event2_submissions (
+        team STRING,
+        question_id STRING,
+        answer STRING,
+        method STRING,
+        submitted_at TIMESTAMP
+    )
+""")
+
+def submit_answer(question_id: str, answer: str, method: str = "SQL"):
+    """Submit an answer for a benchmark question.
+
+    Args:
+        question_id: "Q1" through "Q8"
+        answer: Your answer (number, text, etc.)
+        method: "SQL" or "Genie"
+    """
+    qid = question_id.upper()
+    method = method.upper()
+    assert qid in [f"Q{i}" for i in range(1, 9)], f"Invalid question_id: {qid}. Use Q1-Q8."
+    assert method in ("SQL", "GENIE"), f"Invalid method: {method}. Use 'SQL' or 'Genie'."
+
+    ts = _dt.now().isoformat()
+    spark.sql(f"""
+        INSERT INTO {CATALOG}.default.event2_submissions
+        VALUES ('{TEAM_NAME}', '{qid}', '{answer}', '{method}', '{ts}')
+    """)
+    print(f"  Submitted {qid} [{method}]: {answer}")
+
+print("submit_answer() ready — usage:")
+print('  submit_answer("Q1", "373", "SQL")')
+print('  submit_answer("Q2", "55.4, 44.4", "Genie")')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### How to submit during the race
+# MAGIC
+# MAGIC After each question, run a cell like this:
+# MAGIC ```python
+# MAGIC submit_answer("Q1", "373", "SQL")
+# MAGIC ```
+# MAGIC
+# MAGIC Or if you used Genie:
+# MAGIC ```python
+# MAGIC submit_answer("Q1", "373", "Genie")
+# MAGIC ```
+
+# COMMAND ----------
+
+# Submit your answers here — one per question:
+
+# submit_answer("Q1", "", "SQL")
+# submit_answer("Q2", "", "SQL")
+# submit_answer("Q3", "", "SQL")
+# submit_answer("Q4", "", "SQL")
+# submit_answer("Q5", "", "SQL")
+# submit_answer("Q6", "", "SQL")
+# submit_answer("Q7", "", "SQL")
+# submit_answer("Q8", "", "SQL")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### View Your Submissions
+
+# COMMAND ----------
+
+display(
+    spark.sql(f"""
+        SELECT question_id, answer, method, submitted_at
+        FROM {CATALOG}.default.event2_submissions
+        WHERE team = '{TEAM_NAME}'
+        ORDER BY question_id, submitted_at DESC
+    """)
+)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Quick Summary
+
+# COMMAND ----------
+
+from pyspark.sql import functions as F
+
+latest = spark.sql(f"""
+    SELECT question_id, answer, method, submitted_at,
+        ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY submitted_at DESC) AS rn
+    FROM {CATALOG}.default.event2_submissions
+    WHERE team = '{TEAM_NAME}'
+""").filter("rn = 1").drop("rn").orderBy("question_id")
 
 print("=" * 60)
-print(f"  BENCHMARK ANSWERS — {TEAM_NAME}")
+print(f"  YOUR LATEST ANSWERS — {TEAM_NAME}")
 print("=" * 60)
-for q in sorted(answers.keys()):
-    m = method_used.get(q, "?")
-    a = answers.get(q, "")
-    print(f"  {q} [{m:5s}]: {a}")
+for row in latest.collect():
+    print(f"  {row['question_id']} [{row['method']:5s}]: {row['answer']}")
 print("=" * 60)
 
 # COMMAND ----------

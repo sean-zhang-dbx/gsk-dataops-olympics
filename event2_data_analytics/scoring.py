@@ -1,14 +1,19 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Event 2: Automated Scoring
+# MAGIC # Event 2: Fully Automated Scoring
 # MAGIC
 # MAGIC **FOR ORGANIZERS ONLY**
 # MAGIC
-# MAGIC ### How to Use
-# MAGIC 1. Run the **benchmark_questions** notebook first to generate the answer key
-# MAGIC 2. Enter each team's **Genie Space ID** in `GENIE_SPACE_IDS` (auto-evaluates via Conversation API)
-# MAGIC 3. Optionally fill in `MANUAL_SQL_RESULTS` for SQL answers and `SPEED_WINNERS`
-# MAGIC 4. Run All — the notebook automatically queries each team's Genie, grades answers, and builds a leaderboard
+# MAGIC ### How It Works — Zero Manual Input
+# MAGIC
+# MAGIC This notebook is **fully automated**:
+# MAGIC
+# MAGIC 1. **SQL answers** — read from each team's `event2_submissions` table (teams use `submit_answer()`)
+# MAGIC 2. **Genie answers** — queried via the **Genie Conversation API** using each team's space ID
+# MAGIC 3. **Answer checking** — fuzzy numeric match first, then **`ai_query()` LLM judge** for ambiguous cases
+# MAGIC 4. **Bonus challenges** — auto-detected from team catalog tables
+# MAGIC
+# MAGIC Only thing the organizer fills in: `GENIE_SPACE_IDS` and `SPEED_WINNERS`.
 # MAGIC
 # MAGIC ### Scoring Breakdown
 # MAGIC
@@ -44,18 +49,14 @@ for _, row in answer_key_df.iterrows():
 
 print("Answer Key Loaded:")
 for q, a in sorted(ANSWER_KEY.items()):
-    print(f"  {q}: {ANSWER_QUESTIONS[q]}")
-    print(f"       Expected: {a}")
+    print(f"  {q}: {a}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Configure Genie Space IDs
+# MAGIC ## Configuration
 # MAGIC
-# MAGIC Enter the Genie Space ID for each team. Leave blank if the team didn't create one.
-# MAGIC
-# MAGIC > To find a Genie Space ID: open the Genie space in the workspace → the URL looks like
-# MAGIC > `https://<workspace>/genie/rooms/<SPACE_ID>/...` → copy that `SPACE_ID`.
+# MAGIC Enter Genie Space IDs and speed winners — everything else is auto-detected.
 
 # COMMAND ----------
 
@@ -64,35 +65,6 @@ GENIE_SPACE_IDS = {
     "team_02": "",
     "team_03": "",
     "team_04": "",
-}
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Manual Inputs
-# MAGIC
-# MAGIC SQL answers are still manual — fill in what teams reported during the race.
-# MAGIC Genie answers are **auto-populated** by the Conversation API (next section).
-
-# COMMAND ----------
-
-MANUAL_SQL_RESULTS = {
-    "team_01": {
-        "sql_answers": {"Q1": "", "Q2": "", "Q3": "", "Q4": "", "Q5": "", "Q6": "", "Q7": "", "Q8": ""},
-        "sql_queries_run": 0,
-    },
-    "team_02": {
-        "sql_answers": {"Q1": "", "Q2": "", "Q3": "", "Q4": "", "Q5": "", "Q6": "", "Q7": "", "Q8": ""},
-        "sql_queries_run": 0,
-    },
-    "team_03": {
-        "sql_answers": {"Q1": "", "Q2": "", "Q3": "", "Q4": "", "Q5": "", "Q6": "", "Q7": "", "Q8": ""},
-        "sql_queries_run": 0,
-    },
-    "team_04": {
-        "sql_answers": {"Q1": "", "Q2": "", "Q3": "", "Q4": "", "Q5": "", "Q6": "", "Q7": "", "Q8": ""},
-        "sql_queries_run": 0,
-    },
 }
 
 SPEED_WINNERS = {
@@ -109,16 +81,53 @@ SPEED_WINNERS = {
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Automated Genie Benchmark
+# MAGIC ---
+# MAGIC ## Step 1: Collect SQL Submissions from Team Tables
 # MAGIC
-# MAGIC Sends all 8 benchmark questions to each team's Genie space using the
-# MAGIC **Genie Conversation API**. Extracts text answers, SQL generated, and query results.
+# MAGIC Reads each team's `event2_submissions` Delta table (written by `submit_answer()`).
+# MAGIC Takes the **latest** answer per question.
 
 # COMMAND ----------
 
-import datetime
-import time
 import pandas as pd
+from datetime import datetime
+
+SQL_SUBMISSIONS = {}
+
+for team in TEAMS:
+    try:
+        subs = spark.sql(f"""
+            SELECT question_id, answer, method, submitted_at,
+                ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY submitted_at DESC) AS rn
+            FROM {team}.default.event2_submissions
+            WHERE team = '{team}'
+        """).filter("rn = 1").drop("rn").toPandas()
+
+        team_subs = {}
+        for _, row in subs.iterrows():
+            team_subs[row["question_id"]] = {
+                "answer": row["answer"],
+                "method": row["method"],
+                "submitted_at": str(row["submitted_at"]),
+            }
+        SQL_SUBMISSIONS[team] = team_subs
+        print(f"  {team}: {len(team_subs)} submissions loaded")
+    except Exception as e:
+        SQL_SUBMISSIONS[team] = {}
+        print(f"  {team}: no submissions table ({str(e)[:60]})")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Step 2: Auto-Evaluate Genie Spaces via Conversation API
+# MAGIC
+# MAGIC Sends all 8 benchmark questions to each team's Genie space programmatically.
+
+# COMMAND ----------
+
+import datetime as dt
+import time
 
 try:
     from databricks.sdk import WorkspaceClient
@@ -127,10 +136,8 @@ try:
     print("Databricks SDK loaded — Genie auto-evaluation enabled")
 except ImportError:
     SDK_AVAILABLE = False
-    print("WARNING: databricks-sdk not available. Install with: %pip install databricks-sdk")
-    print("         Falling back to manual-only scoring.")
+    print("WARNING: databricks-sdk not available. Genie auto-evaluation disabled.")
 
-# COMMAND ----------
 
 def _extract_genie_answer(msg):
     """Extract the best answer string from a GenieMessage's attachments."""
@@ -155,9 +162,9 @@ def _extract_genie_answer(msg):
                     if sr and sr.result and sr.result.data_array:
                         query_data = sr.result.data_array
                 except Exception as e:
-                    query_data = f"ERROR fetching result: {e}"
+                    query_data = f"ERROR: {e}"
 
-    short_answer = _summarize_query_data(query_data) if query_data and isinstance(query_data, list) else text_answer
+    short_answer = _summarize_query_data(query_data) if isinstance(query_data, list) else text_answer
     return {
         "text": text_answer,
         "sql": sql_query,
@@ -167,7 +174,7 @@ def _extract_genie_answer(msg):
 
 
 def _summarize_query_data(data_array):
-    """Flatten a small query result into a string for answer comparison."""
+    """Flatten a small query result into a comparable string."""
     if not data_array:
         return ""
     if len(data_array) == 1 and len(data_array[0]) == 1:
@@ -190,7 +197,7 @@ def run_genie_benchmark(space_id, team_name):
             msg = w.genie.start_conversation_and_wait(
                 space_id=space_id,
                 content=question,
-                timeout=datetime.timedelta(minutes=3),
+                timeout=dt.timedelta(minutes=3),
             )
             if msg.status and msg.status.value == "COMPLETED":
                 answer_info = _extract_genie_answer(msg)
@@ -212,11 +219,6 @@ def run_genie_benchmark(space_id, team_name):
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ### Run Genie Auto-Evaluation
-
-# COMMAND ----------
-
 GENIE_RESULTS = {}
 
 if SDK_AVAILABLE:
@@ -227,71 +229,38 @@ if SDK_AVAILABLE:
             print(f"{'='*60}")
             GENIE_RESULTS[team] = run_genie_benchmark(space_id.strip(), team)
         else:
-            print(f"  {team}: no Genie space ID provided — skipping")
+            print(f"  {team}: no Genie space ID — skipping")
 else:
     print("Skipping Genie auto-evaluation (SDK not available)")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Genie Evaluation Summary
-
-# COMMAND ----------
-
-if GENIE_RESULTS:
-    print("=" * 72)
-    print("  GENIE AUTO-EVALUATION RESULTS")
-    print("=" * 72)
-    for team, results in sorted(GENIE_RESULTS.items()):
-        print(f"\n  {team}:")
-        for qid, info in sorted(results.items()):
-            expected = ANSWER_KEY.get(qid, "?")
-            got = info["short_answer"][:60] if info["short_answer"] else "NO ANSWER"
-            had_sql = "SQL" if info.get("sql") else "text"
-            print(f"    {qid} [{had_sql:4s}]: {got:50s} | expected: {expected}")
-    print("=" * 72)
-
-    genie_detail_rows = []
-    for team, results in GENIE_RESULTS.items():
-        for qid, info in results.items():
-            genie_detail_rows.append({
-                "team": team,
-                "question_id": qid,
-                "question": ANSWER_QUESTIONS.get(qid, ""),
-                "genie_answer": info.get("short_answer", ""),
-                "genie_sql": info.get("sql", ""),
-                "genie_text": info.get("text", ""),
-                "expected_answer": ANSWER_KEY.get(qid, ""),
-            })
-    if genie_detail_rows:
-        genie_df = spark.createDataFrame(pd.DataFrame(genie_detail_rows))
-        genie_df.write.format("delta").mode("overwrite").saveAsTable(
-            "dataops_olympics.default.event2_genie_benchmark"
-        )
-        print("\nDetailed Genie results saved to dataops_olympics.default.event2_genie_benchmark")
-else:
-    print("No Genie results to display. Enter Genie Space IDs above to auto-evaluate.")
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ---
-# MAGIC ## Scoring Engine
+# MAGIC ## Step 3: LLM-Powered Answer Checking
+# MAGIC
+# MAGIC Uses `ai_query()` as a judge when fuzzy numeric matching is inconclusive.
 
 # COMMAND ----------
 
-def _normalize_answer(raw):
-    """Normalize an answer for comparison."""
+def _normalize(raw):
     if raw is None:
         return ""
-    s = str(raw).strip().lower().replace("%", "").replace(",", "").replace(";", " ")
-    return s
+    return str(raw).strip().lower().replace("%", "").replace(",", "").replace(";", " ")
 
 
-def _check_answer(team_answer, correct_answer):
-    """Check if team answer matches the correct answer (fuzzy on numbers)."""
-    ta = _normalize_answer(team_answer)
-    ca = _normalize_answer(correct_answer)
+def _is_number(s):
+    try:
+        float(s)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _fuzzy_numeric_match(team_answer, correct_answer, tolerance=0.5):
+    """Try numeric comparison first — returns True/False/None (None = inconclusive)."""
+    ta = _normalize(team_answer)
+    ca = _normalize(correct_answer)
 
     if not ta or ta.startswith("error") or ta.startswith("failed"):
         return False
@@ -300,129 +269,176 @@ def _check_answer(team_answer, correct_answer):
         return True
 
     try:
-        ta_nums = [float(x.strip()) for x in ta.replace("/", " ").split() if _is_number(x.strip())]
-        ca_nums = [float(x.strip()) for x in ca.replace("/", " ").split() if _is_number(x.strip())]
+        ta_nums = [float(x) for x in ta.split() if _is_number(x)]
+        ca_nums = [float(x) for x in ca.split() if _is_number(x)]
         if ta_nums and ca_nums:
-            return any(abs(t - c) <= 0.5 for t in ta_nums for c in ca_nums)
-    except (ValueError, TypeError):
+            if any(abs(t - c) <= tolerance for t in ta_nums for c in ca_nums):
+                return True
+            return False
+    except Exception:
         pass
 
-    return ca in ta or ta in ca
-
-
-def _is_number(s):
-    try:
-        float(s)
+    if ca in ta or ta in ca:
         return True
-    except ValueError:
+
+    return None
+
+
+def _llm_judge(team_answer, correct_answer, question):
+    """Use ai_query() to judge whether the answer is correct."""
+    try:
+        result = spark.sql(f"""
+            SELECT ai_query(
+                'databricks-meta-llama-3-3-70b-instruct',
+                'You are a strict answer grader. Determine if the student answer is correct.
+
+Question: {question.replace("'", "''")}
+Expected answer: {str(correct_answer).replace("'", "''")}
+Student answer: {str(team_answer).replace("'", "''")}
+
+Rules:
+- Numbers must be within 0.5 of the expected value to be correct
+- For categorical answers, the meaning must match (exact wording not required)
+- If the student answer contains the correct information among other text, it is correct
+- Partial answers are WRONG
+
+Respond with ONLY one word: CORRECT or WRONG'
+            ) AS verdict
+        """).collect()[0]["verdict"]
+        return "CORRECT" in result.upper()
+    except Exception:
         return False
 
 
+def check_answer(team_answer, correct_answer, question):
+    """Check answer: fuzzy numeric first, then LLM judge for ambiguous cases."""
+    fuzzy = _fuzzy_numeric_match(team_answer, correct_answer)
+    if fuzzy is not None:
+        return fuzzy, "fuzzy"
+    llm_result = _llm_judge(team_answer, correct_answer, question)
+    return llm_result, "llm"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Step 4: Score All Teams
+
+# COMMAND ----------
+
 def score_team(team_name: str) -> dict:
-    """Score a team's Event 2 performance using both manual and auto-Genie results."""
-    manual = MANUAL_SQL_RESULTS.get(team_name, {})
+    subs = SQL_SUBMISSIONS.get(team_name, {})
     genie = GENIE_RESULTS.get(team_name, {})
 
     scores = {
         "team": team_name,
-        "build_sql": 0,
-        "build_genie": 0,
-        "benchmark": 0,
-        "speed_bonus": 0,
-        "bonus": 0,
-        "total": 0,
-        "correct_count": 0,
-        "genie_answers": 0,
-        "genie_correct": 0,
-        "sql_correct": 0,
+        "build_sql": 0, "build_genie": 0, "benchmark": 0,
+        "speed_bonus": 0, "bonus": 0, "total": 0,
+        "correct_count": 0, "genie_correct": 0, "sql_correct": 0,
         "details": [],
     }
 
     def log(msg):
         scores["details"].append(msg)
 
-    # ─── BUILD: SQL (3 pts max) ───
-    sql_count = min(manual.get("sql_queries_run", 0), 3)
-    scores["build_sql"] = sql_count
-    if sql_count > 0:
-        log(f"Build SQL: {sql_count}/3 practice queries [+{sql_count}]")
+    # ─── BUILD: SQL (3 pts) — count practice queries that were submitted ───
+    practice_count = min(len(subs), 3)
+    scores["build_sql"] = min(practice_count, 3)
+    if practice_count > 0:
+        log(f"Build SQL: {practice_count} answers submitted [+{min(practice_count, 3)}]")
     else:
-        log("Build SQL: no practice queries executed [+0]")
+        log("Build SQL: no submissions found [+0]")
 
-    # ─── BUILD: GENIE (5 pts max) — auto-detected from API results ───
+    # ─── BUILD: GENIE (5 pts) — auto-detected from API ───
     has_genie = bool(genie)
-    genie_responded = sum(1 for r in genie.values() if r.get("short_answer") and not r["short_answer"].startswith("ERROR"))
+    genie_responded = sum(1 for r in genie.values() if r.get("short_answer") and not str(r["short_answer"]).startswith("ERROR"))
     if genie_responded >= 6:
         scores["build_genie"] = 5
-        log(f"Build Genie: space responded to {genie_responded}/8 questions [+5]")
+        log(f"Build Genie: responded to {genie_responded}/8 questions [+5]")
     elif genie_responded >= 3:
         scores["build_genie"] = 3
-        log(f"Build Genie: space responded to {genie_responded}/8 questions [+3]")
+        log(f"Build Genie: responded to {genie_responded}/8 questions [+3]")
     elif has_genie:
         scores["build_genie"] = 1
-        log(f"Build Genie: space exists but poor response rate ({genie_responded}/8) [+1]")
+        log(f"Build Genie: poor response rate ({genie_responded}/8) [+1]")
     else:
-        log("Build Genie: no Genie space provided [+0]")
+        log("Build Genie: no Genie space [+0]")
 
-    # ─── BENCHMARK (per question: best of SQL or Genie) ───
-    sql_answers = manual.get("sql_answers", {})
-
+    # ─── BENCHMARK (best of SQL submission or Genie per question) ───
     for qid in sorted(ANSWER_KEY.keys()):
-        correct = ANSWER_KEY.get(qid, "")
-        sql_ans = sql_answers.get(qid, "")
+        correct = ANSWER_KEY[qid]
+        question = ANSWER_QUESTIONS[qid]
+
+        sub = subs.get(qid, {})
+        sql_ans = sub.get("answer", "")
+        sql_method = sub.get("method", "SQL")
+
         genie_info = genie.get(qid, {})
         genie_ans = genie_info.get("short_answer", "")
 
-        sql_correct = _check_answer(sql_ans, correct) if sql_ans else False
-        genie_correct = _check_answer(genie_ans, correct) if genie_ans else False
+        # Try Genie first (higher points)
+        genie_ok = False
+        sql_ok = False
+        judge_method = ""
 
-        if genie_correct:
+        if genie_ans and not str(genie_ans).startswith("ERROR") and not str(genie_ans).startswith("FAILED"):
+            genie_ok, judge_method = check_answer(genie_ans, correct, question)
+
+        if sql_ans:
+            sql_ok, jm = check_answer(sql_ans, correct, question)
+            if not judge_method:
+                judge_method = jm
+
+        if genie_ok:
             scores["benchmark"] += 3
             scores["correct_count"] += 1
-            scores["genie_answers"] += 1
             scores["genie_correct"] += 1
-            genie_short = genie_ans[:50]
-            log(f"{qid}: CORRECT via Genie [+3] (answer: {genie_short})")
-        elif sql_correct:
-            scores["benchmark"] += 2
+            short = str(genie_ans)[:50]
+            log(f"{qid}: CORRECT via Genie [{judge_method}] [+3] ({short})")
+        elif sql_ok:
+            pts = 3 if sql_method == "GENIE" else 2
+            scores["benchmark"] += pts
             scores["correct_count"] += 1
-            scores["sql_correct"] += 1
-            log(f"{qid}: CORRECT via SQL [+2] (answer: {sql_ans})")
+            if sql_method == "GENIE":
+                scores["genie_correct"] += 1
+            else:
+                scores["sql_correct"] += 1
+            log(f"{qid}: CORRECT via {sql_method} [{judge_method}] [+{pts}] ({sql_ans})")
         else:
             attempts = []
             if sql_ans:
                 attempts.append(f"SQL='{sql_ans}'")
-            if genie_ans and not genie_ans.startswith("ERROR"):
-                attempts.append(f"Genie='{genie_ans[:40]}'")
+            if genie_ans and not str(genie_ans).startswith("ERROR"):
+                attempts.append(f"Genie='{str(genie_ans)[:40]}'")
             attempt_str = ", ".join(attempts) if attempts else "no answer"
-            log(f"{qid}: WRONG [+0] ({attempt_str}, expected: {correct})")
+            log(f"{qid}: WRONG [+0] ({attempt_str} | expected: {correct})")
 
     # ─── SPEED BONUS ───
     for qid, winner in SPEED_WINNERS.items():
         if winner == team_name:
             scores["speed_bonus"] += 1
-            log(f"{qid}: SPEED BONUS — first correct [+1]")
+            log(f"{qid}: SPEED BONUS [+1]")
 
     # ─── BONUS (auto-detected from tables) ───
     catalog = team_name
     try:
         spark.table(f"{catalog}.default.heart_executive_summary")
         scores["bonus"] += 3
-        log("Bonus: AI-powered executive summary found [+3]")
+        log("Bonus: AI executive summary found [+3]")
     except Exception:
         pass
 
     try:
         spark.table(f"{catalog}.default.heart_cohort_comparison")
         scores["bonus"] += 2
-        log("Bonus: advanced cohort comparison found [+2]")
+        log("Bonus: cohort comparison found [+2]")
     except Exception:
         pass
 
     try:
         spark.table(f"{catalog}.default.heart_chi2_test")
         scores["bonus"] += 3
-        log("Bonus: chi-squared test results found [+3]")
+        log("Bonus: chi-squared test found [+3]")
     except Exception:
         pass
 
@@ -432,7 +448,7 @@ def score_team(team_name: str) -> dict:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Run Scoring — All Teams
+# MAGIC ## Run Scoring
 
 # COMMAND ----------
 
@@ -443,8 +459,8 @@ for team in TEAMS:
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  Build SQL: {r['build_sql']}/3  Build Genie: {r['build_genie']}/5  Benchmark: {r['benchmark']}/24  Speed: {r['speed_bonus']}/8  Bonus: {r['bonus']}/8")
-    print(f"  Correct: {r['correct_count']}/8  (Genie: {r['genie_correct']}, SQL: {r['sql_correct']})")
+    print(f"  SQL:{r['build_sql']}/3  Genie:{r['build_genie']}/5  Benchmark:{r['benchmark']}/24  Speed:{r['speed_bonus']}/8  Bonus:{r['bonus']}/8")
+    print(f"  Correct: {r['correct_count']}/8  (Genie:{r['genie_correct']} SQL:{r['sql_correct']})")
     print(f"  TOTAL: {r['total']}/48")
     print()
     for d in r["details"]:
@@ -489,11 +505,8 @@ print("=" * 80)
 
 categories = ["Build_SQL", "Build_Genie", "Benchmark", "Speed", "Bonus"]
 cat_colors = {
-    "Build_SQL": "#3498db",
-    "Build_Genie": "#9b59b6",
-    "Benchmark": "#2ecc71",
-    "Speed": "#e74c3c",
-    "Bonus": "#f39c12",
+    "Build_SQL": "#3498db", "Build_Genie": "#9b59b6",
+    "Benchmark": "#2ecc71", "Speed": "#e74c3c", "Bonus": "#f39c12",
 }
 cat_max = {"Build_SQL": 3, "Build_Genie": 5, "Benchmark": 24, "Speed": 8, "Bonus": 8}
 
@@ -502,32 +515,22 @@ ordered = df_scores.sort_values("Total", ascending=True)
 fig = go.Figure()
 for cat in categories:
     fig.add_trace(go.Bar(
-        y=ordered["Team"],
-        x=ordered[cat],
+        y=ordered["Team"], x=ordered[cat],
         name=f"{cat.replace('_', ' ')} (/{cat_max[cat]})",
         orientation="h",
         marker=dict(color=cat_colors[cat], line=dict(color="#1a1a2e", width=1)),
-        text=ordered[cat].astype(int),
-        textposition="inside",
+        text=ordered[cat].astype(int), textposition="inside",
         textfont=dict(size=13, color="white"),
     ))
 
 fig.update_layout(
     barmode="stack",
-    title=dict(
-        text="Event 2: Data Analytics — Score Breakdown",
-        font=dict(size=24, color="white"),
-        x=0.5,
-    ),
-    plot_bgcolor="#1a1a2e",
-    paper_bgcolor="#16213e",
+    title=dict(text="Event 2: Data Analytics — Score Breakdown", font=dict(size=24, color="white"), x=0.5),
+    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
     font=dict(color="white", size=13),
     xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 52]),
     yaxis=dict(tickfont=dict(size=14)),
-    legend=dict(
-        orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
-        font=dict(size=12),
-    ),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=12)),
     height=max(350, len(df_scores) * 80 + 120),
     margin=dict(l=120, r=40, t=100, b=60),
 )
@@ -541,30 +544,22 @@ fig.show()
 # COMMAND ----------
 
 fig2 = go.Figure()
-
 for _, row in ordered.iterrows():
     fig2.add_trace(go.Bar(
-        x=[row["Team"]],
-        y=[int(row["SQL_Correct"])],
-        name="SQL Correct",
-        marker=dict(color="#3498db"),
-        showlegend=row.name == ordered.index[0],
-        legendgroup="SQL",
+        x=[row["Team"]], y=[int(row["SQL_Correct"])],
+        name="SQL", marker=dict(color="#3498db"),
+        showlegend=row.name == ordered.index[0], legendgroup="SQL",
     ))
     fig2.add_trace(go.Bar(
-        x=[row["Team"]],
-        y=[int(row["Genie_Correct"])],
-        name="Genie Correct",
-        marker=dict(color="#9b59b6"),
-        showlegend=row.name == ordered.index[0],
-        legendgroup="Genie",
+        x=[row["Team"]], y=[int(row["Genie_Correct"])],
+        name="Genie", marker=dict(color="#9b59b6"),
+        showlegend=row.name == ordered.index[0], legendgroup="Genie",
     ))
 
 fig2.update_layout(
     barmode="stack",
     title=dict(text="Correct Answers: SQL vs Genie", font=dict(size=22, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e",
-    paper_bgcolor="#16213e",
+    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
     font=dict(color="white"),
     yaxis=dict(title="Correct Answers", gridcolor="#2d3436", range=[0, 9]),
     height=400,
@@ -582,3 +577,20 @@ spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsT
     "dataops_olympics.default.event2_scores"
 )
 print("Results saved to dataops_olympics.default.event2_scores")
+
+if GENIE_RESULTS:
+    genie_rows = []
+    for team, results_dict in GENIE_RESULTS.items():
+        for qid, info in results_dict.items():
+            genie_rows.append({
+                "team": team, "question_id": qid,
+                "question": ANSWER_QUESTIONS.get(qid, ""),
+                "genie_answer": info.get("short_answer", ""),
+                "genie_sql": info.get("sql", ""),
+                "expected_answer": ANSWER_KEY.get(qid, ""),
+            })
+    if genie_rows:
+        spark.createDataFrame(pd.DataFrame(genie_rows)).write.format("delta").mode("overwrite").saveAsTable(
+            "dataops_olympics.default.event2_genie_benchmark"
+        )
+        print("Genie details saved to dataops_olympics.default.event2_genie_benchmark")
