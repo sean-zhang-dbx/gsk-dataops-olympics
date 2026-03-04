@@ -3,7 +3,7 @@
 # MAGIC # Event 1: Data Engineering — Speed Sprint
 # MAGIC
 # MAGIC ## Build a Production-Grade Medallion Pipeline
-# MAGIC **Time: 25 minutes** | **Max Points: 50**
+# MAGIC **Time: 25 minutes** | **Max Points: 50 (+5 bonus)**
 # MAGIC
 # MAGIC ---
 # MAGIC
@@ -24,7 +24,7 @@
 # MAGIC | | **Path A: Spark Declarative Pipelines (SDP)** | **Path B: Interactive SQL/PySpark** |
 # MAGIC |---|---|---|
 # MAGIC | **Max Points** | **50 pts** | **31 pts** |
-# MAGIC | **How** | Use the `sdp_pipeline_template` notebook via Workflows → Pipelines | Write code directly in this notebook |
+# MAGIC | **How** | Create a `pipeline` notebook → run via Workflows → Pipelines | Write code directly in this notebook |
 # MAGIC | **Ingestion** | Auto Loader (streaming, incremental) | Batch `spark.read.json` |
 # MAGIC | **Bronze & Silver** | Streaming Tables | Regular Delta Tables |
 # MAGIC | **Gold** | Materialized View (auto-refreshes) | Regular Delta Table |
@@ -46,13 +46,25 @@
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
+# MAGIC %md
+# MAGIC ## Team Configuration
+# MAGIC
+# MAGIC **CHANGE THIS** to your team name. Your team name is also your catalog name.
+# MAGIC All your tables will be written to `{TEAM_NAME}.default.*`
 
 # COMMAND ----------
 
-TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name (e.g., "team_01")
+TEAM_NAME = "team_XX"  # <-- CHANGE THIS (e.g., "team_01")
+CATALOG = TEAM_NAME
+SHARED_CATALOG = "dataops_olympics"
+RAW_DATA_PATH = f"/Volumes/{SHARED_CATALOG}/default/raw_data/heart_events/"
+
+# COMMAND ----------
+
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA default")
+print(f"Working in: {CATALOG}.default")
+print(f"Raw data:   {RAW_DATA_PATH}")
 
 # COMMAND ----------
 
@@ -81,19 +93,18 @@ TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name (e.g., "team_01")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC LIST '/Volumes/dataops_olympics/default/raw_data/heart_events/'
+display(spark.sql(f"LIST '{RAW_DATA_PATH}'"))
 
 # COMMAND ----------
 
-df_peek = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/intake_batch_001.json")
+df_peek = spark.read.json(f"{RAW_DATA_PATH}intake_batch_001.json")
 print(f"Schema of a single batch:")
 df_peek.printSchema()
 print(f"Records in batch 1: {df_peek.count()}")
 
 # COMMAND ----------
 
-df_all_raw = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
+df_all_raw = spark.read.json(f"{RAW_DATA_PATH}*.json")
 print(f"Total raw records across all 5 batches: {df_all_raw.count()}")
 
 # COMMAND ----------
@@ -125,13 +136,12 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
-# MAGIC > Read **all 5 NDJSON batch files** from the Volume path
-# MAGIC > `/Volumes/dataops_olympics/default/raw_data/heart_events/` and save them
-# MAGIC > as a single Delta table called `{TEAM_NAME}_heart_bronze`.
+# MAGIC > Read **all 5 NDJSON batch files** from the Volume path and save them
+# MAGIC > as a single Delta table called `heart_bronze` in your team catalog.
 # MAGIC >
 # MAGIC > **No cleaning** — Bronze is the raw landing zone. All ~500 records should be present.
 # MAGIC >
-# MAGIC > *SDP Path: This is the `heart_bronze` streaming table in `sdp_pipeline_template` — uses Auto Loader.*
+# MAGIC > *SDP Path: This is the `heart_bronze` streaming table — uses Auto Loader.*
 
 # COMMAND ----------
 
@@ -146,7 +156,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
-# MAGIC > Create a Silver table called `{TEAM_NAME}_heart_silver` from the Bronze table.
+# MAGIC > Create a Silver table called `heart_silver` from the Bronze table.
 # MAGIC > Apply these data quality rules:
 # MAGIC >
 # MAGIC > 1. **Remove** rows where `age` is NULL
@@ -172,7 +182,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
-# MAGIC > Create a Gold table called `{TEAM_NAME}_heart_gold` from the Silver table.
+# MAGIC > Create a Gold table called `heart_gold` from the Silver table.
 # MAGIC > Aggregate heart disease metrics **by age group and diagnosis**:
 # MAGIC >
 # MAGIC > | Column | Definition |
@@ -184,7 +194,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > | `avg_blood_pressure` | Average of `trestbps`, rounded to 1 decimal |
 # MAGIC > | `avg_max_heart_rate` | Average of `thalach`, rounded to 1 decimal |
 # MAGIC >
-# MAGIC > *SDP Path: This is the `heart_gold` materialized view via `@dp.materialized_view`.*
+# MAGIC > *SDP Path: This is the `heart_gold` materialized view via `@dp.table` with a batch read.*
 
 # COMMAND ----------
 
@@ -213,8 +223,8 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC 1. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
 # MAGIC    - Source: select your `pipeline` notebook
-# MAGIC    - Target catalog: `dataops_olympics`
-# MAGIC    - Target schema: `default`
+# MAGIC    - **Destination catalog: `{TEAM_NAME}`** (your team catalog!)
+# MAGIC    - **Destination schema: `default`**
 # MAGIC 2. Click **Validate** first (dry-run to catch errors)
 # MAGIC 3. Click **Start** to execute the full pipeline
 # MAGIC
@@ -250,8 +260,8 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > - `target` — diagnosis: 1 = heart disease present, 0 = healthy
 # MAGIC > - `event_id` — unique event identifier from the source system
 # MAGIC >
-# MAGIC > *SDP Path: If you defined `comment=` in your `@dp.table()` / `@dp.materialized_view()`
-# MAGIC > decorators, your table comments are already applied. You may still want to add column comments.*
+# MAGIC > *SDP Path: If you defined `comment=` in your `@dp.table()` decorators,
+# MAGIC > your table comments are already applied. You may still want to add column comments.*
 
 # COMMAND ----------
 
@@ -260,8 +270,7 @@ print(f"Duplicate event_ids: {dup_count}")
 
 # COMMAND ----------
 
-# Verify governance — check that comments were applied
-display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_silver"))
+display(spark.sql(f"DESCRIBE TABLE EXTENDED {CATALOG}.default.heart_silver"))
 
 # COMMAND ----------
 
@@ -306,11 +315,12 @@ display(spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}
 
 print("=" * 60)
 print(f"  EVENT 1 VALIDATION — {TEAM_NAME}")
+print(f"  Catalog: {CATALOG}.default")
 print("=" * 60)
 score = 0
 
 try:
-    cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_bronze").count()
+    cnt = spark.table(f"{CATALOG}.default.heart_bronze").count()
     if cnt >= 490:
         print(f"  [PASS] Bronze table: {cnt} rows")
         score += 5
@@ -321,7 +331,7 @@ except Exception as e:
     print(f"  [FAIL] Bronze table missing: {e}")
 
 try:
-    s_cnt = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
+    s_cnt = spark.table(f"{CATALOG}.default.heart_silver").count()
     if s_cnt < cnt:
         print(f"  [PASS] Silver table: {s_cnt} rows (filtered {cnt - s_cnt} bad/duplicate rows)")
         score += 4
@@ -332,10 +342,10 @@ except Exception as e:
     print(f"  [FAIL] Silver table missing: {e}")
 
 try:
-    g = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold")
+    g = spark.table(f"{CATALOG}.default.heart_gold")
     g_cnt = g.count()
     cols = set(g.columns)
-    has_agg = "patient_count" in cols or "avg_cholesterol" in cols or "count" in [c.lower() for c in cols]
+    has_agg = "patient_count" in cols or "avg_cholesterol" in cols
     if g_cnt > 0 and has_agg:
         print(f"  [PASS] Gold table: {g_cnt} rows with aggregations")
         score += 4
@@ -348,7 +358,7 @@ except Exception as e:
     print(f"  [FAIL] Gold table missing: {e}")
 
 try:
-    desc = spark.sql(f"DESCRIBE TABLE EXTENDED dataops_olympics.default.{TEAM_NAME}_heart_silver").collect()
+    desc = spark.sql(f"DESCRIBE TABLE EXTENDED {CATALOG}.default.heart_silver").collect()
     has_tbl_comment = any("comment" in str(r).lower() and r[1] and len(str(r[1])) > 5 for r in desc)
     col_comments = sum(1 for r in desc if r[2] and len(str(r[2])) > 5 and r[0] not in ["", "#"])
     if has_tbl_comment:
@@ -377,8 +387,63 @@ print("=" * 60)
 # MAGIC
 # MAGIC Finished early? Ask the Databricks Assistant to help you with these:
 # MAGIC
-# MAGIC 1. **Genie Space** — Create a Genie space on your Gold table and ask "Which age group has the highest heart disease rate?"
-# MAGIC 2. **Liquid Clustering** — Optimize your Silver table with `CLUSTER BY (age, target)`
-# MAGIC 3. **Change Data Feed** — Enable CDF on Silver to track row-level changes
-# MAGIC 4. **Time Travel** — Overwrite Silver with bad data, then restore the previous version
-# MAGIC 5. **AI Functions** — Use `ai_classify()` to categorize cholesterol levels as Normal/Borderline/High
+# MAGIC ---
+# MAGIC
+# MAGIC ### 1. Liquid Clustering (+3 pts)
+# MAGIC
+# MAGIC Optimize your Silver table with `CLUSTER BY (age, target)` for faster queries.
+# MAGIC
+# MAGIC > **SQL Path:** Run `ALTER TABLE heart_silver CLUSTER BY (age, target)`
+# MAGIC >
+# MAGIC > **SDP Path:** Streaming tables don't support `ALTER TABLE CLUSTER BY` after creation.
+# MAGIC > Instead, add `cluster_columns=["age", "target"]` to your `@dp.table` decorator
+# MAGIC > in your pipeline code, then re-run the pipeline. Example:
+# MAGIC > ```python
+# MAGIC > @dp.table(comment="...", cluster_columns=["age", "target"])
+# MAGIC > def heart_silver():
+# MAGIC >     ...
+# MAGIC > ```
+# MAGIC > Or in SQL: `CREATE OR REFRESH STREAMING TABLE heart_silver CLUSTER BY (age, target) ...`
+# MAGIC
+# MAGIC ---
+# MAGIC
+# MAGIC ### 2. AI Functions — `ai_query()` (+2 pts)
+# MAGIC
+# MAGIC Use `ai_query()` to generate a natural language cardiovascular risk assessment for each
+# MAGIC patient cohort in your Gold table. The LLM combines multiple health metrics (cholesterol,
+# MAGIC blood pressure, heart rate) into a qualitative risk judgment — something a simple `CASE WHEN` can't do.
+# MAGIC
+# MAGIC > **Both paths (SDP and SQL):** Create a new table called **`heart_gold_ai`** from your
+# MAGIC > Gold table. Gold only has ~8 rows, so this is fast and cheap.
+# MAGIC >
+# MAGIC > **Requirements for scoring:**
+# MAGIC > - Table name: **`heart_gold_ai`**
+# MAGIC > - Must include a column called **`cardiovascular_risk`**
+# MAGIC > - Use `ai_query()` to classify risk as Low, Moderate, or High
+# MAGIC >
+# MAGIC > ```sql
+# MAGIC > CREATE OR REPLACE TABLE heart_gold_ai AS
+# MAGIC > SELECT *,
+# MAGIC >     ai_query(
+# MAGIC >         'databricks-meta-llama-3-3-70b-instruct',
+# MAGIC >         CONCAT(
+# MAGIC >             'Patient cohort: ', patient_count, ' patients, ', age_group, ', ', diagnosis,
+# MAGIC >             '. Avg cholesterol: ', avg_cholesterol,
+# MAGIC >             ', avg BP: ', avg_blood_pressure,
+# MAGIC >             ', avg max heart rate: ', avg_max_heart_rate,
+# MAGIC >             '. Classify cardiovascular risk as exactly one of: Low, Moderate, High. Reply with one word only.'
+# MAGIC >         )
+# MAGIC >     ) as cardiovascular_risk
+# MAGIC > FROM heart_gold
+# MAGIC > ```
+# MAGIC >
+# MAGIC > *Why Gold? Only ~8 rows — `ai_query` calls an LLM per row, so fewer rows = faster + cheaper.
+# MAGIC > Unlike `ai_classify`, `ai_query` lets the LLM reason across multiple metrics simultaneously.*
+# MAGIC
+# MAGIC ---
+# MAGIC
+# MAGIC ### 3. Time Travel (no pts, just cool)
+# MAGIC
+# MAGIC > **SQL Path only** (streaming tables don't support overwrite):
+# MAGIC > Overwrite your Silver table with bad data, then restore the previous version using
+# MAGIC > `RESTORE TABLE heart_silver TO VERSION AS OF <version_number>`

@@ -6,16 +6,22 @@
 # MAGIC
 # MAGIC This notebook contains complete working solutions for both the SDP and SQL paths.
 # MAGIC The SDP pipeline code is shown for reference but must be run as a Pipeline, not interactively.
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
+# MAGIC
+# MAGIC Each team has their own catalog (team name = catalog name).
 
 # COMMAND ----------
 
 TEAM_NAME = "answer_key"
+CATALOG = TEAM_NAME
+SHARED_CATALOG = "dataops_olympics"
+RAW_DATA_PATH = f"/Volumes/{SHARED_CATALOG}/default/raw_data/heart_events/"
+
+# COMMAND ----------
+
+spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.default")
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA default")
 
 # COMMAND ----------
 
@@ -25,12 +31,11 @@ TEAM_NAME = "answer_key"
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC LIST '/Volumes/dataops_olympics/default/raw_data/heart_events/'
+display(spark.sql(f"LIST '{RAW_DATA_PATH}'"))
 
 # COMMAND ----------
 
-df_all_raw = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
+df_all_raw = spark.read.json(f"{RAW_DATA_PATH}*.json")
 print(f"Total raw records: {df_all_raw.count()}")
 print(f"Distinct event_ids: {df_all_raw.select('event_id').distinct().count()}")
 print(f"Null ages: {df_all_raw.filter('age IS NULL').count()}")
@@ -50,10 +55,10 @@ print(f"Negative cholesterol: {df_all_raw.filter('chol < 0').count()}")
 
 # COMMAND ----------
 
-df_bronze = spark.read.json("/Volumes/dataops_olympics/default/raw_data/heart_events/*.json")
+df_bronze = spark.read.json(f"{RAW_DATA_PATH}*.json")
 
 df_bronze.write.format("delta").mode("overwrite").saveAsTable(
-    f"dataops_olympics.default.{TEAM_NAME}_heart_bronze"
+    f"{CATALOG}.default.heart_bronze"
 )
 print(f"Bronze: {df_bronze.count()} rows")
 
@@ -65,11 +70,11 @@ print(f"Bronze: {df_bronze.count()} rows")
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver AS
+    CREATE OR REPLACE TABLE {CATALOG}.default.heart_silver AS
     SELECT *, current_timestamp() as ingested_at
     FROM (
         SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) as _rn
-        FROM dataops_olympics.default.{TEAM_NAME}_heart_bronze
+        FROM {CATALOG}.default.heart_bronze
     )
     WHERE _rn = 1
       AND age IS NOT NULL AND age BETWEEN 1 AND 120
@@ -77,8 +82,8 @@ spark.sql(f"""
       AND chol >= 0
 """)
 
-silver_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_silver").count()
-bronze_count = spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_bronze").count()
+silver_count = spark.table(f"{CATALOG}.default.heart_silver").count()
+bronze_count = spark.table(f"{CATALOG}.default.heart_bronze").count()
 print(f"Silver: {silver_count} rows (removed {bronze_count - silver_count} dirty/duplicate rows)")
 
 # COMMAND ----------
@@ -89,7 +94,7 @@ print(f"Silver: {silver_count} rows (removed {bronze_count - silver_count} dirty
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE TABLE dataops_olympics.default.{TEAM_NAME}_heart_gold AS
+    CREATE OR REPLACE TABLE {CATALOG}.default.heart_gold AS
     SELECT
         CASE
             WHEN age < 40 THEN 'Under 40'
@@ -102,12 +107,12 @@ spark.sql(f"""
         ROUND(AVG(chol), 1) as avg_cholesterol,
         ROUND(AVG(trestbps), 1) as avg_blood_pressure,
         ROUND(AVG(thalach), 1) as avg_max_heart_rate
-    FROM dataops_olympics.default.{TEAM_NAME}_heart_silver
+    FROM {CATALOG}.default.heart_silver
     GROUP BY 1, 2
     ORDER BY 1, 2
 """)
 
-display(spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold"))
+display(spark.table(f"{CATALOG}.default.heart_gold"))
 
 # COMMAND ----------
 
@@ -117,26 +122,28 @@ display(spark.table(f"dataops_olympics.default.{TEAM_NAME}_heart_gold"))
 # COMMAND ----------
 
 spark.sql(f"""
-    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_bronze
+    ALTER TABLE {CATALOG}.default.heart_bronze
     SET TBLPROPERTIES ('comment' = 'Raw patient intake events from hospital EHR — 5 NDJSON batches, unmodified')
 """)
 
 spark.sql(f"""
-    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_silver
+    ALTER TABLE {CATALOG}.default.heart_silver
     SET TBLPROPERTIES ('comment' = 'Cleaned patient intake data — validated age/BP/cholesterol, deduplicated on event_id')
 """)
 
 spark.sql(f"""
-    ALTER TABLE dataops_olympics.default.{TEAM_NAME}_heart_gold
+    ALTER TABLE {CATALOG}.default.heart_gold
     SET TBLPROPERTIES ('comment' = 'Heart disease metrics aggregated by age group for dashboards and Genie')
 """)
 
-for tbl in [f"{TEAM_NAME}_heart_silver"]:
-    spark.sql(f"ALTER TABLE dataops_olympics.default.{tbl} ALTER COLUMN age COMMENT 'Patient age in years (validated 1-120)'")
-    spark.sql(f"ALTER TABLE dataops_olympics.default.{tbl} ALTER COLUMN trestbps COMMENT 'Resting blood pressure in mmHg (validated 50-300)'")
-    spark.sql(f"ALTER TABLE dataops_olympics.default.{tbl} ALTER COLUMN chol COMMENT 'Serum cholesterol in mg/dL (validated >= 0)'")
-    spark.sql(f"ALTER TABLE dataops_olympics.default.{tbl} ALTER COLUMN target COMMENT 'Diagnosis: 1 = heart disease present, 0 = healthy'")
-    spark.sql(f"ALTER TABLE dataops_olympics.default.{tbl} ALTER COLUMN event_id COMMENT 'Unique event identifier from source system'")
+for col_name, comment in [
+    ("age", "Patient age in years (validated 1-120)"),
+    ("trestbps", "Resting blood pressure in mmHg (validated 50-300)"),
+    ("chol", "Serum cholesterol in mg/dL (validated >= 0)"),
+    ("target", "Diagnosis: 1 = heart disease present, 0 = healthy"),
+    ("event_id", "Unique event identifier from source system"),
+]:
+    spark.sql(f"ALTER TABLE {CATALOG}.default.heart_silver ALTER COLUMN {col_name} COMMENT '{comment}'")
 
 print("All governance comments applied!")
 
@@ -159,7 +166,7 @@ dq = spark.sql(f"""
             (COUNT(*) - SUM(CASE WHEN age IS NULL OR (age NOT BETWEEN 1 AND 120) OR trestbps NOT BETWEEN 50 AND 300 OR chol < 0 THEN 1 ELSE 0 END))
             * 100.0 / COUNT(*), 1
         ) as clean_pct
-    FROM dataops_olympics.default.{TEAM_NAME}_heart_bronze
+    FROM {CATALOG}.default.heart_bronze
 """)
 display(dq)
 
@@ -169,18 +176,16 @@ display(dq)
 # MAGIC ---
 # MAGIC ## Path A: SDP Pipeline Code (Reference)
 # MAGIC
-# MAGIC This is the same code as `sdp_pipeline_template.py`. It must be run as a Pipeline,
-# MAGIC not interactively. Shown here for reference.
+# MAGIC This code must be run as a Pipeline (Workflows → Pipelines), not interactively.
 # MAGIC
 # MAGIC - **Bronze & Silver** = Streaming Tables (incremental ingestion)
 # MAGIC - **Gold** = Materialized View (auto-refreshing aggregation)
 # MAGIC
-# MAGIC ### Python version
+# MAGIC ### Python version (`from pyspark import pipelines as dp`)
 # MAGIC ```python
 # MAGIC from pyspark import pipelines as dp
 # MAGIC from pyspark.sql.functions import *
 # MAGIC
-# MAGIC # Bronze — Streaming Table via Auto Loader
 # MAGIC @dp.table(comment="Raw patient intake events — streaming ingestion via Auto Loader")
 # MAGIC def heart_bronze():
 # MAGIC     return (spark.readStream
@@ -189,7 +194,6 @@ display(dq)
 # MAGIC         .option("cloudFiles.inferColumnTypes", "true")
 # MAGIC         .load("/Volumes/dataops_olympics/default/raw_data/heart_events/"))
 # MAGIC
-# MAGIC # Silver — Streaming Table with DQ expectations
 # MAGIC @dp.table(comment="Cleaned patient intake data — validated and deduplicated")
 # MAGIC @dp.expect_or_drop("valid_age", "age IS NOT NULL AND age BETWEEN 1 AND 120")
 # MAGIC @dp.expect_or_drop("valid_blood_pressure", "trestbps BETWEEN 50 AND 300")
@@ -200,10 +204,9 @@ display(dq)
 # MAGIC         .dropDuplicates(["event_id"])
 # MAGIC         .withColumn("ingested_at", current_timestamp()))
 # MAGIC
-# MAGIC # Gold — Materialized View
-# MAGIC @dp.materialized_view(comment="Heart disease metrics by age group — materialized view")
+# MAGIC @dp.table(comment="Heart disease metrics by age group — materialized view")
 # MAGIC def heart_gold():
-# MAGIC     return (spark.table("heart_silver")
+# MAGIC     return (spark.read.table("heart_silver")
 # MAGIC         .withColumn("age_group",
 # MAGIC             when(col("age") < 40, "Under 40")
 # MAGIC             .when(col("age") < 50, "40-49")

@@ -7,7 +7,10 @@
 # MAGIC Run this notebook to automatically score all teams.
 # MAGIC Update the `TEAMS` list below, then **Run All**.
 # MAGIC
-# MAGIC ### Scoring Breakdown (50 pts max)
+# MAGIC Each team name **is** the catalog name (e.g., `team_01` → catalog `team_01`).
+# MAGIC Tables are always `heart_bronze`, `heart_silver`, `heart_gold` — no prefixes.
+# MAGIC
+# MAGIC ### Scoring Breakdown (50 pts max + 5 bonus)
 # MAGIC
 # MAGIC | Category | SDP Path | SQL Path |
 # MAGIC |----------|----------|----------|
@@ -17,12 +20,9 @@
 # MAGIC | **Data Quality** — DQ report / expectations | 5 | 2 |
 # MAGIC | **Governance** — table + column comments | 5 | 3 |
 # MAGIC | **TOTAL** | **50** | **31** |
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
+# MAGIC | --- | --- | --- |
+# MAGIC | **Bonus: Liquid Clustering** on `heart_silver` | +3 | +3 |
+# MAGIC | **Bonus: AI Functions** → `heart_gold_ai` with `cardiovascular_risk` col | +2 | +2 |
 
 # COMMAND ----------
 
@@ -31,15 +31,8 @@ TEAMS = [
     "team_02",
     "team_03",
     "team_04",
-    "team_05",
-    "team_06",
-    "team_07",
-    "team_08",
-    "team_09",
-    "team_10",
 ]
 
-CATALOG = "dataops_olympics"
 SCHEMA = "default"
 
 # COMMAND ----------
@@ -59,40 +52,32 @@ EXPECTED_GOLD_COLS = {"age_group", "diagnosis", "patient_count"}
 EXPECTED_GOLD_AGG_COLS = {"avg_cholesterol", "avg_blood_pressure", "avg_max_heart_rate"}
 
 
-def _fqn(table):
-    return f"{CATALOG}.{SCHEMA}.{table}"
+def _fqn(catalog, table):
+    return f"{catalog}.{SCHEMA}.{table}"
 
 
-def _table_exists(table):
+def _table_exists(catalog, table):
     try:
-        spark.table(_fqn(table))
+        spark.table(_fqn(catalog, table))
         return True
     except Exception:
         return False
 
 
-def _is_sdp_table(table):
+def _is_sdp_table(catalog, table):
     """Detect if a table was created by an SDP pipeline."""
     try:
-        props = dict(spark.sql(f"SHOW TBLPROPERTIES {_fqn(table)}").collect())
-        return any("pipeline" in str(k).lower() for k in props)
+        rows = spark.sql(f"SHOW TBLPROPERTIES {_fqn(catalog, table)}").collect()
+        props = {str(r[0]).lower(): str(r[1]) for r in rows}
+        return any("pipeline" in k for k in props)
     except Exception:
         return False
 
 
-def _get_table_type(table):
-    """Return STREAMING_TABLE, MATERIALIZED_VIEW, MANAGED, etc."""
-    try:
-        detail = spark.sql(f"DESCRIBE DETAIL {_fqn(table)}").collect()[0]
-        return str(detail["format"]).upper() if detail["format"] else "DELTA"
-    except Exception:
-        return "UNKNOWN"
-
-
-def _count_comments(table):
+def _count_comments(catalog, table):
     """Return (has_table_comment, column_comment_count)."""
     try:
-        desc = spark.sql(f"DESCRIBE TABLE EXTENDED {_fqn(table)}").collect()
+        desc = spark.sql(f"DESCRIBE TABLE EXTENDED {_fqn(catalog, table)}").collect()
         has_tbl = False
         col_count = 0
         in_detail = False
@@ -109,36 +94,57 @@ def _count_comments(table):
         return False, 0
 
 
+def _has_liquid_clustering(catalog, table):
+    """Check if Liquid Clustering is enabled."""
+    try:
+        detail = spark.sql(f"DESCRIBE DETAIL {_fqn(catalog, table)}").collect()[0]
+        clustering = detail["clusteringColumns"]
+        return clustering is not None and len(clustering) > 0
+    except Exception:
+        return False
+
+
+def _check_ai_functions(catalog):
+    """Check for heart_gold_ai table with cardiovascular_risk column. Returns (exists, has_column, row_count)."""
+    try:
+        if not _table_exists(catalog, "heart_gold_ai"):
+            return False, False, 0
+        df = spark.table(_fqn(catalog, "heart_gold_ai"))
+        cols = set(c.lower() for c in df.columns)
+        has_col = "cardiovascular_risk" in cols
+        return True, has_col, df.count()
+    except Exception:
+        return False, False, 0
+
+
 def score_team(team_name: str) -> dict:
-    """Score a single team's Event 1 submission."""
-    scores = {"team": team_name, "bronze": 0, "silver": 0, "gold": 0,
-              "dq": 0, "governance": 0, "total": 0, "path": "?", "details": []}
+    """Score a single team's Event 1 submission. Catalog = team_name."""
+    catalog = team_name
+    scores = {
+        "team": team_name, "bronze": 0, "silver": 0, "gold": 0,
+        "dq": 0, "governance": 0, "bonus": 0, "total": 0,
+        "path": "?", "details": [],
+    }
 
     def log(msg):
         scores["details"].append(msg)
 
     # ─── Detect path: SDP or SQL ───
-    # SDP tables don't have team prefix; SQL tables do
-    sdp_silver = _table_exists("heart_silver") and _is_sdp_table("heart_silver")
-    sdp_bronze = _table_exists("heart_bronze") and _is_sdp_table("heart_bronze")
-    sql_bronze = _table_exists(f"{team_name}_heart_bronze")
-
-    is_sdp = sdp_silver or sdp_bronze
+    is_sdp = (
+        _table_exists(catalog, "heart_bronze") and _is_sdp_table(catalog, "heart_bronze")
+    ) or (
+        _table_exists(catalog, "heart_silver") and _is_sdp_table(catalog, "heart_silver")
+    )
     scores["path"] = "SDP" if is_sdp else "SQL"
-
-    bronze_name = "heart_bronze" if is_sdp else f"{team_name}_heart_bronze"
-    silver_name = "heart_silver" if is_sdp else f"{team_name}_heart_silver"
-    gold_name = "heart_gold" if is_sdp else f"{team_name}_heart_gold"
 
     # ═══════════════════════════════════════
     # BRONZE (10 pts)
     # ═══════════════════════════════════════
-    if _table_exists(bronze_name):
-        bronze = spark.table(_fqn(bronze_name))
+    if _table_exists(catalog, "heart_bronze"):
+        bronze = spark.table(_fqn(catalog, "heart_bronze"))
         b_cnt = bronze.count()
         b_cols = set(bronze.columns)
 
-        # Exists with rows (5 pts)
         if b_cnt >= 495:
             scores["bronze"] += 5
             log(f"Bronze: {b_cnt} rows (all batches) [+5]")
@@ -151,7 +157,6 @@ def score_team(team_name: str) -> dict:
         else:
             log("Bronze: table exists but empty [+0]")
 
-        # All 5 batches (3 pts)
         if b_cnt >= 498:
             scores["bronze"] += 3
             log("Bronze: all 5 batches ingested [+3]")
@@ -159,7 +164,6 @@ def score_team(team_name: str) -> dict:
             scores["bronze"] += 1
             log(f"Bronze: partial batches [+1]")
 
-        # Correct schema (2 pts)
         if EXPECTED_BRONZE_COLS.issubset(b_cols):
             scores["bronze"] += 2
             log("Bronze: schema correct [+2]")
@@ -171,21 +175,19 @@ def score_team(team_name: str) -> dict:
             else:
                 log(f"Bronze: missing columns {missing} [+0]")
     else:
-        log(f"Bronze: TABLE NOT FOUND ({_fqn(bronze_name)})")
+        log(f"Bronze: TABLE NOT FOUND ({_fqn(catalog, 'heart_bronze')})")
 
     # ═══════════════════════════════════════
     # SILVER (SDP: 15 pts / SQL: 8 pts)
     # ═══════════════════════════════════════
-    if _table_exists(silver_name):
-        silver = spark.table(_fqn(silver_name))
+    if _table_exists(catalog, "heart_silver"):
+        silver = spark.table(_fqn(catalog, "heart_silver"))
         s_cnt = silver.count()
 
         if is_sdp:
-            # SDP pipeline detected (10 pts)
             scores["silver"] += 10
             log(f"Silver (SDP): pipeline-managed table, {s_cnt} rows [+10]")
 
-            # Dirty rows removed (3 pts)
             if 480 <= s_cnt <= 495:
                 scores["silver"] += 3
                 log(f"Silver: correct row count after filtering [+3]")
@@ -193,7 +195,6 @@ def score_team(team_name: str) -> dict:
                 scores["silver"] += 1
                 log(f"Silver: some filtering applied [+1]")
 
-            # Dedup check (2 pts)
             distinct_ids = silver.select("event_id").distinct().count()
             if distinct_ids == s_cnt:
                 scores["silver"] += 2
@@ -201,14 +202,12 @@ def score_team(team_name: str) -> dict:
             else:
                 log(f"Silver: {s_cnt - distinct_ids} duplicates remain [+0]")
         else:
-            # SQL table exists (4 pts)
             if s_cnt > 0:
                 scores["silver"] += 4
                 log(f"Silver (SQL): {s_cnt} rows [+4]")
             else:
                 log("Silver (SQL): exists but empty [+0]")
 
-            # Quality filters (2 pts)
             if 480 <= s_cnt <= 495:
                 scores["silver"] += 2
                 log("Silver: quality filters correctly applied [+2]")
@@ -216,7 +215,6 @@ def score_team(team_name: str) -> dict:
                 scores["silver"] += 1
                 log("Silver: some filtering applied [+1]")
 
-            # Dedup (2 pts)
             distinct_ids = silver.select("event_id").distinct().count()
             if distinct_ids == s_cnt:
                 scores["silver"] += 2
@@ -224,29 +222,26 @@ def score_team(team_name: str) -> dict:
             else:
                 log(f"Silver: {s_cnt - distinct_ids} duplicates remain [+0]")
 
-        # Check for ingested_at column (bonus validation)
         if "ingested_at" in set(silver.columns):
             log("Silver: ingested_at column present [info]")
     else:
-        log(f"Silver: TABLE NOT FOUND ({_fqn(silver_name)})")
+        log(f"Silver: TABLE NOT FOUND ({_fqn(catalog, 'heart_silver')})")
 
     # ═══════════════════════════════════════
     # GOLD (SDP: 15 pts / SQL: 8 pts)
     # ═══════════════════════════════════════
-    if _table_exists(gold_name):
-        gold = spark.table(_fqn(gold_name))
+    if _table_exists(catalog, "heart_gold"):
+        gold = spark.table(_fqn(catalog, "heart_gold"))
         g_cnt = gold.count()
         g_cols = set(c.lower() for c in gold.columns)
 
         if is_sdp:
-            # MV or table exists (7 pts)
             if g_cnt > 0:
                 scores["gold"] += 7
                 log(f"Gold (SDP): {g_cnt} rows [+7]")
             else:
                 log("Gold (SDP): exists but empty [+0]")
 
-            # Correct aggregation columns (5 pts)
             has_expected = EXPECTED_GOLD_COLS.issubset(g_cols)
             has_agg = EXPECTED_GOLD_AGG_COLS.issubset(g_cols)
             if has_expected and has_agg:
@@ -256,18 +251,15 @@ def score_team(team_name: str) -> dict:
                 scores["gold"] += 3
                 log("Gold: some aggregation columns [+3]")
 
-            # Governance in pipeline code (3 pts)
-            has_tbl_comment, _ = _count_comments(gold_name)
+            has_tbl_comment, _ = _count_comments(catalog, "heart_gold")
             if has_tbl_comment:
                 scores["gold"] += 3
                 log("Gold: table comment from pipeline code [+3]")
         else:
-            # Table exists (4 pts)
             if g_cnt > 0:
                 scores["gold"] += 4
                 log(f"Gold (SQL): {g_cnt} rows [+4]")
 
-            # Correct columns (2 pts)
             has_expected = EXPECTED_GOLD_COLS.issubset(g_cols)
             has_agg = any("avg" in c for c in g_cols) or "patient_count" in g_cols
             if has_expected and has_agg:
@@ -277,13 +269,11 @@ def score_team(team_name: str) -> dict:
                 scores["gold"] += 1
                 log("Gold: partial columns [+1]")
 
-            # Governance (2 pts)
-            has_tbl_comment, _ = _count_comments(gold_name)
+            has_tbl_comment, _ = _count_comments(catalog, "heart_gold")
             if has_tbl_comment:
                 scores["gold"] += 2
                 log("Gold: governance comment [+2]")
 
-        # Validate aggregation logic
         if g_cnt > 0 and "age_group" in g_cols:
             age_groups = set(gold.select("age_group").distinct().toPandas()["age_group"])
             expected_groups = {"Under 40", "40-49", "50-59", "60+"}
@@ -292,7 +282,7 @@ def score_team(team_name: str) -> dict:
             else:
                 log(f"Gold: age groups = {age_groups} (expected {expected_groups}) [info]")
     else:
-        log(f"Gold: TABLE NOT FOUND ({_fqn(gold_name)})")
+        log(f"Gold: TABLE NOT FOUND ({_fqn(catalog, 'heart_gold')})")
 
     # ═══════════════════════════════════════
     # DATA QUALITY (SDP: 5 pts / SQL: 2 pts)
@@ -301,10 +291,10 @@ def score_team(team_name: str) -> dict:
         scores["dq"] += 5
         log("DQ: SDP expectations provide automatic DQ tracking [+5]")
     else:
-        if _table_exists(bronze_name) and _table_exists(silver_name):
+        if _table_exists(catalog, "heart_bronze") and _table_exists(catalog, "heart_silver"):
             try:
-                b_cnt = spark.table(_fqn(bronze_name)).count()
-                s_cnt = spark.table(_fqn(silver_name)).count()
+                b_cnt = spark.table(_fqn(catalog, "heart_bronze")).count()
+                s_cnt = spark.table(_fqn(catalog, "heart_silver")).count()
                 if s_cnt < b_cnt:
                     scores["dq"] += 2
                     log(f"DQ: filtering evidence (Bronze {b_cnt} → Silver {s_cnt}) [+2]")
@@ -321,9 +311,9 @@ def score_team(team_name: str) -> dict:
     best_tbl_comment = False
     best_col_count = 0
 
-    for tbl in [silver_name, bronze_name, gold_name]:
-        if _table_exists(tbl):
-            has_tc, cc = _count_comments(tbl)
+    for tbl in ["heart_silver", "heart_bronze", "heart_gold"]:
+        if _table_exists(catalog, tbl):
+            has_tc, cc = _count_comments(catalog, tbl)
             if has_tc:
                 best_tbl_comment = True
             best_col_count = max(best_col_count, cc)
@@ -349,7 +339,31 @@ def score_team(team_name: str) -> dict:
             scores["governance"] += 1
             log(f"Governance: {best_col_count} column comments [+1]")
 
-    scores["total"] = scores["bronze"] + scores["silver"] + scores["gold"] + scores["dq"] + scores["governance"]
+    # ═══════════════════════════════════════
+    # BONUS (+5 max)
+    # ═══════════════════════════════════════
+
+    # Liquid Clustering (+3): check heart_silver for clustering columns
+    if _table_exists(catalog, "heart_silver"):
+        if _has_liquid_clustering(catalog, "heart_silver"):
+            scores["bonus"] += 3
+            log("Bonus: Liquid Clustering on heart_silver [+3]")
+
+    # AI Functions (+2): check heart_gold_ai table with cardiovascular_risk column
+    ai_exists, ai_has_col, ai_rows = _check_ai_functions(catalog)
+    if ai_exists and ai_has_col and ai_rows > 0:
+        scores["bonus"] += 2
+        log(f"Bonus: heart_gold_ai with cardiovascular_risk column, {ai_rows} rows [+2]")
+    elif ai_exists and ai_rows > 0:
+        scores["bonus"] += 1
+        log(f"Bonus: heart_gold_ai exists ({ai_rows} rows) but missing cardiovascular_risk column [+1]")
+    elif ai_exists:
+        log("Bonus: heart_gold_ai exists but is empty [+0]")
+
+    scores["total"] = (
+        scores["bronze"] + scores["silver"] + scores["gold"]
+        + scores["dq"] + scores["governance"] + scores["bonus"]
+    )
     return scores
 
 # COMMAND ----------
@@ -362,12 +376,12 @@ def score_team(team_name: str) -> dict:
 results = []
 for team in TEAMS:
     print(f"\n{'='*60}")
-    print(f"  SCORING: {team}")
+    print(f"  SCORING: {team}  (catalog: {team}.{SCHEMA})")
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  Path: {r['path']}  |  TOTAL: {r['total']}/50")
-    print(f"  Bronze: {r['bronze']}/10  Silver: {r['silver']}/15  Gold: {r['gold']}/15  DQ: {r['dq']}/5  Gov: {r['governance']}/5")
+    print(f"  Path: {r['path']}  |  TOTAL: {r['total']}/50 (+{r['bonus']} bonus)")
+    print(f"  Bronze: {r['bronze']}/10  Silver: {r['silver']}/15  Gold: {r['gold']}/15  DQ: {r['dq']}/5  Gov: {r['governance']}/5  Bonus: {r['bonus']}/5")
     print()
     for d in r["details"]:
         print(f"    {d}")
@@ -389,6 +403,7 @@ df_scores = pd.DataFrame([{
     "Gold": r["gold"],
     "DQ": r["dq"],
     "Governance": r["governance"],
+    "Bonus": r["bonus"],
     "Total": r["total"],
 } for r in results]).sort_values("Total", ascending=False)
 
@@ -397,7 +412,7 @@ print("  EVENT 1: DATA ENGINEERING — FINAL LEADERBOARD")
 print("=" * 72)
 for rank, (_, row) in enumerate(df_scores.iterrows(), 1):
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
-    print(f"  {rank}. {medal} {row['Team']:12s} | {row['Path']:3s} | {int(row['Total']):2d}/50 pts")
+    print(f"  {rank}. {medal} {row['Team']:12s} | {row['Path']:3s} | {int(row['Total']):2d}/55 pts")
 print("=" * 72)
 
 # COMMAND ----------
@@ -415,21 +430,19 @@ fig.show()
 
 # COMMAND ----------
 
-df_melt = df_scores.melt(
-    id_vars=["Team", "Path", "Total"],
-    value_vars=["Bronze", "Silver", "Gold", "DQ", "Governance"],
-    var_name="Category", value_name="Points"
-)
-
 fig2 = px.bar(
-    df_melt.sort_values("Total"),
+    df_scores.melt(
+        id_vars=["Team", "Path", "Total"],
+        value_vars=["Bronze", "Silver", "Gold", "DQ", "Governance", "Bonus"],
+        var_name="Category", value_name="Points",
+    ).sort_values("Total"),
     x="Points", y="Team", color="Category",
     orientation="h",
     title="Score Breakdown by Category",
     barmode="stack",
     color_discrete_map={
         "Bronze": "#cd7f32", "Silver": "#c0c0c0", "Gold": "#ffd700",
-        "DQ": "#3498db", "Governance": "#9b59b6",
+        "DQ": "#3498db", "Governance": "#9b59b6", "Bonus": "#e74c3c",
     },
 )
 fig2.update_layout(template="plotly_white", yaxis=dict(categoryorder="total ascending"))
@@ -451,7 +464,10 @@ display(spark.createDataFrame(df_scores))
 
 # COMMAND ----------
 
+spark.sql("USE CATALOG dataops_olympics")
+spark.sql("USE SCHEMA default")
+
 spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsTable(
-    f"{CATALOG}.{SCHEMA}.event1_scores"
+    "dataops_olympics.default.event1_scores"
 )
-print(f"Results saved to {CATALOG}.{SCHEMA}.event1_scores")
+print("Results saved to dataops_olympics.default.event1_scores")

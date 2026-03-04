@@ -2,91 +2,88 @@
 # MAGIC %md
 # MAGIC # Event 3: Data Science / ML — Model Accuracy Challenge
 # MAGIC
-# MAGIC ## Challenge: Build the Most Accurate Predictive Model
-# MAGIC **Build Time: ~20 minutes**
+# MAGIC ## Build the Most Accurate Heart Disease Predictor
+# MAGIC **Time: 20 minutes** | **Max Points: 40 (+8 bonus)**
 # MAGIC
-# MAGIC ### Objective
-# MAGIC Build a classification model to predict **heart disease** using the **cleaned Silver table
-# MAGIC from Event 1** and register it with MLflow.
-# MAGIC
-# MAGIC ### How You Win
-# MAGIC **Highest F1 score on the held-out test set wins Gold!**
-# MAGIC
-# MAGIC ### Data — From YOUR Event 1 Pipeline!
-# MAGIC
-# MAGIC You'll use your **Silver table** from Event 1:
-# MAGIC - `{TEAM_NAME}_heart_silver` — cleaned patient data with validated age, BP, cholesterol
-# MAGIC - Target column: `target` (1 = heart disease, 0 = healthy)
-# MAGIC - Features: age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal
-# MAGIC
-# MAGIC If your team used the SDP path, use `heart_silver`.
-# MAGIC
-# MAGIC ### Rules
-# MAGIC 1. Must use your Silver table from Event 1
-# MAGIC 2. Must use MLflow to track your experiment
-# MAGIC 3. Must evaluate on the standard test split (80/20, random_state=42)
-# MAGIC 4. Must register your best model in MLflow Model Registry
-# MAGIC 5. Any sklearn or Spark ML algorithm is allowed
-# MAGIC 6. Feature engineering is encouraged!
-# MAGIC
-# MAGIC > **Vibe Coding:** Use the Databricks Assistant (`Cmd+I`) to iterate on models faster!
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
-
-# COMMAND ----------
-
-TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 1: Load Your Event 1 Silver Table
 # MAGIC
-# MAGIC ### Business Requirement
+# MAGIC ### The Scenario
 # MAGIC
-# MAGIC > Load your `{TEAM_NAME}_heart_silver` table (or `heart_silver` for SDP path)
-# MAGIC > into a Pandas DataFrame. Print the shape, column names, and the distribution
-# MAGIC > of the `target` column (what % have heart disease?).
+# MAGIC > The hospital wants a **predictive model** to flag patients at risk for heart disease
+# MAGIC > during intake. You have the cleaned Silver table from Event 1 with ~488 patient records.
 # MAGIC >
-# MAGIC > This is the cleaned, deduplicated data from your Event 1 pipeline.
+# MAGIC > **Your job:** Train a classifier, track it with MLflow, and register the best model.
+# MAGIC > Highest F1 score on the standardized test set wins.
+# MAGIC
+# MAGIC ### Scoring Overview
+# MAGIC
+# MAGIC | Category | Points |
+# MAGIC |----------|--------|
+# MAGIC | Data Loading + EDA | 5 |
+# MAGIC | Feature Engineering | 5 |
+# MAGIC | Model Training + MLflow Logging | 10 |
+# MAGIC | Model Performance (F1-based) | 15 |
+# MAGIC | Model Registration | 5 |
+# MAGIC | **Total** | **40** |
+# MAGIC | Bonus: SHAP, Ensemble, Cross-Val | up to 8 |
+# MAGIC
+# MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) to generate your ML code!
 
 # COMMAND ----------
 
-# YOUR CODE HERE — use Databricks Assistant (Cmd+I) to generate!
+# MAGIC %md
+# MAGIC ## Team Configuration
+
+# COMMAND ----------
+
+TEAM_NAME = "team_XX"  # <-- CHANGE THIS (e.g., "team_01")
+CATALOG = TEAM_NAME
+
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA default")
+print(f"Working in: {CATALOG}.default")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Step 1: Load Data & EDA (5 pts)
+# MAGIC
+# MAGIC > Load your `heart_silver` table into a Pandas DataFrame.
+# MAGIC > Show the shape, target distribution, and basic statistics.
+# MAGIC >
+# MAGIC > **Feature columns:** `age`, `sex`, `cp`, `trestbps`, `chol`, `fbs`, `restecg`,
+# MAGIC > `thalach`, `exang`, `oldpeak`, `slope`, `ca`, `thal`
+# MAGIC >
+# MAGIC > **Target column:** `target` (1 = heart disease, 0 = healthy)
+
+# COMMAND ----------
+
+# YOUR CODE HERE — load data into pandas
+# Prompt: "Load heart_silver from Spark into pandas, show shape, describe, and target distribution"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 2: Explore & Feature Engineer
+# MAGIC ## Step 2: Feature Engineering (5 pts)
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Explore the data to understand distributions, correlations, and potential issues.
-# MAGIC > Then create **new features** that might improve prediction accuracy.
+# MAGIC > Create **at least 2 new features** that might improve prediction.
 # MAGIC >
 # MAGIC > Ideas:
-# MAGIC > - Interaction features (e.g., `age * chol`, `trestbps * thalach`)
-# MAGIC > - Binned features (e.g., age groups, cholesterol risk categories)
-# MAGIC > - Ratio features (e.g., `oldpeak / thalach`)
-# MAGIC > - High-risk flags (e.g., age > 55 AND chol > 250)
+# MAGIC > - `age_chol` = age * chol (interaction)
+# MAGIC > - `hr_reserve` = 220 - age - thalach (heart rate reserve)
+# MAGIC > - `high_risk` = 1 if age > 55 AND chol > 240 (composite flag)
+# MAGIC > - `bp_category` = binned blood pressure (low/normal/high/very_high)
+# MAGIC > - `chol_risk` = 1 if chol > 240, 0 otherwise
 # MAGIC >
-# MAGIC > This is where you differentiate from other teams!
-
-# COMMAND ----------
-
-# YOUR CODE HERE — explore the data
-
+# MAGIC > More features = more points (up to 5). Quality matters.
 
 # COMMAND ----------
 
 # YOUR CODE HERE — feature engineering
+# Prompt: "Add 3 new features: hr_reserve, high_risk flag, and chol_risk category"
 
 
 # COMMAND ----------
@@ -95,61 +92,66 @@ TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name
 # MAGIC ---
 # MAGIC ## Step 3: Train/Test Split
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Define your feature columns and target (`target`).
-# MAGIC > Split 80/20 using `random_state=42` and `stratify=y` so all teams
-# MAGIC > are evaluated on the same test set.
+# MAGIC > **MUST use these exact settings** so all teams are evaluated on the same test set:
+# MAGIC > - `test_size=0.2`
+# MAGIC > - `random_state=42`
+# MAGIC > - `stratify=y`
 # MAGIC >
-# MAGIC > **Important:** If you added new features, include them in your feature list!
+# MAGIC > Define `FEATURE_COLS` with all the columns you want to use (original + engineered).
 
 # COMMAND ----------
 
-# YOUR CODE HERE
+# YOUR CODE HERE — split data
+# IMPORTANT: random_state=42, test_size=0.2, stratify=y
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 4: Train Your Model with MLflow
+# MAGIC ## Step 4: Train Model + MLflow (10 pts)
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Train a classification model and log everything to MLflow:
-# MAGIC > - Set the experiment to `/Users/{your_email}/{TEAM_NAME}_ml_challenge`
-# MAGIC > - Log model type and hyperparameters
-# MAGIC > - Log F1 score and AUC-ROC metrics
-# MAGIC > - Log the model with an `infer_signature` (required for UC Model Registry)
+# MAGIC > Train a classification model and log to MLflow:
 # MAGIC >
-# MAGIC > You can run this cell multiple times with different models/hyperparameters.
-# MAGIC > Try RandomForest, GradientBoosting, LogisticRegression, or an ensemble.
+# MAGIC > 1. Set experiment: `mlflow.set_experiment(f"/Users/<your_email>/{TEAM_NAME}_heart_ml")`
+# MAGIC > 2. Start a run: `with mlflow.start_run(run_name="my_model"):`
+# MAGIC > 3. Log parameters: model type, hyperparameters, feature count
+# MAGIC > 4. Log metrics: `f1_score`, `roc_auc_score`, `accuracy_score`
+# MAGIC > 5. Log the model: `mlflow.sklearn.log_model(model, "model", signature=signature)`
 # MAGIC >
-# MAGIC > Print the F1 score, AUC-ROC, and classification report.
+# MAGIC > **You can run this cell multiple times** — try different algorithms!
+# MAGIC > - `RandomForestClassifier`
+# MAGIC > - `GradientBoostingClassifier`
+# MAGIC > - `LogisticRegression`
+# MAGIC > - `VotingClassifier` (ensemble)
+# MAGIC >
+# MAGIC > The **best F1 score** is what gets scored.
 
 # COMMAND ----------
 
-# YOUR CODE HERE — train and log with MLflow
-# You can run this cell multiple times to try different approaches!
+# YOUR CODE HERE — train + log to MLflow
+# Prompt: "Train a GradientBoostingClassifier, log params/metrics/model to MLflow"
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 5: Register Your Best Model
+# MAGIC ## Step 5: Register Best Model (5 pts)
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Register your best model in the MLflow Model Registry.
-# MAGIC > Find the best run from your experiment and call `mlflow.register_model()`.
+# MAGIC > Register your best model in MLflow Model Registry:
 # MAGIC >
-# MAGIC > Note: Unity Catalog requires 3-level model names (catalog.schema.model_name).
-# MAGIC > If registration fails due to permissions, that's OK — the model is still tracked.
+# MAGIC > ```python
+# MAGIC > model_name = f"{CATALOG}.default.heart_disease_model"
+# MAGIC > mlflow.register_model(f"runs:/{best_run_id}/model", model_name)
+# MAGIC > ```
+# MAGIC >
+# MAGIC > If Unity Catalog registration fails due to permissions, that's OK.
+# MAGIC > Just make sure the model is logged in MLflow — the organizer can verify.
 
 # COMMAND ----------
 
-# YOUR CODE HERE
+# YOUR CODE HERE — register model
 
 
 # COMMAND ----------
@@ -158,7 +160,7 @@ TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name
 # MAGIC ---
 # MAGIC ## Final Submission
 # MAGIC
-# MAGIC Run this cell to display your final score. Report the F1 score to the judges!
+# MAGIC Run this to display your final score.
 
 # COMMAND ----------
 
@@ -167,38 +169,65 @@ print(f"  ML CHALLENGE — FINAL SUBMISSION: {TEAM_NAME}")
 print("=" * 60)
 
 try:
-    y_final_pred = model.predict(X_test)
-    y_final_proba = model.predict_proba(X_test)[:, 1]
-
     from sklearn.metrics import f1_score, roc_auc_score, classification_report, confusion_matrix
-    final_f1 = f1_score(y_test, y_final_pred)
-    final_auc = roc_auc_score(y_test, y_final_proba)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
 
-    print(f"\n  F1 Score:  {final_f1:.4f}")
-    print(f"  AUC-ROC:   {final_auc:.4f}")
-    print(f"\n{classification_report(y_test, y_final_pred)}")
+    f1 = f1_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, y_proba)
 
-    cm = confusion_matrix(y_test, y_final_pred)
-    print(f"  Confusion Matrix:")
-    print(f"    TN={cm[0][0]}  FP={cm[0][1]}")
-    print(f"    FN={cm[1][0]}  TP={cm[1][1]}")
+    print(f"\n  F1 Score:  {f1:.4f}")
+    print(f"  AUC-ROC:   {auc:.4f}")
+    print(f"\n{classification_report(y_test, y_pred)}")
 
-    print(f"\n  F1 SCORE TO REPORT: {final_f1:.4f}")
+    cm = confusion_matrix(y_test, y_pred)
+    print(f"  Confusion Matrix:  TN={cm[0][0]}  FP={cm[0][1]}  FN={cm[1][0]}  TP={cm[1][1]}")
+    print(f"\n  >>> REPORT THIS F1 SCORE: {f1:.4f} <<<")
 except NameError:
-    print("  ERROR: 'model', 'X_test', or 'y_test' not defined.")
-    print("  Make sure you ran Steps 3 and 4 first!")
+    print("  ERROR: model, X_test, or y_test not defined. Run Steps 3-4 first!")
 print("=" * 60)
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Stretch Goals (Extra Credit)
+# MAGIC ## Bonus Challenges
 # MAGIC
-# MAGIC Finished early? Ask the Databricks Assistant to help you with these:
+# MAGIC ### Bonus 1: SHAP Explainability (+3 pts)
 # MAGIC
-# MAGIC 1. **SHAP Explainability** — "Add SHAP feature importance plots and log the chart to MLflow"
-# MAGIC 2. **Ensemble Model** — "Create a VotingClassifier combining RandomForest, GradientBoosting, and LogisticRegression"
-# MAGIC 3. **Cross-Validation** — "Replace the single split with 5-fold stratified cross-validation"
-# MAGIC 4. **Hyperparameter Tuning** — "Use GridSearchCV to find the best RandomForest hyperparameters"
-# MAGIC 5. **Threshold Tuning** — "Plot the precision-recall curve and find the optimal classification threshold"
+# MAGIC > Generate SHAP feature importance values and log the summary plot to MLflow.
+# MAGIC > Save the top-5 feature importances as a table called `heart_shap_importance`.
+# MAGIC >
+# MAGIC > ```python
+# MAGIC > import shap
+# MAGIC > explainer = shap.TreeExplainer(model)
+# MAGIC > shap_values = explainer.shap_values(X_test)
+# MAGIC > shap.summary_plot(shap_values, X_test, show=False)
+# MAGIC > plt.savefig("/tmp/shap_summary.png")
+# MAGIC > mlflow.log_artifact("/tmp/shap_summary.png")
+# MAGIC > ```
+# MAGIC
+# MAGIC ### Bonus 2: Ensemble Model (+3 pts)
+# MAGIC
+# MAGIC > Build a `VotingClassifier` combining at least 3 different algorithms.
+# MAGIC > Log it as a separate MLflow run. Compare F1 to your single-model run.
+# MAGIC >
+# MAGIC > ```python
+# MAGIC > from sklearn.ensemble import VotingClassifier, RandomForestClassifier, GradientBoostingClassifier
+# MAGIC > from sklearn.linear_model import LogisticRegression
+# MAGIC > ensemble = VotingClassifier(estimators=[
+# MAGIC >     ('rf', RandomForestClassifier(n_estimators=100, random_state=42)),
+# MAGIC >     ('gb', GradientBoostingClassifier(n_estimators=100, random_state=42)),
+# MAGIC >     ('lr', LogisticRegression(max_iter=1000, random_state=42)),
+# MAGIC > ], voting='soft')
+# MAGIC > ```
+# MAGIC
+# MAGIC ### Bonus 3: Cross-Validation Report (+2 pts)
+# MAGIC
+# MAGIC > Run 5-fold stratified cross-validation and log the mean and std of F1 scores.
+# MAGIC > Save as a table `heart_cv_results` with columns: fold, f1_score.
+# MAGIC >
+# MAGIC > ```python
+# MAGIC > from sklearn.model_selection import cross_val_score
+# MAGIC > cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='f1')
+# MAGIC > ```

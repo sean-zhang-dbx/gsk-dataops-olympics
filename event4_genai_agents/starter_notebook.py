@@ -1,139 +1,231 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Event 4: GenAI / Agents — Agent Building Challenge
+# MAGIC # Event 4: GenAI / Agents — Clinical AI Challenge
 # MAGIC
-# MAGIC ## Challenge: Build the Best Clinical AI Agent
-# MAGIC **Build Time: ~25 minutes**
+# MAGIC ## Build the Smartest Clinical AI Agent
+# MAGIC **Time: 20 minutes** | **Max Points: 40 (+8 bonus)**
 # MAGIC
-# MAGIC ### Objective
-# MAGIC Build an AI agent that can answer clinical questions by:
-# MAGIC 1. Querying your **Event 1 Silver/Gold tables** for patient analytics
-# MAGIC 2. Leveraging **drug review** and **clinical notes** data for context
-# MAGIC 3. Writing effective system prompts
-# MAGIC 4. Being evaluated against a set of test prompts
+# MAGIC ---
 # MAGIC
-# MAGIC ### How You Win
-# MAGIC **Best agent evaluation score against test prompts wins Gold!**
+# MAGIC ### The Scenario
 # MAGIC
-# MAGIC ### Data — From YOUR Pipeline + Additional Sources
+# MAGIC > The hospital wants a **clinical AI agent** that can answer questions about
+# MAGIC > patient data, drug information, and clinical notes using natural language.
+# MAGIC >
+# MAGIC > Your agent must:
+# MAGIC > 1. Route questions to the right data source
+# MAGIC > 2. Use `ai_query()` for intelligent analysis
+# MAGIC > 3. Handle multiple question types gracefully
+# MAGIC > 4. Be evaluated against 5 test prompts
 # MAGIC
-# MAGIC - `{TEAM_NAME}_heart_silver` — Your cleaned patient data from Event 1
-# MAGIC - `{TEAM_NAME}_heart_gold` — Your aggregated metrics from Event 1
-# MAGIC - `drug_reviews` table — 1,000 drug review records with ratings
-# MAGIC - `clinical_notes` table — 20 clinical notes across hospital departments
+# MAGIC ### Scoring Overview
 # MAGIC
-# MAGIC (SDP path: `heart_silver` and `heart_gold`)
+# MAGIC | Category | Points |
+# MAGIC |----------|--------|
+# MAGIC | Data Exploration | 3 |
+# MAGIC | System Prompt | 5 |
+# MAGIC | Agent Function (routing + SQL) | 12 |
+# MAGIC | AI Functions (`ai_query`) | 10 |
+# MAGIC | Test Prompt Evaluation | 10 |
+# MAGIC | **Total** | **40** |
+# MAGIC | Bonus: Semantic Search, Safety, Multi-step | up to 8 |
 # MAGIC
-# MAGIC > **Vibe Coding:** Use the Databricks Assistant (`Cmd+I`) for prompt engineering and agent code!
+# MAGIC ### Data Sources
+# MAGIC
+# MAGIC | Table | Location | Rows | Description |
+# MAGIC |-------|----------|------|-------------|
+# MAGIC | `heart_silver` | `{TEAM_NAME}.default` | ~488 | Patient clinical data |
+# MAGIC | `heart_gold` | `{TEAM_NAME}.default` | ~8 | Aggregated metrics |
+# MAGIC | `drug_reviews` | `dataops_olympics.default` | 1,000 | Drug names, ratings, conditions |
+# MAGIC | `clinical_notes` | `dataops_olympics.default` | 20 | Hospital department notes |
+# MAGIC
+# MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) for prompt engineering!
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
+# MAGIC %md
+# MAGIC ## Team Configuration
 
 # COMMAND ----------
 
-TEAM_NAME = "team_XX"  # <-- CHANGE THIS to your team name
+TEAM_NAME = "team_XX"  # <-- CHANGE THIS
+CATALOG = TEAM_NAME
+SHARED_CATALOG = "dataops_olympics"
+
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA default")
+print(f"Team catalog: {CATALOG}.default")
+print(f"Shared data:  {SHARED_CATALOG}.default")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 1: Explore Your Data Sources
+# MAGIC ## Step 1: Explore Data Sources (3 pts)
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Explore all 4 data sources your agent will have access to.
-# MAGIC > For each table, display the row count, column names, and a sample.
-# MAGIC >
-# MAGIC > Tables:
-# MAGIC > - Your Silver table (`{TEAM_NAME}_heart_silver` or `heart_silver`)
-# MAGIC > - Your Gold table (`{TEAM_NAME}_heart_gold` or `heart_gold`)
-# MAGIC > - `drug_reviews` — drug names, ratings (1-10), conditions
-# MAGIC > - `clinical_notes` — departments, note types, clinical text
+# MAGIC > Display row counts and samples from all 4 tables.
 
 # COMMAND ----------
 
-# YOUR CODE HERE — explore all 4 data sources
-
+for table, catalog in [
+    ("heart_silver", CATALOG),
+    ("heart_gold", CATALOG),
+    ("drug_reviews", SHARED_CATALOG),
+    ("clinical_notes", SHARED_CATALOG),
+]:
+    try:
+        cnt = spark.table(f"{catalog}.default.{table}").count()
+        print(f"  {catalog}.default.{table}: {cnt} rows")
+    except Exception as e:
+        print(f"  {catalog}.default.{table}: ERROR - {e}")
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ---
-# MAGIC ## Step 2: Set Up a Genie Space
-# MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > In the Databricks UI, create a Genie space (or reuse from Event 2):
-# MAGIC >
-# MAGIC > 1. Click **+ New** > **Genie space**
-# MAGIC > 2. Name: `{TEAM_NAME} Clinical Agent`
-# MAGIC > 3. Add your Silver/Gold tables, `drug_reviews`, and `clinical_notes`
-# MAGIC > 4. Add instructions explaining column meanings (target, cp, sex, thalach, etc.)
-# MAGIC > 5. Test with a few sample questions
+display(spark.table(f"{SHARED_CATALOG}.default.drug_reviews").limit(5))
+
+# COMMAND ----------
+
+display(spark.table(f"{SHARED_CATALOG}.default.clinical_notes").limit(5))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 3: Build Your Agent
+# MAGIC ## Step 2: System Prompt (5 pts)
 # MAGIC
-# MAGIC ### Business Requirement
-# MAGIC
-# MAGIC > Create a `clinical_agent(question: str) -> str` function that:
+# MAGIC > Define a system prompt for your clinical AI agent. It should describe:
+# MAGIC > - The agent's role and capabilities
+# MAGIC > - Available data sources and what each contains
+# MAGIC > - Column semantics (target, cp, sex, thalach, etc.)
+# MAGIC > - Behavioral rules (be factual, cite data, don't give medical advice)
 # MAGIC >
-# MAGIC > 1. **Detects the topic** from the question (heart data, drugs, clinical notes)
-# MAGIC > 2. **Routes to the right table** and runs an appropriate SQL query:
-# MAGIC >    - Heart/cardiac/patient questions -> query your Silver table for stats
-# MAGIC >    - Drug/medication/rating questions -> query `drug_reviews` for top drugs
-# MAGIC >    - Clinical/note/department questions -> query `clinical_notes` for summaries
-# MAGIC >    - Age group questions -> query your Gold table directly
-# MAGIC > 3. **Formats the response** as a readable string with data citations
-# MAGIC > 4. **Handles unknown questions** gracefully with a helpful message
-# MAGIC >
-# MAGIC > Also define a `system_prompt` variable (100+ chars) describing the agent's role,
-# MAGIC > available data sources, and behavioral rules.
+# MAGIC > Minimum 200 characters. More detailed = better agent performance.
 
 # COMMAND ----------
 
 # YOUR CODE HERE — define system_prompt
+system_prompt = """
+You are a clinical data analyst AI for a hospital. You have access to:
+... (describe your data sources and rules)
+"""
+print(f"System prompt length: {len(system_prompt)} chars")
 
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Step 3: Build Your Agent Function (12 pts)
+# MAGIC
+# MAGIC > Create a `clinical_agent(question: str) -> str` function that:
+# MAGIC >
+# MAGIC > 1. **Detects the topic** from the question keywords
+# MAGIC > 2. **Routes to the right table** and runs SQL:
+# MAGIC >    - Heart/patient/cardiac → `{CATALOG}.default.heart_silver` or `heart_gold`
+# MAGIC >    - Drug/medication/rating → `{SHARED_CATALOG}.default.drug_reviews`
+# MAGIC >    - Clinical/note/department → `{SHARED_CATALOG}.default.clinical_notes`
+# MAGIC > 3. **Returns a formatted answer** with data
+# MAGIC > 4. **Handles unknown questions** gracefully
+# MAGIC >
+# MAGIC > Use Databricks Assistant to help build this!
 
 # COMMAND ----------
 
 # YOUR CODE HERE — define clinical_agent function
+# Prompt: "Create a clinical_agent function that routes questions to heart_silver,
+# drug_reviews, or clinical_notes based on keywords, runs SQL, and returns formatted answers"
+
+def clinical_agent(question: str) -> str:
+    """Route clinical questions to the right data source and return answers."""
+    # YOUR IMPLEMENTATION HERE
+    return "Not implemented yet"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Step 4: AI Functions with `ai_query()` (10 pts)
+# MAGIC
+# MAGIC > Enhance your agent with `ai_query()` to generate intelligent analysis.
+# MAGIC >
+# MAGIC > Create a table `heart_ai_insights` that uses an LLM to analyze each Gold cohort:
+# MAGIC >
+# MAGIC > ```sql
+# MAGIC > CREATE OR REPLACE TABLE heart_ai_insights AS
+# MAGIC > SELECT *,
+# MAGIC >   ai_query(
+# MAGIC >     'databricks-meta-llama-3-3-70b-instruct',
+# MAGIC >     CONCAT(
+# MAGIC >       'You are a clinical analyst. Analyze this patient cohort and provide ',
+# MAGIC >       'a 2-sentence clinical insight: ',
+# MAGIC >       age_group, ' patients, ', diagnosis, ', n=', patient_count,
+# MAGIC >       ', avg cholesterol=', avg_cholesterol, ' mg/dL',
+# MAGIC >       ', avg BP=', avg_blood_pressure, ' mmHg',
+# MAGIC >       ', avg max HR=', avg_max_heart_rate, ' bpm'
+# MAGIC >     )
+# MAGIC >   ) AS clinical_insight
+# MAGIC > FROM heart_gold
+# MAGIC > ```
+# MAGIC >
+# MAGIC > Also create a `drug_ai_summary` table summarizing the top drugs:
+# MAGIC >
+# MAGIC > ```sql
+# MAGIC > CREATE OR REPLACE TABLE drug_ai_summary AS
+# MAGIC > SELECT drug_name, ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS reviews,
+# MAGIC >   ai_query(
+# MAGIC >     'databricks-meta-llama-3-3-70b-instruct',
+# MAGIC >     CONCAT('Summarize this drug in one sentence: ', drug_name,
+# MAGIC >            ', avg rating ', ROUND(AVG(rating), 1), '/10, ',
+# MAGIC >            COUNT(*), ' reviews')
+# MAGIC >   ) AS ai_summary
+# MAGIC > FROM dataops_olympics.default.drug_reviews
+# MAGIC > GROUP BY drug_name
+# MAGIC > ORDER BY avg_rating DESC
+# MAGIC > LIMIT 5
+# MAGIC > ```
+
+# COMMAND ----------
+
+# YOUR CODE HERE — create heart_ai_insights using ai_query()
+
+
+# COMMAND ----------
+
+# YOUR CODE HERE — create drug_ai_summary using ai_query()
 
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 4: Test Your Agent
+# MAGIC ## Step 5: Test Your Agent (10 pts)
+# MAGIC
+# MAGIC Your agent will be evaluated on these 5 test prompts.
+# MAGIC Each correct, data-backed response earns 2 pts.
 
 # COMMAND ----------
 
-# Test with these prompts
 test_prompts = [
     "How many patients in the dataset have heart disease?",
-    "What is the most common chest pain type among patients with heart disease?",
+    "What is the most common chest pain type among heart disease patients?",
     "Which drug has the highest average rating?",
     "What department has the most clinical notes?",
     "Which age group has the highest heart disease rate?",
 ]
 
 print("=" * 60)
-print(f"  AGENT TEST — {TEAM_NAME}")
+print(f"  AGENT EVALUATION — {TEAM_NAME}")
 print("=" * 60)
 
+agent_responses = {}
 for i, prompt in enumerate(test_prompts, 1):
     print(f"\n--- Test {i} ---")
     print(f"Q: {prompt}")
     try:
         response = clinical_agent(prompt)
-        print(f"A: {response[:300]}")
+        agent_responses[f"T{i}"] = response
+        print(f"A: {response[:500]}")
     except Exception as e:
+        agent_responses[f"T{i}"] = f"ERROR: {e}"
         print(f"ERROR: {e}")
 
 print("\n" + "=" * 60)
@@ -142,34 +234,45 @@ print("\n" + "=" * 60)
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 5: Enhance Your Agent (Creativity Points!)
+# MAGIC ## Bonus Challenges
 # MAGIC
-# MAGIC ### Business Requirement
+# MAGIC ### Bonus 1: Semantic Search over Clinical Notes (+3 pts)
 # MAGIC
-# MAGIC > Improve your agent with advanced features. Ideas:
+# MAGIC > Use sentence-transformers + ChromaDB to build a semantic search over clinical notes.
+# MAGIC > Save the search function as `search_notes(query, k=3)`.
 # MAGIC >
-# MAGIC > - **Foundation Model API** — Use `databricks-meta-llama-3-1-70b-instruct` to generate
-# MAGIC >   natural language responses from SQL results
-# MAGIC > - **Semantic search** over clinical notes with ChromaDB
-# MAGIC > - **Multi-step reasoning** — break complex questions into sub-queries across tables
-# MAGIC > - **Safety guardrails** — refuse to give medical advice, add confidence scores
-# MAGIC > - **Conversation memory** — handle follow-up questions like "What about for women only?"
-# MAGIC > - **Connect to your Genie space** for complex SQL generation
-
-# COMMAND ----------
-
-# YOUR CODE HERE — enhance your agent
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Checklist
-# MAGIC - [ ] Data sources explored
-# MAGIC - [ ] Genie space set up with relevant data
-# MAGIC - [ ] Agent function created and tested
-# MAGIC - [ ] System prompt crafted
-# MAGIC - [ ] Agent handles multiple question types
-# MAGIC - [ ] Agent tested against sample prompts
+# MAGIC > ```python
+# MAGIC > # pip install chromadb sentence-transformers
+# MAGIC > from sentence_transformers import SentenceTransformer
+# MAGIC > import chromadb
+# MAGIC >
+# MAGIC > model = SentenceTransformer('all-MiniLM-L6-v2')
+# MAGIC > client = chromadb.Client()
+# MAGIC > collection = client.create_collection("clinical_notes")
+# MAGIC >
+# MAGIC > notes = spark.table(f"{SHARED_CATALOG}.default.clinical_notes").toPandas()
+# MAGIC > collection.add(
+# MAGIC >     documents=notes["note_text"].tolist(),
+# MAGIC >     ids=[str(i) for i in range(len(notes))],
+# MAGIC >     metadatas=[{"dept": d} for d in notes["department"].tolist()]
+# MAGIC > )
+# MAGIC >
+# MAGIC > def search_notes(query, k=3):
+# MAGIC >     results = collection.query(query_texts=[query], n_results=k)
+# MAGIC >     return results["documents"][0]
+# MAGIC > ```
 # MAGIC
-# MAGIC > **Signal judges when ready for agent evaluation!**
+# MAGIC ### Bonus 2: Safety Guardrails (+2 pts)
+# MAGIC
+# MAGIC > Add safety checks to your agent:
+# MAGIC > - Refuse to give specific medical advice ("I cannot provide medical advice...")
+# MAGIC > - Add confidence scores to responses
+# MAGIC > - Detect and handle off-topic questions
+# MAGIC > - Log all queries to a `{CATALOG}.default.agent_audit_log` table
+# MAGIC
+# MAGIC ### Bonus 3: Multi-Step Reasoning (+3 pts)
+# MAGIC
+# MAGIC > Handle complex questions that require querying multiple tables:
+# MAGIC > - "Compare heart disease rates with the top-rated drug for cardiac conditions"
+# MAGIC > - "Which department's notes mention the most common chest pain type?"
+# MAGIC > - Break down into sub-queries, combine results, return a coherent answer

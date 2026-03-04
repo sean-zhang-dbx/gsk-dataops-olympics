@@ -2,16 +2,17 @@
 # MAGIC %md
 # MAGIC # DataOps Olympics — One-Click Setup
 # MAGIC
-# MAGIC **Run All cells** to set up everything. That's it.
+# MAGIC **Run All cells** to set up everything for your team. That's it.
 # MAGIC
 # MAGIC This notebook will:
-# MAGIC 1. Clean up any previous Olympics data (tables in the schema)
-# MAGIC 2. Install required Python libraries
-# MAGIC 3. Create a Unity Catalog Volume for raw data files
-# MAGIC 4. Upload bundled data files from the `data/` folder to the Volume
-# MAGIC 5. Create all Delta tables
-# MAGIC 6. Install Agent Skills for the Databricks Assistant
-# MAGIC 7. Validate everything is ready
+# MAGIC 1. Create shared resources (catalog, volume, raw data) — idempotent
+# MAGIC 2. Create your **team catalog** (`{TEAM_NAME}`)
+# MAGIC 3. Install required Python libraries
+# MAGIC 4. Upload bundled data files to the shared Volume
+# MAGIC 5. Install Agent Skills for the Databricks Assistant
+# MAGIC 6. Validate everything is ready
+# MAGIC
+# MAGIC **Run this once per team** — change `TEAM_NAME` below for each team.
 # MAGIC
 # MAGIC **Estimated time: ~5 minutes**
 
@@ -22,47 +23,51 @@
 
 # COMMAND ----------
 
-CATALOG_NAME = "dataops_olympics"
-SCHEMA_NAME  = "default"
-VOLUME_NAME  = "raw_data"
-VOLUME_PATH  = f"/Volumes/{CATALOG_NAME}/{SCHEMA_NAME}/{VOLUME_NAME}"
+dbutils.widgets.text("TEAM_NAME", "team_XX", "Team Name")
+TEAM_NAME = dbutils.widgets.get("TEAM_NAME")
+
+SHARED_CATALOG = "dataops_olympics"
+SHARED_SCHEMA = "default"
+VOLUME_NAME = "raw_data"
+VOLUME_PATH = f"/Volumes/{SHARED_CATALOG}/{SHARED_SCHEMA}/{VOLUME_NAME}"
+
+print(f"Setting up for team: {TEAM_NAME}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 1: Clean Up Previous Runs
+# MAGIC ## Step 1: Create Shared Resources (Idempotent)
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC USE CATALOG dataops_olympics;
-# MAGIC USE SCHEMA default;
+spark.sql(f"CREATE CATALOG IF NOT EXISTS {SHARED_CATALOG}")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}.{VOLUME_NAME}")
+print(f"  Shared catalog: {SHARED_CATALOG}")
+print(f"  Volume ready:   {VOLUME_PATH}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 2: Create Team Catalog
 
 # COMMAND ----------
 
 print("=" * 60)
-print("  CLEANUP — Removing previous DataOps Olympics tables")
+print(f"  TEAM SETUP — Creating catalog for: {TEAM_NAME}")
 print("=" * 60)
 
-try:
-    tables = spark.sql(f"SHOW TABLES IN {CATALOG_NAME}.{SCHEMA_NAME}").collect()
-    for t in tables:
-        tbl_name = t.tableName
-        try:
-            spark.sql(f"DROP TABLE IF EXISTS {CATALOG_NAME}.{SCHEMA_NAME}.{tbl_name}")
-            print(f"  Dropped table: {tbl_name}")
-        except Exception as e:
-            print(f"  Could not drop {tbl_name}: {e}")
-except Exception as e:
-    print(f"  No existing tables to clean: {e}")
+spark.sql(f"CREATE CATALOG IF NOT EXISTS {TEAM_NAME}")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {TEAM_NAME}.default")
 
-print("\n  Cleanup complete.")
+print(f"  Team catalog: {TEAM_NAME}.default")
+print(f"  Your tables will live at: {TEAM_NAME}.default.*")
 print("=" * 60)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2: Install Libraries
+# MAGIC ## Step 3: Install Libraries
 
 # COMMAND ----------
 
@@ -74,30 +79,22 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-CATALOG_NAME = "dataops_olympics"
-SCHEMA_NAME  = "default"
-VOLUME_NAME  = "raw_data"
-VOLUME_PATH  = f"/Volumes/{CATALOG_NAME}/{SCHEMA_NAME}/{VOLUME_NAME}"
+TEAM_NAME = dbutils.widgets.get("TEAM_NAME")
+SHARED_CATALOG = "dataops_olympics"
+SHARED_SCHEMA = "default"
+VOLUME_NAME = "raw_data"
+VOLUME_PATH = f"/Volumes/{SHARED_CATALOG}/{SHARED_SCHEMA}/{VOLUME_NAME}"
 
-spark.sql(f"USE CATALOG {CATALOG_NAME}")
-spark.sql(f"USE SCHEMA {SCHEMA_NAME}")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Step 3: Create Volume for Raw Data
-
-# COMMAND ----------
-
-spark.sql(f"CREATE VOLUME IF NOT EXISTS {CATALOG_NAME}.{SCHEMA_NAME}.{VOLUME_NAME}")
-print(f"  Volume ready: {VOLUME_PATH}")
+spark.sql(f"USE CATALOG {SHARED_CATALOG}")
+spark.sql(f"USE SCHEMA {SHARED_SCHEMA}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 4: Stage Data Files to Volume
+# MAGIC ## Step 4: Stage Data Files to Shared Volume
 # MAGIC
 # MAGIC Copies bundled CSV/JSON files from the repo `data/` folder to the UC Volume.
+# MAGIC Raw data is shared across all teams — everyone reads from the same Volume.
 
 # COMMAND ----------
 
@@ -154,7 +151,6 @@ if REPO_DATA_DIR:
             shutil.copy2(src_path, dst_path)
             copied += 1
 
-    # Copy NDJSON heart event files for Event 1
     heart_events_dir = os.path.join(REPO_DATA_DIR, "heart_events")
     if os.path.isdir(heart_events_dir):
         for fname in sorted(os.listdir(heart_events_dir)):
@@ -170,7 +166,6 @@ else:
 
     np.random.seed(42)
 
-    # Heart Disease
     heart_path = f"{VOLUME_PATH}/heart_disease/heart.csv"
     n = 500
     df_h = pd.DataFrame({
@@ -191,7 +186,6 @@ else:
         b.to_csv(f"{VOLUME_PATH}/heart_disease/heart_disease_batch_{batch}.csv", index=False)
     print(f"    Generated heart_disease.csv + 3 batches")
 
-    # Heart Events (NDJSON for Event 1)
     import random as _rnd, datetime as _dt
     _rnd.seed(42)
     _rows = df_h.to_dict("records")
@@ -220,7 +214,6 @@ else:
             _f.write("\n".join(_lines) + "\n")
     print(f"    Generated 5 NDJSON heart event batches")
 
-    # Diabetes / Readmission
     n = 768
     df_d = pd.DataFrame({
         "pregnancies": np.random.randint(0, 17, n),
@@ -242,7 +235,6 @@ else:
     df_d.to_csv(f"{VOLUME_PATH}/diabetes/diabetes.csv", index=False)
     print(f"    Generated diabetes.csv")
 
-    # Life Expectancy
     countries = ["India","United States","United Kingdom","Germany","France","Brazil",
                  "Japan","China","Australia","South Africa","Nigeria","Mexico",
                  "Canada","Italy","Spain","Russia","South Korea","Indonesia","Turkey","Thailand"]
@@ -275,7 +267,6 @@ else:
     df_l.head(100).to_json(f"{VOLUME_PATH}/life_expectancy/life_expectancy_sample.json", orient="records", indent=2)
     print(f"    Generated life_expectancy.csv + JSON sample")
 
-    # Drug Reviews
     drugs = ["Metformin","Lisinopril","Atorvastatin","Amlodipine","Omeprazole",
              "Metoprolol","Losartan","Gabapentin","Hydrochlorothiazide","Sertraline",
              "Levothyroxine","Acetaminophen","Ibuprofen","Amoxicillin","Prednisone"]
@@ -305,7 +296,6 @@ else:
     df_r.to_csv(f"{VOLUME_PATH}/drug_reviews/drug_reviews.csv", index=False)
     print(f"    Generated drug_reviews.csv")
 
-    # Clinical Notes
     notes = []
     depts = ["Cardiology","Oncology","Neurology","Emergency","Pediatrics"]
     note_types = ["Admission Note","Progress Note","Discharge Summary","Consultation"]
@@ -330,36 +320,42 @@ print("\n  Data staging complete!")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 5: Create Delta Tables
+# MAGIC ## Step 5: Create Shared Reference Tables
+# MAGIC
+# MAGIC These tables live in `dataops_olympics.default` and are shared across all teams.
+# MAGIC They are used in Events 2–5 (analytics, ML, GenAI, capstone).
 
 # COMMAND ----------
 
-print("Creating Delta tables...\n")
+spark.sql(f"USE CATALOG {SHARED_CATALOG}")
+spark.sql(f"USE SCHEMA {SHARED_SCHEMA}")
+
+print("Creating shared reference tables...\n")
 
 df = pd.read_csv(f"{VOLUME_PATH}/heart_disease/heart.csv")
 sdf = spark.createDataFrame(df)
-sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.heart_disease")
+sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.heart_disease")
 print(f"  heart_disease: {sdf.count()} rows")
 
 # COMMAND ----------
 
 df = pd.read_csv(f"{VOLUME_PATH}/diabetes/diabetes.csv")
 sdf = spark.createDataFrame(df)
-sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.diabetes_readmission")
+sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.diabetes_readmission")
 print(f"  diabetes_readmission: {sdf.count()} rows")
 
 # COMMAND ----------
 
 df = pd.read_csv(f"{VOLUME_PATH}/life_expectancy/life_expectancy.csv")
 sdf = spark.createDataFrame(df)
-sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.life_expectancy")
+sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.life_expectancy")
 print(f"  life_expectancy: {sdf.count()} rows")
 
 # COMMAND ----------
 
 df = pd.read_csv(f"{VOLUME_PATH}/drug_reviews/drug_reviews.csv")
 sdf = spark.createDataFrame(df)
-sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.drug_reviews")
+sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.drug_reviews")
 print(f"  drug_reviews: {sdf.count()} rows")
 
 # COMMAND ----------
@@ -372,7 +368,7 @@ _df_notes = _pd.DataFrame(_notes)
 if "note_id" not in _df_notes.columns:
     _df_notes.insert(0, "note_id", [f"NOTE_{i+1:03d}" for i in range(len(_df_notes))])
 sdf = spark.createDataFrame(_df_notes)
-sdf.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG_NAME}.{SCHEMA_NAME}.clinical_notes")
+sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.clinical_notes")
 print(f"  clinical_notes: {sdf.count()} rows")
 
 # COMMAND ----------
@@ -447,7 +443,8 @@ print("=" * 60)
 # COMMAND ----------
 
 print("=" * 60)
-print("  SETUP COMPLETE — VALIDATION REPORT")
+print(f"  SETUP COMPLETE — VALIDATION REPORT")
+print(f"  Team: {TEAM_NAME}  |  Team Catalog: {TEAM_NAME}.default")
 print("=" * 60)
 
 expected_tables = {
@@ -459,10 +456,10 @@ expected_tables = {
 }
 
 all_ok = True
-print("\n  TABLES:")
+print(f"\n  SHARED TABLES ({SHARED_CATALOG}.{SHARED_SCHEMA}):")
 for tbl, expected in expected_tables.items():
     try:
-        actual = spark.sql(f"SELECT COUNT(*) as cnt FROM {CATALOG_NAME}.{SCHEMA_NAME}.{tbl}").collect()[0].cnt
+        actual = spark.sql(f"SELECT COUNT(*) as cnt FROM {SHARED_CATALOG}.{SHARED_SCHEMA}.{tbl}").collect()[0].cnt
         status = "OK" if actual >= expected * 0.9 else "LOW"
         if status != "OK":
             all_ok = False
@@ -470,6 +467,15 @@ for tbl, expected in expected_tables.items():
     except Exception as e:
         print(f"    {tbl:30s}  ERROR: {str(e)[:50]}")
         all_ok = False
+
+print(f"\n  TEAM CATALOG:")
+try:
+    spark.sql(f"USE CATALOG {TEAM_NAME}")
+    spark.sql(f"USE SCHEMA default")
+    print(f"    {TEAM_NAME}.default — READY")
+except Exception as e:
+    print(f"    {TEAM_NAME}.default — ERROR: {str(e)[:50]}")
+    all_ok = False
 
 print(f"\n  VOLUME FILES:")
 import os
@@ -479,21 +485,17 @@ for root, dirs, files in os.walk(VOLUME_PATH):
         total_files += 1
 print(f"    {total_files} files in {VOLUME_PATH}")
 
-print(f"\n  KEY FILE PATHS FOR EVENTS:")
+print(f"\n  KEY FILE PATHS:")
 print(f"    Heart Events (NDJSON): {VOLUME_PATH}/heart_events/intake_batch_*.json  [EVENT 1]")
 print(f"    Heart CSV:             {VOLUME_PATH}/heart_disease/heart.csv")
-print(f"    Heart Batches:         {VOLUME_PATH}/heart_disease/heart_disease_batch_*.csv")
-print(f"    Life Expectancy JSON:  {VOLUME_PATH}/life_expectancy/life_expectancy_sample.json")
 print(f"    Drug Reviews CSV:      {VOLUME_PATH}/drug_reviews/drug_reviews.csv")
 print(f"    Clinical Notes JSON:   {VOLUME_PATH}/clinical_notes/clinical_notes.json")
 
-print(f"\n  CATALOG.SCHEMA: {CATALOG_NAME}.{SCHEMA_NAME}")
-
 print(f"\n{'=' * 60}")
 if all_ok:
-    print("  READY FOR DATAOPS OLYMPICS!")
+    print(f"  READY FOR DATAOPS OLYMPICS!  Team: {TEAM_NAME}")
 else:
-    print("  ISSUES DETECTED — check table errors above")
+    print("  ISSUES DETECTED — check errors above")
 print("=" * 60)
 
 # COMMAND ----------
@@ -501,31 +503,31 @@ print("=" * 60)
 # MAGIC %md
 # MAGIC ## Quick Reference Card
 # MAGIC
-# MAGIC ### Available Tables
+# MAGIC ### Your Team Setup
+# MAGIC | Setting | Value |
+# MAGIC |---------|-------|
+# MAGIC | **Team Catalog** | `{TEAM_NAME}.default` |
+# MAGIC | **Shared Data** | `dataops_olympics.default` |
+# MAGIC | **Raw Files** | `/Volumes/dataops_olympics/default/raw_data/` |
+# MAGIC
+# MAGIC ### Shared Reference Tables (read-only)
 # MAGIC | Table | Rows | Description | Used In |
 # MAGIC |-------|------|-------------|---------|
-# MAGIC | `heart_disease` | ~500 | UCI heart disease clinical data | Events 1, 2, Warm-Up |
-# MAGIC | `diabetes_readmission` | 768 | Diabetes readmission risk | Event 3 |
-# MAGIC | `life_expectancy` | ~480 | WHO health indicators by country/year | Event 1 |
-# MAGIC | `drug_reviews` | 1,000 | Drug review ratings and text | Events 4, 5 |
-# MAGIC | `clinical_notes` | 20 | Synthetic clinical notes | Events 4, 5 |
-# MAGIC
-# MAGIC ### Raw Files (in Unity Catalog Volume)
-# MAGIC | File | Path |
-# MAGIC |------|------|
-# MAGIC | Heart Disease CSV | `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart.csv` |
-# MAGIC | Heart Batches 1-3 | `/Volumes/dataops_olympics/default/raw_data/heart_disease/heart_disease_batch_*.csv` |
-# MAGIC | Life Expectancy JSON | `/Volumes/dataops_olympics/default/raw_data/life_expectancy/life_expectancy_sample.json` |
-# MAGIC | Drug Reviews CSV | `/Volumes/dataops_olympics/default/raw_data/drug_reviews/drug_reviews.csv` |
-# MAGIC | Clinical Notes JSON | `/Volumes/dataops_olympics/default/raw_data/clinical_notes/clinical_notes.json` |
+# MAGIC | `dataops_olympics.default.heart_disease` | ~500 | UCI heart disease clinical data | Warm-Up |
+# MAGIC | `dataops_olympics.default.diabetes_readmission` | 768 | Diabetes readmission risk | Event 3 |
+# MAGIC | `dataops_olympics.default.life_expectancy` | ~480 | WHO health indicators by country/year | Event 2 |
+# MAGIC | `dataops_olympics.default.drug_reviews` | 1,000 | Drug review ratings and text | Events 4, 5 |
+# MAGIC | `dataops_olympics.default.clinical_notes` | 20 | Synthetic clinical notes | Events 4, 5 |
 # MAGIC
 # MAGIC ### Useful SQL
 # MAGIC ```sql
-# MAGIC USE CATALOG dataops_olympics;
+# MAGIC USE CATALOG {TEAM_NAME};
 # MAGIC USE SCHEMA default;
 # MAGIC SHOW TABLES;
-# MAGIC DESCRIBE TABLE heart_disease;
-# MAGIC SELECT * FROM heart_disease LIMIT 10;
-# MAGIC DESCRIBE HISTORY heart_disease;
+# MAGIC
+# MAGIC -- Read shared data
+# MAGIC SELECT * FROM dataops_olympics.default.heart_disease LIMIT 10;
+# MAGIC
+# MAGIC -- List raw files
 # MAGIC LIST '/Volumes/dataops_olympics/default/raw_data/';
 # MAGIC ```

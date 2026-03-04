@@ -4,15 +4,17 @@
 # MAGIC
 # MAGIC **Your goal: create ONE file (`pipeline.py` or `pipeline.sql`) containing the entire pipeline.**
 # MAGIC
-# MAGIC ### Important: All tables go to `dataops_olympics.default`
+# MAGIC ### Important: All tables go to your team catalog
 # MAGIC
-# MAGIC > **Catalog:** `dataops_olympics`
+# MAGIC > **Catalog:** `{TEAM_NAME}` (your team name IS your catalog)
 # MAGIC > **Schema:** `default`
 # MAGIC >
 # MAGIC > All tables created by this pipeline (Bronze, Silver, Gold) will be saved to
-# MAGIC > `dataops_olympics.default`. This is set when you configure the pipeline destination,
+# MAGIC > `{TEAM_NAME}.default`. This is set when you configure the pipeline destination,
 # MAGIC > NOT in your code. Your code just defines the table names (`heart_bronze`, etc.)
 # MAGIC > and the pipeline writes them to the configured catalog/schema.
+# MAGIC >
+# MAGIC > **Raw data** is in the shared catalog: `/Volumes/dataops_olympics/default/raw_data/heart_events/`
 # MAGIC
 # MAGIC ### Instructions
 # MAGIC
@@ -21,7 +23,7 @@
 # MAGIC 3. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
 # MAGIC    - Source: select your `pipeline` notebook
-# MAGIC    - **Destination catalog: `dataops_olympics`**
+# MAGIC    - **Destination catalog: `{TEAM_NAME}`**
 # MAGIC    - **Destination schema: `default`**
 # MAGIC 4. Click **Validate** (dry-run) → then **Start**
 # MAGIC 5. Return to the **starter notebook** for governance and validation
@@ -98,12 +100,13 @@
 # MAGIC | What | Syntax |
 # MAGIC |------|--------|
 # MAGIC | Streaming table | `@dp.table(comment="...")` with `spark.readStream` |
-# MAGIC | Materialized view | `@dp.materialized_view(comment="...")` with `spark.table()` |
+# MAGIC | Materialized view | `@dp.table(comment="...")` with `spark.read.table()` |
 # MAGIC | Auto Loader | `spark.readStream.format("cloudFiles").option("cloudFiles.format", "json").load(path)` |
 # MAGIC | Read upstream (stream) | `spark.readStream.table("table_name")` |
-# MAGIC | Read upstream (batch) | `spark.table("table_name")` |
+# MAGIC | Read upstream (batch) | `spark.read.table("table_name")` |
 # MAGIC | Expect + drop | `@dp.expect_or_drop("name", "SQL constraint")` |
 # MAGIC | Expect + warn | `@dp.expect("name", "SQL constraint")` |
+# MAGIC | Liquid Clustering | `@dp.table(comment="...", cluster_columns=["col1", "col2"])` |
 # MAGIC
 # MAGIC ### SQL
 # MAGIC
@@ -116,10 +119,12 @@
 # MAGIC | Read upstream (batch) | `FROM table_name` |
 # MAGIC | Expect + drop | `CONSTRAINT name EXPECT (expr) ON VIOLATION DROP ROW` |
 # MAGIC | Expect + warn | `CONSTRAINT name EXPECT (expr)` |
+# MAGIC | Liquid Clustering | `CREATE OR REFRESH STREAMING TABLE name CLUSTER BY (col1, col2) ...` |
 # MAGIC
 # MAGIC ---
 # MAGIC
 # MAGIC ## Docs
+# MAGIC - [SDP Tutorial (Microsoft Learn)](https://learn.microsoft.com/en-us/azure/databricks/ldp/tutorial-get-started)
 # MAGIC - [SDP Programming Guide (Spark)](https://spark.apache.org/docs/latest/declarative-pipelines-programming-guide.html)
 # MAGIC - [Transform Data with Pipelines (Databricks)](https://docs.databricks.com/aws/en/ldp/transform)
 # MAGIC - [Pipeline Expectations (Databricks)](https://docs.databricks.com/aws/en/ldp/expectations)
