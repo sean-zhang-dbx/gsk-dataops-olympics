@@ -199,20 +199,20 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC
 # MAGIC **If you chose Path A (SDP)**, here's your workflow:
 # MAGIC
-# MAGIC ### Step A: Fill in the template with AI
-# MAGIC 1. Open the **`sdp_pipeline_template`** notebook (in this same folder)
-# MAGIC 2. Read the business requirements for each layer (Bronze, Silver, Gold)
-# MAGIC 3. Use **Databricks Assistant** (`Cmd+I`) to generate the code — Python or SQL!
-# MAGIC    - The template shows syntax hints for both languages
-# MAGIC    - The SDP Python API: `from pyspark import pipelines as dp`
-# MAGIC    - Streaming tables: `@dp.table` / `CREATE OR REFRESH STREAMING TABLE`
-# MAGIC    - Materialized views: `@dp.materialized_view` / `CREATE OR REFRESH MATERIALIZED VIEW`
-# MAGIC    - Expectations: `@dp.expect_or_drop(...)` / `CONSTRAINT ... ON VIOLATION DROP ROW`
+# MAGIC ### Step A: Read the requirements
+# MAGIC Open the **`sdp_pipeline_template`** notebook (in this same folder).
+# MAGIC It contains the business requirements for all 3 layers + an SDP syntax reference.
 # MAGIC
-# MAGIC ### Step B: Create and run the pipeline
+# MAGIC ### Step B: Create ONE pipeline file with AI
+# MAGIC 1. Create a **new notebook** called `pipeline` (Python or SQL — your choice)
+# MAGIC 2. Use the **Databricks Assistant** (`Cmd+I`) to generate the entire pipeline
+# MAGIC    in that **single file** — all 3 layers (Bronze, Silver, Gold) together
+# MAGIC 3. The result should be one self-contained file with all your SDP definitions
+# MAGIC
+# MAGIC ### Step C: Run it as a pipeline
 # MAGIC 1. Go to **Workflows → Pipelines → Create Pipeline**
 # MAGIC    - Pipeline name: `{TEAM_NAME}_heart_pipeline`
-# MAGIC    - Source: select the `sdp_pipeline_template` notebook
+# MAGIC    - Source: select your `pipeline` notebook
 # MAGIC    - Target catalog: `dataops_olympics`
 # MAGIC    - Target schema: `default`
 # MAGIC 2. Click **Validate** first (dry-run to catch errors)
@@ -225,7 +225,7 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC - **Automatic DQ metrics** in the Pipeline UI
 # MAGIC - **Full lineage graph** showing Bronze → Silver → Gold
 # MAGIC
-# MAGIC ### Step C: Come back here
+# MAGIC ### Step D: Come back here
 # MAGIC After the pipeline completes, return to this notebook for Steps 4–6
 # MAGIC (governance, DQ report, validation).
 
