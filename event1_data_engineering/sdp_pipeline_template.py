@@ -106,7 +106,6 @@
 # MAGIC | Read upstream (batch) | `spark.read.table("table_name")` |
 # MAGIC | Expect + drop | `@dp.expect_or_drop("name", "SQL constraint")` |
 # MAGIC | Expect + warn | `@dp.expect("name", "SQL constraint")` |
-# MAGIC | Liquid Clustering | `@dp.table(comment="...", cluster_columns=["col1", "col2"])` |
 # MAGIC
 # MAGIC ### SQL
 # MAGIC
@@ -119,7 +118,13 @@
 # MAGIC | Read upstream (batch) | `FROM table_name` |
 # MAGIC | Expect + drop | `CONSTRAINT name EXPECT (expr) ON VIOLATION DROP ROW` |
 # MAGIC | Expect + warn | `CONSTRAINT name EXPECT (expr)` |
-# MAGIC | Liquid Clustering | `CREATE OR REFRESH STREAMING TABLE name CLUSTER BY (col1, col2) ...` |
+# MAGIC
+# MAGIC ### Bonus: UC Tags (after pipeline runs)
+# MAGIC
+# MAGIC ```sql
+# MAGIC ALTER TABLE heart_silver SET TAGS ('domain' = 'cardiology', 'pii' = 'true', 'quality_tier' = 'silver');
+# MAGIC ALTER TABLE heart_gold   SET TAGS ('domain' = 'cardiology', 'quality_tier' = 'gold');
+# MAGIC ```
 # MAGIC
 # MAGIC ---
 # MAGIC

@@ -21,7 +21,7 @@
 # MAGIC | **Governance** — table + column comments | 5 | 3 |
 # MAGIC | **TOTAL** | **50** | **31** |
 # MAGIC | --- | --- | --- |
-# MAGIC | **Bonus: Liquid Clustering** on `heart_silver` | +3 | +3 |
+# MAGIC | **Bonus: UC Tags** — 3+ tags across tables | +3 | +3 |
 # MAGIC | **Bonus: AI Functions** → `heart_gold_ai` with `cardiovascular_risk` col | +2 | +2 |
 
 # COMMAND ----------
@@ -94,14 +94,17 @@ def _count_comments(catalog, table):
         return False, 0
 
 
-def _has_liquid_clustering(catalog, table):
-    """Check if Liquid Clustering is enabled."""
+def _count_uc_tags(catalog):
+    """Count Unity Catalog tags across all heart_* tables in the team catalog."""
     try:
-        detail = spark.sql(f"DESCRIBE DETAIL {_fqn(catalog, table)}").collect()[0]
-        clustering = detail["clusteringColumns"]
-        return clustering is not None and len(clustering) > 0
+        rows = spark.sql(f"""
+            SELECT COUNT(*) AS cnt FROM system.information_schema.table_tags
+            WHERE catalog_name = '{catalog}' AND schema_name = '{SCHEMA}'
+              AND table_name IN ('heart_bronze', 'heart_silver', 'heart_gold')
+        """).collect()
+        return rows[0][0] if rows else 0
     except Exception:
-        return False
+        return 0
 
 
 def _check_ai_functions(catalog):
@@ -343,11 +346,14 @@ def score_team(team_name: str) -> dict:
     # BONUS (+5 max)
     # ═══════════════════════════════════════
 
-    # Liquid Clustering (+3): check heart_silver for clustering columns
-    if _table_exists(catalog, "heart_silver"):
-        if _has_liquid_clustering(catalog, "heart_silver"):
-            scores["bonus"] += 3
-            log("Bonus: Liquid Clustering on heart_silver [+3]")
+    # UC Tags (+3): check for tags across heart_* tables
+    tag_count = _count_uc_tags(catalog)
+    if tag_count >= 3:
+        scores["bonus"] += 3
+        log(f"Bonus: {tag_count} UC Tags across tables [+3]")
+    elif tag_count > 0:
+        scores["bonus"] += tag_count
+        log(f"Bonus: {tag_count} UC Tags (need 3+ for full credit) [+{tag_count}]")
 
     # AI Functions (+2): check heart_gold_ai table with cardiovascular_risk column
     ai_exists, ai_has_col, ai_rows = _check_ai_functions(catalog)

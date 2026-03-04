@@ -341,11 +341,9 @@ for col, comm in [("age", "Patient age (1-120)"), ("trestbps", "Resting BP mmHg 
     spark.sql(f"ALTER TABLE {CATALOG}.default.heart_silver ALTER COLUMN {col} COMMENT '{comm}'")
 print("Governance applied")
 
-try:
-    spark.sql(f"ALTER TABLE {CATALOG}.default.heart_silver CLUSTER BY (age, target)")
-    print("Liquid Clustering applied")
-except Exception as e:
-    print(f"LC: {e}")
+spark.sql(f"ALTER TABLE {CATALOG}.default.heart_silver SET TAGS ('domain' = 'cardiology', 'pii' = 'true', 'quality_tier' = 'silver')")
+spark.sql(f"ALTER TABLE {CATALOG}.default.heart_gold SET TAGS ('domain' = 'cardiology', 'quality_tier' = 'gold')")
+print("UC Tags applied")
 
 spark.sql(f"""
     CREATE OR REPLACE TABLE {CATALOG}.default.heart_gold_ai AS
@@ -443,12 +441,15 @@ def _count_comments(catalog, table):
             if not in_detail and r[0] and r[0].strip() not in ("", "#") and r[2] and len(str(r[2]).strip()) > 3: col_cnt += 1
         return has_tbl, col_cnt
     except: return False, 0
-def _has_liquid_clustering(catalog, table):
+def _count_uc_tags(catalog):
     try:
-        detail = spark.sql(f"DESCRIBE DETAIL {_fqn(catalog, table)}").collect()[0]
-        cc = detail["clusteringColumns"]
-        return cc is not None and len(cc) > 0
-    except: return False
+        rows = spark.sql(f"""
+            SELECT COUNT(*) AS cnt FROM system.information_schema.table_tags
+            WHERE catalog_name = '{catalog}' AND schema_name = '{SCHEMA}'
+              AND table_name IN ('heart_bronze', 'heart_silver', 'heart_gold')
+        """).collect()
+        return rows[0][0] if rows else 0
+    except: return 0
 
 def score_e1(team_name):
     catalog = team_name
@@ -522,8 +523,9 @@ def score_e1(team_name):
         if best_tc: scores["governance"] += 1
         if best_cc >= 3: scores["governance"] += 2
         elif best_cc > 0: scores["governance"] += 1
-    if _table_exists(catalog, "heart_silver") and _has_liquid_clustering(catalog, "heart_silver"):
-        scores["bonus"] += 3
+    tag_count = _count_uc_tags(catalog)
+    if tag_count >= 3: scores["bonus"] += 3
+    elif tag_count > 0: scores["bonus"] += tag_count
     if _table_exists(catalog, "heart_gold_ai"):
         try:
             ai_count = spark.sql(f"SELECT COUNT(*) AS c FROM {_fqn(catalog, 'heart_gold_ai')}").collect()[0][0]

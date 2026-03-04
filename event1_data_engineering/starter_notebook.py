@@ -389,21 +389,21 @@ print("=" * 60)
 # MAGIC
 # MAGIC ---
 # MAGIC
-# MAGIC ### 1. Liquid Clustering (+3 pts)
+# MAGIC ### 1. Unity Catalog Tags (+3 pts)
 # MAGIC
-# MAGIC Optimize your Silver table with `CLUSTER BY (age, target)` for faster queries.
+# MAGIC Tag your tables with metadata so other teams can discover and classify them.
+# MAGIC Add **at least 3 tags** across your heart tables.
 # MAGIC
-# MAGIC > **SQL Path:** Run `ALTER TABLE heart_silver CLUSTER BY (age, target)`
+# MAGIC > **Both paths (SDP and SQL):** Works on all table types, including streaming tables.
 # MAGIC >
-# MAGIC > **SDP Path:** Streaming tables don't support `ALTER TABLE CLUSTER BY` after creation.
-# MAGIC > Instead, add `cluster_columns=["age", "target"]` to your `@dp.table` decorator
-# MAGIC > in your pipeline code, then re-run the pipeline. Example:
-# MAGIC > ```python
-# MAGIC > @dp.table(comment="...", cluster_columns=["age", "target"])
-# MAGIC > def heart_silver():
-# MAGIC >     ...
+# MAGIC > ```sql
+# MAGIC > ALTER TABLE heart_silver SET TAGS ('domain' = 'cardiology', 'pii' = 'true', 'quality_tier' = 'silver');
+# MAGIC > ALTER TABLE heart_gold   SET TAGS ('domain' = 'cardiology', 'quality_tier' = 'gold');
 # MAGIC > ```
-# MAGIC > Or in SQL: `CREATE OR REFRESH STREAMING TABLE heart_silver CLUSTER BY (age, target) ...`
+# MAGIC >
+# MAGIC > *Why Tags? In large organizations, Unity Catalog tags enable data discovery,
+# MAGIC > compliance tracking (PII classification), and access governance. They're searchable
+# MAGIC > in the Catalog Explorer and can drive automated policies.*
 # MAGIC
 # MAGIC ---
 # MAGIC
