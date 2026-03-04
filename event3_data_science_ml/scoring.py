@@ -101,6 +101,13 @@ def _has_registered_model(catalog):
         return False
 
 
+def _get_user_email():
+    try:
+        return dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
+    except Exception:
+        return ""
+
+
 def score_team(team_name: str) -> dict:
     catalog = team_name
     scores = {
@@ -191,8 +198,9 @@ def score_team(team_name: str) -> dict:
     # Ensemble (+3): check for VotingClassifier in MLflow runs
     if best_run:
         try:
+            user_email = _get_user_email()
             exp = client.get_experiment_by_name(
-                f"/Users/{spark.conf.get('spark.databricks.user', '')}/{team_name}_heart_ml"
+                f"/Users/{user_email}/{team_name}_heart_ml"
             )
             if exp:
                 runs = client.search_runs(experiment_ids=[exp.experiment_id])

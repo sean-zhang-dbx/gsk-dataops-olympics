@@ -13,7 +13,7 @@
 # MAGIC | Agent Function (routing + SQL) | 12 |
 # MAGIC | AI Functions (ai_query tables) | 10 |
 # MAGIC | Test Prompt Evaluation | 10 |
-# MAGIC | **Bonus: Semantic Search** | +3 |
+# MAGIC | **Bonus: Genie Integration** | +3 |
 # MAGIC | **Bonus: Safety Guardrails** | +2 |
 # MAGIC | **Bonus: Multi-Step** | +3 |
 
@@ -99,26 +99,29 @@ def score_team(team_name: str) -> dict:
         log("System Prompt: no evidence of agent setup [+0]")
 
     # ─── Agent Function (12 pts) ───
-    # Score based on evidence of routing logic: check for multiple query results
+    # Score based on evidence of agent artifacts (not just pre-existing tables)
     agent_score = 0
 
-    # Heart routing: check if heart_silver is queried (has data)
-    if _table_exists(catalog, "heart_silver") and _table_count(catalog, "heart_silver") > 0:
+    # Heart routing: need AI insights table as evidence the agent actually queried heart data
+    if _table_exists(catalog, "heart_ai_insights") and _table_count(catalog, "heart_ai_insights") > 0:
         agent_score += 4
-        log("Agent: heart data routing works [+4]")
+        log("Agent: heart data routing demonstrated (heart_ai_insights) [+4]")
+    elif has_ai_tables:
+        agent_score += 2
+        log("Agent: some AI tables exist, partial heart routing [+2]")
 
-    # Drug routing: check for drug_ai_summary (evidence of drug queries)
-    if _table_exists(catalog, "drug_ai_summary"):
+    # Drug routing: need drug_ai_summary as evidence
+    if _table_exists(catalog, "drug_ai_summary") and _table_count(catalog, "drug_ai_summary") > 0:
         agent_score += 4
-        log("Agent: drug data routing works [+4]")
-    elif _table_exists(SHARED_CATALOG, "drug_reviews"):
-        agent_score += 2
-        log("Agent: drug_reviews accessible but no summary table [+2]")
+        log("Agent: drug data routing demonstrated (drug_ai_summary) [+4]")
 
-    # Notes routing
-    if _table_exists(SHARED_CATALOG, "clinical_notes"):
+    # Notes routing: check for agent_audit_log or clinical_notes evidence
+    if _table_exists(catalog, "agent_audit_log"):
         agent_score += 2
-        log("Agent: clinical_notes accessible [+2]")
+        log("Agent: notes/audit routing demonstrated [+2]")
+    elif _table_exists(SHARED_CATALOG, "clinical_notes") and has_ai_tables:
+        agent_score += 1
+        log("Agent: clinical_notes accessible, likely used [+1]")
 
     # Multi-table evidence
     if agent_score >= 8:
@@ -183,12 +186,24 @@ def score_team(team_name: str) -> dict:
     scores["test_prompts"] = prompt_score
 
     # ─── Bonus (8 pts max) ───
-    # Semantic Search (+3): check for chromadb usage or search_notes function
+    # Genie Integration (+3): check for genie_agent_log table
+    if _table_exists(catalog, "genie_agent_log"):
+        cnt = _table_count(catalog, "genie_agent_log")
+        if cnt > 0:
+            scores["bonus"] += 3
+            log(f"Bonus: Genie integration log found, {cnt} entries [+3]")
+        else:
+            scores["bonus"] += 1
+            log("Bonus: genie_agent_log exists but empty [+1]")
+    else:
+        log("Bonus: no Genie integration (genie_agent_log not found)")
+
+    # Safety Guardrails (+2): check for audit log
     if _table_exists(catalog, "agent_audit_log"):
         scores["bonus"] += 2
         log("Bonus: audit log table found (safety guardrails) [+2]")
 
-    # Multi-step (+3): check for cross-table results
+    # Multi-step Reasoning (+3): cross-table AI analysis
     if _table_exists(catalog, "heart_ai_insights") and _table_exists(catalog, "drug_ai_summary"):
         if _table_count(catalog, "heart_ai_insights") > 0 and _table_count(catalog, "drug_ai_summary") > 0:
             scores["bonus"] += 3

@@ -9,8 +9,14 @@
 # MAGIC
 # MAGIC ### The Scenario
 # MAGIC
-# MAGIC > The hospital wants a **predictive model** to flag patients at risk for heart disease
-# MAGIC > during intake. You have the cleaned Silver table from Event 1 with ~488 patient records.
+# MAGIC > The analytics from Event 2 revealed something alarming: **over half** the patients in the
+# MAGIC > dataset have heart disease, and certain age groups are at dramatically higher risk.
+# MAGIC >
+# MAGIC > The hospital board has approved a new initiative: **build a predictive model** to flag
+# MAGIC > patients at risk for heart disease *at the time of intake*, before test results come back.
+# MAGIC > Early detection could save lives and reduce costs.
+# MAGIC >
+# MAGIC > You have the cleaned `heart_silver` table from Event 1 with ~488 patient records.
 # MAGIC >
 # MAGIC > **Your job:** Train a classifier, track it with MLflow, and register the best model.
 # MAGIC > Highest F1 score on the standardized test set wins.
@@ -195,16 +201,26 @@ print("=" * 60)
 # MAGIC
 # MAGIC ### Bonus 1: SHAP Explainability (+3 pts)
 # MAGIC
-# MAGIC > Generate SHAP feature importance values and log the summary plot to MLflow.
-# MAGIC > Save the top-5 feature importances as a table called `heart_shap_importance`.
+# MAGIC > Generate SHAP feature importance values and save the top-5 features.
+# MAGIC > Save as a table called `heart_shap_importance` (columns: `feature`, `importance`).
 # MAGIC >
+# MAGIC > **Note:** You may need to install `shap` first:
+# MAGIC > ```python
+# MAGIC > %pip install shap
+# MAGIC > ```
+# MAGIC >
+# MAGIC > Then:
 # MAGIC > ```python
 # MAGIC > import shap
 # MAGIC > explainer = shap.TreeExplainer(model)
 # MAGIC > shap_values = explainer.shap_values(X_test)
-# MAGIC > shap.summary_plot(shap_values, X_test, show=False)
-# MAGIC > plt.savefig("/tmp/shap_summary.png")
-# MAGIC > mlflow.log_artifact("/tmp/shap_summary.png")
+# MAGIC >
+# MAGIC > # Get feature importances from mean absolute SHAP values
+# MAGIC > import numpy as np
+# MAGIC > shap_imp = np.abs(shap_values).mean(axis=0) if len(shap_values.shape) == 2 else np.abs(shap_values[1]).mean(axis=0)
+# MAGIC > top5 = sorted(zip(FEATURE_COLS, shap_imp), key=lambda x: -x[1])[:5]
+# MAGIC > shap_df = spark.createDataFrame(top5, ["feature", "importance"])
+# MAGIC > shap_df.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG}.default.heart_shap_importance")
 # MAGIC > ```
 # MAGIC
 # MAGIC ### Bonus 2: Ensemble Model (+3 pts)

@@ -9,9 +9,12 @@
 # MAGIC
 # MAGIC ### The Scenario
 # MAGIC
-# MAGIC > The hospital leadership team wants **answers fast**. They have 8 urgent clinical
-# MAGIC > questions about the heart disease patient population. Your team has 8 minutes to
-# MAGIC > prepare your tools, then questions will be announced one at a time.
+# MAGIC > Great work building that Medallion pipeline in Event 1! The hospital now has clean,
+# MAGIC > governed patient data flowing from **Bronze → Silver → Gold**.
+# MAGIC >
+# MAGIC > The **Chief Medical Officer** saw the data and is impressed — but now the leadership
+# MAGIC > team has **8 urgent clinical questions** about the heart disease patient population.
+# MAGIC > They need answers *today*, and they're watching your team in real-time.
 # MAGIC >
 # MAGIC > **You choose how to answer each question:**
 # MAGIC > - **SQL query** in this notebook → **2 pts** per correct answer
@@ -344,11 +347,26 @@ print("=" * 60)
 # MAGIC > FROM heart_gold
 # MAGIC > ```
 # MAGIC
-# MAGIC ### Bonus 2: Cross-Table Analysis (+2 pts)
+# MAGIC ### Bonus 2: Advanced Cohort Analysis (+2 pts)
 # MAGIC
-# MAGIC > Join `heart_silver` with `dataops_olympics.default.life_expectancy` on country-level
-# MAGIC > health metrics. Write a query showing how your patient population's average cholesterol
-# MAGIC > and BP compares to national averages.
+# MAGIC > Write a query that compares heart disease patients vs. healthy patients across ALL
+# MAGIC > clinical metrics. For each metric (`trestbps`, `chol`, `thalach`, `oldpeak`),
+# MAGIC > show the average for disease vs. healthy, and the percentage difference.
+# MAGIC > Save as table `heart_cohort_comparison`.
+# MAGIC >
+# MAGIC > ```sql
+# MAGIC > CREATE OR REPLACE TABLE heart_cohort_comparison AS
+# MAGIC > SELECT
+# MAGIC >   'trestbps' AS metric,
+# MAGIC >   ROUND(AVG(CASE WHEN target=1 THEN trestbps END), 1) AS disease_avg,
+# MAGIC >   ROUND(AVG(CASE WHEN target=0 THEN trestbps END), 1) AS healthy_avg,
+# MAGIC >   ROUND((AVG(CASE WHEN target=1 THEN trestbps END) -
+# MAGIC >          AVG(CASE WHEN target=0 THEN trestbps END)) * 100.0 /
+# MAGIC >          AVG(CASE WHEN target=0 THEN trestbps END), 1) AS pct_diff
+# MAGIC > FROM heart_silver
+# MAGIC > UNION ALL
+# MAGIC > -- ... repeat for chol, thalach, oldpeak
+# MAGIC > ```
 # MAGIC
 # MAGIC ### Bonus 3: Statistical Test (+3 pts)
 # MAGIC

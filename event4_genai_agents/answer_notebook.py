@@ -218,3 +218,48 @@ test_prompts = [
 for i, p in enumerate(test_prompts, 1):
     print(f"\nT{i}: {p}")
     print(f"  → {clinical_agent(p)}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Bonus: Genie Space Integration
+# MAGIC
+# MAGIC > If you have a Genie space from Event 2, integrate it as an agent tool.
+# MAGIC > The code below demonstrates the pattern — replace GENIE_SPACE_ID with yours.
+
+# COMMAND ----------
+
+# Genie integration example (requires valid Genie space ID from Event 2)
+# Uncomment and configure to earn +3 bonus points
+
+# import requests, json, time
+# GENIE_SPACE_ID = "YOUR_GENIE_SPACE_ID"
+# host = spark.conf.get("spark.databricks.workspaceUrl")
+# token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
+# headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+#
+# def ask_genie(question: str) -> str:
+#     resp = requests.post(
+#         f"https://{host}/api/2.0/genie/spaces/{GENIE_SPACE_ID}/start-conversation",
+#         headers=headers, json={"content": question}
+#     )
+#     conv = resp.json()
+#     conv_id, msg_id = conv["conversation_id"], conv["message_id"]
+#     for _ in range(15):
+#         time.sleep(2)
+#         r = requests.get(
+#             f"https://{host}/api/2.0/genie/spaces/{GENIE_SPACE_ID}/conversations/{conv_id}/messages/{msg_id}",
+#             headers=headers
+#         )
+#         msg = r.json()
+#         if msg.get("status") == "COMPLETED":
+#             for att in msg.get("attachments", []):
+#                 if att.get("text", {}).get("content"):
+#                     return att["text"]["content"]
+#             return "Genie returned no text result"
+#     return "Genie timed out"
+#
+# genie_questions = ["How many patients have heart disease?", "What is the average age of patients?"]
+# genie_log = [{"question": q, "genie_answer": ask_genie(q)} for q in genie_questions]
+# spark.createDataFrame(genie_log).write.format("delta").mode("overwrite") \
+#     .saveAsTable(f"{CATALOG}.default.genie_agent_log")

@@ -9,14 +9,22 @@
 # MAGIC
 # MAGIC ### The Scenario
 # MAGIC
-# MAGIC > The hospital wants a **clinical AI agent** that can answer questions about
-# MAGIC > patient data, drug information, and clinical notes using natural language.
+# MAGIC > The data pipeline is running (Event 1), the analytics answered leadership's questions
+# MAGIC > (Event 2), and the predictive model is flagging at-risk patients (Event 3). The hospital
+# MAGIC > data platform is mature — but only data teams know how to use it.
+# MAGIC >
+# MAGIC > The hospital's **Director of Clinical Operations** wants one more thing:
+# MAGIC > a **clinical AI agent** that *any* staff member can talk to in natural language.
+# MAGIC > Doctors, nurses, and administrators should be able to ask about patient data,
+# MAGIC > drug information, and clinical notes — without writing a single line of SQL.
 # MAGIC >
 # MAGIC > Your agent must:
 # MAGIC > 1. Route questions to the right data source
 # MAGIC > 2. Use `ai_query()` for intelligent analysis
 # MAGIC > 3. Handle multiple question types gracefully
 # MAGIC > 4. Be evaluated against 5 test prompts
+# MAGIC >
+# MAGIC > **This is the capstone** — bring everything together!
 # MAGIC
 # MAGIC ### Scoring Overview
 # MAGIC
@@ -28,7 +36,7 @@
 # MAGIC | AI Functions (`ai_query`) | 10 |
 # MAGIC | Test Prompt Evaluation | 10 |
 # MAGIC | **Total** | **40** |
-# MAGIC | Bonus: Semantic Search, Safety, Multi-step | up to 8 |
+# MAGIC | Bonus: Genie Integration, Safety, Multi-step | up to 8 |
 # MAGIC
 # MAGIC ### Data Sources
 # MAGIC
@@ -236,30 +244,57 @@ print("\n" + "=" * 60)
 # MAGIC ---
 # MAGIC ## Bonus Challenges
 # MAGIC
-# MAGIC ### Bonus 1: Semantic Search over Clinical Notes (+3 pts)
+# MAGIC ### Bonus 1: Genie Space Integration (+3 pts)
 # MAGIC
-# MAGIC > Use sentence-transformers + ChromaDB to build a semantic search over clinical notes.
-# MAGIC > Save the search function as `search_notes(query, k=3)`.
+# MAGIC > Connect your **Event 2 Genie space** as a tool for your agent!
+# MAGIC >
+# MAGIC > 1. Open your Genie space from Event 2 (or create a new one with `heart_silver` + `heart_gold`)
+# MAGIC > 2. Use the Genie Conversation API to send questions programmatically
+# MAGIC > 3. Route appropriate questions through Genie instead of manual SQL
+# MAGIC > 4. Save the Genie space ID and results to `{CATALOG}.default.genie_agent_log`
 # MAGIC >
 # MAGIC > ```python
-# MAGIC > # pip install chromadb sentence-transformers
-# MAGIC > from sentence_transformers import SentenceTransformer
-# MAGIC > import chromadb
+# MAGIC > GENIE_SPACE_ID = "YOUR_GENIE_SPACE_ID"  # from Event 2
 # MAGIC >
-# MAGIC > model = SentenceTransformer('all-MiniLM-L6-v2')
-# MAGIC > client = chromadb.Client()
-# MAGIC > collection = client.create_collection("clinical_notes")
+# MAGIC > import requests, json, time
+# MAGIC > host = spark.conf.get("spark.databricks.workspaceUrl")
+# MAGIC > token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
+# MAGIC > headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 # MAGIC >
-# MAGIC > notes = spark.table(f"{SHARED_CATALOG}.default.clinical_notes").toPandas()
-# MAGIC > collection.add(
-# MAGIC >     documents=notes["note_text"].tolist(),
-# MAGIC >     ids=[str(i) for i in range(len(notes))],
-# MAGIC >     metadatas=[{"dept": d} for d in notes["department"].tolist()]
-# MAGIC > )
+# MAGIC > def ask_genie(question: str) -> str:
+# MAGIC >     """Send a question to Genie and return the answer."""
+# MAGIC >     # Start conversation
+# MAGIC >     resp = requests.post(
+# MAGIC >         f"https://{host}/api/2.0/genie/spaces/{GENIE_SPACE_ID}/start-conversation",
+# MAGIC >         headers=headers, json={"content": question}
+# MAGIC >     )
+# MAGIC >     conv = resp.json()
+# MAGIC >     conv_id = conv["conversation_id"]
+# MAGIC >     msg_id = conv["message_id"]
+# MAGIC >     # Poll for completion
+# MAGIC >     for _ in range(15):
+# MAGIC >         time.sleep(2)
+# MAGIC >         r = requests.get(
+# MAGIC >             f"https://{host}/api/2.0/genie/spaces/{GENIE_SPACE_ID}/conversations/{conv_id}/messages/{msg_id}",
+# MAGIC >             headers=headers
+# MAGIC >         )
+# MAGIC >         msg = r.json()
+# MAGIC >         if msg.get("status") == "COMPLETED":
+# MAGIC >             for att in msg.get("attachments", []):
+# MAGIC >                 if att.get("text", {}).get("content"):
+# MAGIC >                     return att["text"]["content"]
+# MAGIC >             return "Genie returned no text result"
+# MAGIC >     return "Genie timed out"
 # MAGIC >
-# MAGIC > def search_notes(query, k=3):
-# MAGIC >     results = collection.query(query_texts=[query], n_results=k)
-# MAGIC >     return results["documents"][0]
+# MAGIC > # Use in your agent:
+# MAGIC > # if question is about patient analytics → ask_genie(question)
+# MAGIC > ```
+# MAGIC >
+# MAGIC > Save a log of Genie calls to verify:
+# MAGIC > ```python
+# MAGIC > genie_log = [{"question": q, "genie_answer": ask_genie(q)} for q in test_questions]
+# MAGIC > spark.createDataFrame(genie_log).write.format("delta").mode("overwrite") \
+# MAGIC >     .saveAsTable(f"{CATALOG}.default.genie_agent_log")
 # MAGIC > ```
 # MAGIC
 # MAGIC ### Bonus 2: Safety Guardrails (+2 pts)

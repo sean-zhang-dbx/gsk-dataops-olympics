@@ -17,7 +17,10 @@
 # MAGIC | **Build: Genie** (space exists + responds) | 5 pts |
 # MAGIC | **Benchmark** (8 Qs: 2 pts SQL / 3 pts Genie) | 16-24 pts |
 # MAGIC | **Speed bonus** (first correct per Q) | up to 8 pts |
-# MAGIC | **Max possible** | **40 pts** |
+# MAGIC | **Bonus: AI Summary** | +3 pts |
+# MAGIC | **Bonus: Cohort Analysis** | +2 pts |
+# MAGIC | **Bonus: Statistical Test** | +3 pts |
+# MAGIC | **Max possible** | **40 pts (+8 bonus)** |
 
 # COMMAND ----------
 
@@ -195,7 +198,32 @@ def score_team(team_name: str) -> dict:
             scores["speed_bonus"] += 1
             log(f"{qid}: SPEED BONUS — first correct [+1]")
 
-    scores["total"] = scores["build_sql"] + scores["build_genie"] + scores["benchmark"] + scores["speed_bonus"]
+    # ─── BONUS (auto-detected from tables) ───
+    catalog = team_name
+    bonus = 0
+    try:
+        spark.table(f"{catalog}.default.heart_executive_summary")
+        bonus += 3
+        log("Bonus: AI-powered executive summary found [+3]")
+    except Exception:
+        pass
+
+    try:
+        spark.table(f"{catalog}.default.heart_cohort_comparison")
+        bonus += 2
+        log("Bonus: advanced cohort comparison found [+2]")
+    except Exception:
+        pass
+
+    try:
+        spark.table(f"{catalog}.default.heart_chi2_test")
+        bonus += 3
+        log("Bonus: chi-squared test results found [+3]")
+    except Exception:
+        pass
+
+    scores["bonus"] = bonus
+    scores["total"] = scores["build_sql"] + scores["build_genie"] + scores["benchmark"] + scores["speed_bonus"] + bonus
     return scores
 
 # COMMAND ----------
@@ -212,9 +240,9 @@ for team in TEAMS:
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  Build SQL: {r['build_sql']}/3  Build Genie: {r['build_genie']}/5  Benchmark: {r['benchmark']}/24  Speed: {r['speed_bonus']}/8")
+    print(f"  Build SQL: {r['build_sql']}/3  Build Genie: {r['build_genie']}/5  Benchmark: {r['benchmark']}/24  Speed: {r['speed_bonus']}/8  Bonus: {r['bonus']}/8")
     print(f"  Correct: {r['correct_count']}/8  ({r['genie_answers']} via Genie)")
-    print(f"  TOTAL: {r['total']}/40")
+    print(f"  TOTAL: {r['total']}/48")
     print()
     for d in r["details"]:
         print(f"    {d}")
@@ -235,6 +263,7 @@ df_scores = pd.DataFrame([{
     "Build_Genie": r["build_genie"],
     "Benchmark": r["benchmark"],
     "Speed": r["speed_bonus"],
+    "Bonus": r["bonus"],
     "Total": r["total"],
     "Correct": r["correct_count"],
     "Genie_Answers": r["genie_answers"],
@@ -245,7 +274,7 @@ print("  EVENT 2: DATA ANALYTICS — FINAL LEADERBOARD")
 print("=" * 72)
 for rank, (_, row) in enumerate(df_scores.iterrows(), 1):
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
-    print(f"  {rank}. {medal} {row['Team']:12s} | {int(row['Total']):2d}/40 pts | {int(row['Correct'])}/8 correct | {int(row['Genie_Answers'])} via Genie")
+    print(f"  {rank}. {medal} {row['Team']:12s} | {int(row['Total']):2d}/48 pts | {int(row['Correct'])}/8 correct | {int(row['Genie_Answers'])} via Genie | Bonus:{int(row['Bonus'])}")
 print("=" * 72)
 
 # COMMAND ----------
@@ -255,14 +284,15 @@ print("=" * 72)
 
 # COMMAND ----------
 
-categories = ["Build_SQL", "Build_Genie", "Benchmark", "Speed"]
+categories = ["Build_SQL", "Build_Genie", "Benchmark", "Speed", "Bonus"]
 cat_colors = {
     "Build_SQL": "#3498db",
     "Build_Genie": "#9b59b6",
     "Benchmark": "#2ecc71",
     "Speed": "#e74c3c",
+    "Bonus": "#f39c12",
 }
-cat_max = {"Build_SQL": 3, "Build_Genie": 5, "Benchmark": 24, "Speed": 8}
+cat_max = {"Build_SQL": 3, "Build_Genie": 5, "Benchmark": 24, "Speed": 8, "Bonus": 8}
 
 ordered = df_scores.sort_values("Total", ascending=True)
 
@@ -289,7 +319,7 @@ fig.update_layout(
     plot_bgcolor="#1a1a2e",
     paper_bgcolor="#16213e",
     font=dict(color="white", size=13),
-    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 45]),
+    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 52]),
     yaxis=dict(tickfont=dict(size=14)),
     legend=dict(
         orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
