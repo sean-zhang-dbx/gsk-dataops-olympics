@@ -1,0 +1,299 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # Event 5: Capstone — Automated Scoring
+# MAGIC
+# MAGIC **FOR ORGANIZERS ONLY**
+# MAGIC
+# MAGIC ### Scoring Breakdown (30 pts + 5 bonus)
+# MAGIC
+# MAGIC | Category | Points | How Scored |
+# MAGIC |----------|--------|------------|
+# MAGIC | Artifacts verified | 3 | Auto: table existence |
+# MAGIC | Executive briefing | 5 | Auto: briefing table + LLM quality check |
+# MAGIC | AI/BI Dashboard | 10 | Semi-auto: Lakeview API + judge rubric |
+# MAGIC | Genie space | 5 | Auto: Conversation API test |
+# MAGIC | Presentation | 7 | Manual: judge scores |
+# MAGIC | **Bonus** | +5 | Auto: published, filters, schedule |
+
+# COMMAND ----------
+
+TEAMS = ["team_01", "team_02", "team_03", "team_04"]
+SCHEMA = "default"
+SHARED_CATALOG = "dataops_olympics"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Configuration
+# MAGIC
+# MAGIC Enter Genie Space IDs and dashboard names. Presentation scores are manual.
+
+# COMMAND ----------
+
+GENIE_SPACE_IDS = {
+    "team_01": "",
+    "team_02": "",
+    "team_03": "",
+    "team_04": "",
+}
+
+PRESENTATION_SCORES = {
+    "team_01": 0,  # 0-7 pts, judged live
+    "team_02": 0,
+    "team_03": 0,
+    "team_04": 0,
+}
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Scoring Engine
+
+# COMMAND ----------
+
+import pandas as pd
+import datetime as dt
+
+try:
+    from databricks.sdk import WorkspaceClient
+    w = WorkspaceClient()
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
+    print("WARNING: databricks-sdk not available")
+
+
+def _table_exists(catalog, table):
+    try:
+        spark.table(f"{catalog}.{SCHEMA}.{table}")
+        return True
+    except Exception:
+        return False
+
+
+def _table_count(catalog, table):
+    try:
+        return spark.table(f"{catalog}.{SCHEMA}.{table}").count()
+    except Exception:
+        return 0
+
+
+def _test_genie(space_id, question="How many patients have heart disease?"):
+    """Send a test question to a Genie space and check if it responds."""
+    if not SDK_AVAILABLE or not space_id:
+        return False, "SDK not available or no space ID"
+    try:
+        msg = w.genie.start_conversation_and_wait(
+            space_id=space_id,
+            content=question,
+            timeout=dt.timedelta(minutes=2),
+        )
+        if msg.status and msg.status.value == "COMPLETED":
+            for att in (msg.attachments or []):
+                if att.text and att.text.content:
+                    return True, att.text.content[:100]
+                if att.query and att.query.query:
+                    return True, f"SQL: {att.query.query[:80]}"
+            return True, "Completed (no text)"
+        return False, f"Status: {msg.status.value if msg.status else 'unknown'}"
+    except Exception as e:
+        return False, str(e)[:100]
+
+
+def _check_dashboard_exists(team_name):
+    """Search for a dashboard with the team name in the title."""
+    if not SDK_AVAILABLE:
+        return False, 0
+    try:
+        dashboards = w.lakeview.list()
+        for d in dashboards:
+            if d.display_name and team_name.lower() in d.display_name.lower():
+                return True, d.display_name
+        return False, None
+    except Exception:
+        return False, None
+
+
+def score_team(team_name: str) -> dict:
+    catalog = team_name
+    scores = {
+        "team": team_name,
+        "artifacts": 0, "briefing": 0, "dashboard": 0,
+        "genie": 0, "presentation": 0, "bonus": 0, "total": 0,
+        "details": [],
+    }
+
+    def log(msg):
+        scores["details"].append(msg)
+
+    # ─── ARTIFACTS (3 pts) ───
+    required_tables = ["heart_silver", "heart_gold", "heart_ai_insights", "drug_ai_summary"]
+    found = sum(1 for t in required_tables if _table_exists(catalog, t))
+    if found >= 4:
+        scores["artifacts"] = 3
+        log(f"Artifacts: all {found}/4 tables present [+3]")
+    elif found >= 2:
+        scores["artifacts"] = 2
+        log(f"Artifacts: {found}/4 tables present [+2]")
+    elif found >= 1:
+        scores["artifacts"] = 1
+        log(f"Artifacts: {found}/4 tables present [+1]")
+    else:
+        log("Artifacts: no tables found [+0]")
+
+    # ─── EXECUTIVE BRIEFING (5 pts) ───
+    if _table_exists(catalog, "executive_briefing"):
+        cnt = _table_count(catalog, "executive_briefing")
+        if cnt > 0:
+            try:
+                briefing = spark.table(f"{catalog}.{SCHEMA}.executive_briefing").select("briefing_text").collect()[0][0]
+                if briefing and len(briefing) > 200:
+                    scores["briefing"] = 5
+                    log(f"Briefing: found, {len(briefing)} chars (comprehensive) [+5]")
+                elif briefing and len(briefing) > 50:
+                    scores["briefing"] = 3
+                    log(f"Briefing: found but short ({len(briefing)} chars) [+3]")
+                else:
+                    scores["briefing"] = 1
+                    log("Briefing: table exists but content is minimal [+1]")
+            except Exception:
+                scores["briefing"] = 2
+                log("Briefing: table exists, couldn't read content [+2]")
+        else:
+            log("Briefing: table exists but empty [+0]")
+    else:
+        log("Briefing: executive_briefing table not found [+0]")
+
+    # ─── DASHBOARD (10 pts) — auto-detect + manual judge input ───
+    dash_found, dash_name = _check_dashboard_exists(team_name)
+    if dash_found:
+        scores["dashboard"] = 7
+        log(f"Dashboard: found '{dash_name}' [+7 auto, judge adds 0-3]")
+    else:
+        log("Dashboard: not found via API. Judge may award points manually.")
+
+    # ─── GENIE (5 pts) ───
+    space_id = GENIE_SPACE_IDS.get(team_name, "")
+    if space_id:
+        genie_ok, genie_response = _test_genie(space_id)
+        if genie_ok:
+            scores["genie"] = 5
+            log(f"Genie: responded correctly [+5] ({genie_response})")
+        else:
+            scores["genie"] = 2
+            log(f"Genie: space exists but failed test [+2] ({genie_response})")
+    else:
+        log("Genie: no space ID provided [+0]")
+
+    # ─── PRESENTATION (7 pts) — manual ───
+    scores["presentation"] = PRESENTATION_SCORES.get(team_name, 0)
+    if scores["presentation"] > 0:
+        log(f"Presentation: judge scored [+{scores['presentation']}]")
+    else:
+        log("Presentation: not yet scored (enter in PRESENTATION_SCORES)")
+
+    # ─── BONUS (5 pts) ───
+    # Published dashboard (+1)
+    if dash_found:
+        try:
+            for d in w.lakeview.list():
+                if d.display_name and team_name.lower() in d.display_name.lower():
+                    pub = w.lakeview.get_published(d.dashboard_id)
+                    if pub:
+                        scores["bonus"] += 1
+                        log("Bonus: dashboard is published [+1]")
+                    break
+        except Exception:
+            pass
+
+    # executive_briefing with disease_prevalence_pct column (+2 proxy for filters/quality)
+    if _table_exists(catalog, "executive_briefing"):
+        try:
+            cols = [c.lower() for c in spark.table(f"{catalog}.{SCHEMA}.executive_briefing").columns]
+            if "disease_prevalence_pct" in cols and "total_patients" in cols:
+                scores["bonus"] += 2
+                log("Bonus: briefing has structured metrics (dashboard filter-ready) [+2]")
+        except Exception:
+            pass
+
+    scores["total"] = sum(scores[k] for k in ["artifacts", "briefing", "dashboard", "genie", "presentation", "bonus"])
+    return scores
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Run Scoring
+
+# COMMAND ----------
+
+results = []
+for team in TEAMS:
+    print(f"\n{'='*60}")
+    print(f"  SCORING: {team}")
+    print(f"{'='*60}")
+    r = score_team(team)
+    results.append(r)
+    print(f"  Artifacts:{r['artifacts']}/3  Briefing:{r['briefing']}/5  Dashboard:{r['dashboard']}/10  Genie:{r['genie']}/5  Pres:{r['presentation']}/7  Bonus:{r['bonus']}/5")
+    print(f"  TOTAL: {r['total']}/35")
+    for d in r["details"]:
+        print(f"    {d}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Leaderboard
+
+# COMMAND ----------
+
+import plotly.graph_objects as go
+
+df_scores = pd.DataFrame([{
+    "Team": r["team"],
+    "Artifacts": r["artifacts"],
+    "Briefing": r["briefing"],
+    "Dashboard": r["dashboard"],
+    "Genie": r["genie"],
+    "Presentation": r["presentation"],
+    "Bonus": r["bonus"],
+    "Total": r["total"],
+} for r in results]).sort_values("Total", ascending=False)
+
+categories = ["Artifacts", "Briefing", "Dashboard", "Genie", "Presentation", "Bonus"]
+cat_colors = {
+    "Artifacts": "#3498db", "Briefing": "#e67e22", "Dashboard": "#9b59b6",
+    "Genie": "#2ecc71", "Presentation": "#1abc9c", "Bonus": "#e74c3c",
+}
+
+ordered = df_scores.sort_values("Total", ascending=True)
+fig = go.Figure()
+for cat in categories:
+    fig.add_trace(go.Bar(
+        y=ordered["Team"], x=ordered[cat],
+        name=cat, orientation="h",
+        marker=dict(color=cat_colors[cat], line=dict(color="#1a1a2e", width=1)),
+        text=ordered[cat].astype(int), textposition="inside",
+        textfont=dict(size=12, color="white"),
+    ))
+
+fig.update_layout(
+    barmode="stack",
+    title=dict(text="Event 5: Capstone — Hospital Command Center", font=dict(size=24, color="white"), x=0.5),
+    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
+    font=dict(color="white", size=13),
+    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 38]),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+    height=max(350, len(df_scores) * 80 + 120),
+)
+fig.show()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Save Results
+
+# COMMAND ----------
+
+spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsTable(
+    "dataops_olympics.default.event5_scores"
+)
+print("Saved to dataops_olympics.default.event5_scores")
