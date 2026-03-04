@@ -473,8 +473,6 @@ for team in TEAMS:
 
 # COMMAND ----------
 
-import plotly.graph_objects as go
-
 df_scores = pd.DataFrame([{
     "Team": r["team"],
     "Build_SQL": r["build_sql"],
@@ -495,76 +493,6 @@ for rank, (_, row) in enumerate(df_scores.iterrows(), 1):
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
     print(f"  {rank}. {medal} {row['Team']:12s} | {int(row['Total']):2d}/48 pts | {int(row['Correct'])}/8 correct | Genie:{int(row['Genie_Correct'])} SQL:{int(row['SQL_Correct'])} | Bonus:{int(row['Bonus'])}")
 print("=" * 80)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Score Breakdown
-
-# COMMAND ----------
-
-categories = ["Build_SQL", "Build_Genie", "Benchmark", "Speed", "Bonus"]
-cat_colors = {
-    "Build_SQL": "#3498db", "Build_Genie": "#9b59b6",
-    "Benchmark": "#2ecc71", "Speed": "#e74c3c", "Bonus": "#f39c12",
-}
-cat_max = {"Build_SQL": 3, "Build_Genie": 5, "Benchmark": 24, "Speed": 8, "Bonus": 8}
-
-ordered = df_scores.sort_values("Total", ascending=True)
-
-fig = go.Figure()
-for cat in categories:
-    fig.add_trace(go.Bar(
-        y=ordered["Team"], x=ordered[cat],
-        name=f"{cat.replace('_', ' ')} (/{cat_max[cat]})",
-        orientation="h",
-        marker=dict(color=cat_colors[cat], line=dict(color="#1a1a2e", width=1)),
-        text=ordered[cat].astype(int), textposition="inside",
-        textfont=dict(size=13, color="white"),
-    ))
-
-fig.update_layout(
-    barmode="stack",
-    title=dict(text="Event 2: Data Analytics — Score Breakdown", font=dict(size=24, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
-    font=dict(color="white", size=13),
-    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 52]),
-    yaxis=dict(tickfont=dict(size=14)),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=12)),
-    height=max(350, len(df_scores) * 80 + 120),
-    margin=dict(l=120, r=40, t=100, b=60),
-)
-fig.show()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### SQL vs Genie Accuracy
-
-# COMMAND ----------
-
-fig2 = go.Figure()
-for _, row in ordered.iterrows():
-    fig2.add_trace(go.Bar(
-        x=[row["Team"]], y=[int(row["SQL_Correct"])],
-        name="SQL", marker=dict(color="#3498db"),
-        showlegend=row.name == ordered.index[0], legendgroup="SQL",
-    ))
-    fig2.add_trace(go.Bar(
-        x=[row["Team"]], y=[int(row["Genie_Correct"])],
-        name="Genie", marker=dict(color="#9b59b6"),
-        showlegend=row.name == ordered.index[0], legendgroup="Genie",
-    ))
-
-fig2.update_layout(
-    barmode="stack",
-    title=dict(text="Correct Answers: SQL vs Genie", font=dict(size=22, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
-    font=dict(color="white"),
-    yaxis=dict(title="Correct Answers", gridcolor="#2d3436", range=[0, 9]),
-    height=400,
-)
-fig2.show()
 
 # COMMAND ----------
 
@@ -594,3 +522,20 @@ if GENIE_RESULTS:
             "dataops_olympics.default.event2_genie_benchmark"
         )
         print("Genie details saved to dataops_olympics.default.event2_genie_benchmark")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Update Unified Leaderboard
+
+# COMMAND ----------
+
+spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
+spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 2: Data Analytics'")
+
+for _, row in df_scores.iterrows():
+    spark.sql(f"""
+        INSERT INTO dataops_olympics.default.olympics_leaderboard
+        VALUES ('{row['Team']}', 'Event 2: Data Analytics', {row['Total']}, 48)
+    """)
+print("Leaderboard updated for Event 2")

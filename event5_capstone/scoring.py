@@ -245,8 +245,6 @@ for team in TEAMS:
 
 # COMMAND ----------
 
-import plotly.graph_objects as go
-
 df_scores = pd.DataFrame([{
     "Team": r["team"],
     "Artifacts": r["artifacts"],
@@ -257,34 +255,6 @@ df_scores = pd.DataFrame([{
     "Bonus": r["bonus"],
     "Total": r["total"],
 } for r in results]).sort_values("Total", ascending=False)
-
-categories = ["Artifacts", "Briefing", "Dashboard", "Genie", "Presentation", "Bonus"]
-cat_colors = {
-    "Artifacts": "#3498db", "Briefing": "#e67e22", "Dashboard": "#9b59b6",
-    "Genie": "#2ecc71", "Presentation": "#1abc9c", "Bonus": "#e74c3c",
-}
-
-ordered = df_scores.sort_values("Total", ascending=True)
-fig = go.Figure()
-for cat in categories:
-    fig.add_trace(go.Bar(
-        y=ordered["Team"], x=ordered[cat],
-        name=cat, orientation="h",
-        marker=dict(color=cat_colors[cat], line=dict(color="#1a1a2e", width=1)),
-        text=ordered[cat].astype(int), textposition="inside",
-        textfont=dict(size=12, color="white"),
-    ))
-
-fig.update_layout(
-    barmode="stack",
-    title=dict(text="Event 5: Capstone — Hospital Command Center", font=dict(size=24, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
-    font=dict(color="white", size=13),
-    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 38]),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-    height=max(350, len(df_scores) * 80 + 120),
-)
-fig.show()
 
 # COMMAND ----------
 
@@ -297,3 +267,20 @@ spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsT
     "dataops_olympics.default.event5_scores"
 )
 print("Saved to dataops_olympics.default.event5_scores")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Update Unified Leaderboard
+
+# COMMAND ----------
+
+spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
+spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 5: Capstone'")
+
+for _, row in df_scores.iterrows():
+    spark.sql(f"""
+        INSERT INTO dataops_olympics.default.olympics_leaderboard
+        VALUES ('{row['Team']}', 'Event 5: Capstone', {row['Total']}, 35)
+    """)
+print("Leaderboard updated for Event 5")

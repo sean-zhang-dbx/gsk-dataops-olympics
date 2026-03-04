@@ -12,7 +12,7 @@
 # MAGIC ### What You'll Do
 # MAGIC 1. Write a SQL query to find heart disease prevalence
 # MAGIC 2. Write a SQL query to analyze by age group
-# MAGIC 3. Create a Plotly bar chart
+# MAGIC 3. Create a visualization using `display()`
 # MAGIC 4. Run the validation check
 
 # COMMAND ----------
@@ -63,13 +63,13 @@ spark.sql("USE SCHEMA default")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Exercise 3: Create a Plotly Bar Chart
+# MAGIC ## Exercise 3: Create a Visualization
 # MAGIC
 # MAGIC ### Business Requirement
 # MAGIC
-# MAGIC > Create a **grouped bar chart** using Plotly Express that shows the number
-# MAGIC > of patients in each age group, split by heart disease status (Disease vs Healthy).
-# MAGIC > Use `barmode="group"` and the `plotly_white` template.
+# MAGIC > Write a SQL query that returns the count of patients in each age group, split by
+# MAGIC > heart disease status (Disease vs Healthy). Use `display()` on the result --
+# MAGIC > then click the chart icon in the output to create a bar chart visualization.
 
 # COMMAND ----------
 
@@ -125,11 +125,16 @@ except Exception:
     print("  [FAIL] Age group query failed")
 
 try:
-    import plotly.express as px
-    print(f"  [PASS] Plotly imported successfully")
-    score += 1
+    result = spark.sql("""
+        SELECT CASE WHEN target = 1 THEN 'Disease' ELSE 'Healthy' END as status,
+               COUNT(*) as cnt
+        FROM heart_disease GROUP BY 1
+    """).collect()
+    if len(result) == 2:
+        print(f"  [PASS] Visualization query works ({len(result)} groups)")
+        score += 1
 except Exception:
-    print("  [FAIL] Plotly not available")
+    print("  [FAIL] Visualization query failed")
 
 print(f"\n  Score: {score}/4")
 if score == 4:

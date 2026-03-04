@@ -1,11 +1,17 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 🏆 DataOps Olympics — Live Scoreboard
+# MAGIC # DataOps Olympics — Live Scoreboard
 # MAGIC
-# MAGIC ## Organizer Control Panel
+# MAGIC **Run this notebook after scoring each event to create / refresh the unified AI/BI Dashboard.**
 # MAGIC
-# MAGIC Use this notebook to track scores across all events in real-time.
-# MAGIC Project this on a big screen during the competition!
+# MAGIC The dashboard is created programmatically via the Lakeview API and published
+# MAGIC so that anyone in the workspace can view it. Project it on a big screen!
+# MAGIC
+# MAGIC ### How It Works
+# MAGIC
+# MAGIC 1. Each event's `scoring.py` saves results to `dataops_olympics.default.eventN_scores`
+# MAGIC 2. Each also writes a summary row to `dataops_olympics.default.olympics_leaderboard`
+# MAGIC 3. This notebook reads those tables and creates a single AI/BI Dashboard
 
 # COMMAND ----------
 
@@ -14,320 +20,281 @@
 
 # COMMAND ----------
 
-spark.sql("USE CATALOG dataops_olympics")
-spark.sql("USE SCHEMA default")
+DASHBOARD_NAME = "DataOps Olympics — Live Scoreboard"
+CATALOG = "dataops_olympics"
+SCHEMA = "default"
+
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA {SCHEMA}")
 
 # COMMAND ----------
 
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime
+# MAGIC %md
+# MAGIC ## Preview: Current Standings
 
-# Number of teams
-NUM_TEAMS = 10
-TEAM_NAMES = [f"Team {i+1}" for i in range(NUM_TEAMS)]
+# COMMAND ----------
 
-# Initialize scoreboard
-scoreboard = pd.DataFrame({
-    "team": TEAM_NAMES,
-    "event1_speed_sprint": [0] * NUM_TEAMS,
-    "event2_accuracy": [0] * NUM_TEAMS,
-    "event3_innovation": [0] * NUM_TEAMS,
-    "event4_relay": [0] * NUM_TEAMS,
-    "event5_plot_twist": [0] * NUM_TEAMS,
+spark.sql("""
+    CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (
+        Team STRING, event STRING, points DOUBLE, max_points DOUBLE
+    )
+""")
+
+leaderboard = spark.sql("""
+    SELECT Team,
+           ROUND(SUM(points), 1) AS total_points,
+           ROUND(SUM(max_points), 1) AS max_possible,
+           ROUND(SUM(points) * 100.0 / SUM(max_points), 1) AS pct_achieved,
+           COUNT(DISTINCT event) AS events_completed
+    FROM olympics_leaderboard
+    GROUP BY Team
+    ORDER BY total_points DESC
+""")
+display(leaderboard)
+
+# COMMAND ----------
+
+display(spark.sql("""
+    SELECT Team, event, points, max_points,
+           ROUND(points * 100.0 / max_points, 1) AS pct
+    FROM olympics_leaderboard
+    ORDER BY Team, event
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Build the AI/BI Dashboard
+
+# COMMAND ----------
+
+import json, uuid
+
+def _uid():
+    return uuid.uuid4().hex[:12]
+
+datasets = [
+    {
+        "name": f"ds_{_uid()}",
+        "displayName": "Cumulative Leaderboard",
+        "query": f"""
+            SELECT Team,
+                   ROUND(SUM(points), 1) AS total_points,
+                   ROUND(SUM(max_points), 1) AS max_possible,
+                   ROUND(SUM(points) * 100.0 / SUM(max_points), 1) AS pct_achieved,
+                   COUNT(DISTINCT event) AS events_completed
+            FROM {CATALOG}.{SCHEMA}.olympics_leaderboard
+            GROUP BY Team
+            ORDER BY total_points DESC
+        """
+    },
+    {
+        "name": f"ds_{_uid()}",
+        "displayName": "Points by Event",
+        "query": f"""
+            SELECT Team, event, points, max_points,
+                   ROUND(points * 100.0 / max_points, 1) AS pct
+            FROM {CATALOG}.{SCHEMA}.olympics_leaderboard
+            ORDER BY Team, event
+        """
+    },
+]
+
+event_tables = {
+    "Event 1 Detail": "event1_scores",
+    "Event 2 Detail": "event2_scores",
+    "Event 3 Detail": "event3_scores",
+    "Event 4 Detail": "event4_scores",
+    "Event 5 Detail": "event5_scores",
+}
+
+for label, table in event_tables.items():
+    try:
+        spark.table(f"{CATALOG}.{SCHEMA}.{table}")
+        datasets.append({
+            "name": f"ds_{_uid()}",
+            "displayName": label,
+            "query": f"SELECT * FROM {CATALOG}.{SCHEMA}.{table} ORDER BY Total DESC"
+        })
+    except Exception:
+        pass
+
+print(f"Dashboard datasets: {len(datasets)}")
+for ds in datasets:
+    print(f"  - {ds['displayName']}")
+
+# COMMAND ----------
+
+page_name = _uid()
+widgets = []
+_y = [0]
+
+def _add_text(text, x=0, w=6, h=1):
+    widgets.append({
+        "widget": {
+            "name": f"w_{_uid()}",
+            "textbox_spec": text,
+        },
+        "position": {"x": x, "y": _y[0], "width": w, "height": h}
+    })
+    _y[0] += h
+
+def _add_bar(dataset_name, x_field, y_field, title, color_field=None, x=0, w=6, h=4):
+    fields = [
+        {"name": x_field, "expression": f"`{x_field}`"},
+        {"name": y_field, "expression": f"`{y_field}`"},
+    ]
+    encodings = {
+        "x": {"fieldName": x_field, "scale": {"type": "categorical"}, "displayName": x_field},
+        "y": {"fieldName": y_field, "scale": {"type": "quantitative"}, "displayName": y_field},
+    }
+    if color_field:
+        fields.append({"name": color_field, "expression": f"`{color_field}`"})
+        encodings["color"] = {"fieldName": color_field, "scale": {"type": "categorical"}, "displayName": color_field}
+
+    widgets.append({
+        "widget": {
+            "name": f"w_{_uid()}",
+            "queries": [{"name": f"q_{_uid()}", "query": {
+                "datasetName": dataset_name,
+                "fields": fields,
+                "disaggregated": True
+            }}],
+            "spec": {
+                "version": 3,
+                "widgetType": "bar",
+                "encodings": encodings,
+                "frame": {"showTitle": True, "title": title}
+            }
+        },
+        "position": {"x": x, "y": _y[0], "width": w, "height": h}
+    })
+    _y[0] += h
+
+def _add_table(dataset_name, title, x=0, w=6, h=4):
+    widgets.append({
+        "widget": {
+            "name": f"w_{_uid()}",
+            "queries": [{"name": f"q_{_uid()}", "query": {
+                "datasetName": dataset_name,
+                "fields": [{"name": "*", "expression": "*"}],
+                "disaggregated": True
+            }}],
+            "spec": {
+                "version": 3,
+                "widgetType": "table",
+                "encodings": {},
+                "frame": {"showTitle": True, "title": title}
+            }
+        },
+        "position": {"x": x, "y": _y[0], "width": w, "height": h}
+    })
+    _y[0] += h
+
+
+_add_text("# DataOps Olympics -- Live Scoreboard", w=6, h=1)
+
+cumulative_ds = datasets[0]["name"]
+by_event_ds = datasets[1]["name"]
+
+_add_bar(cumulative_ds, "Team", "total_points", "Cumulative Leaderboard", w=6, h=4)
+
+_add_bar(by_event_ds, "Team", "points", "Points by Event (Stacked)", color_field="event", w=6, h=4)
+
+_add_table(cumulative_ds, "Standings Summary", w=6, h=3)
+
+for ds in datasets[2:]:
+    _add_table(ds["name"], ds["displayName"], w=6, h=3)
+
+serialized = json.dumps({
+    "pages": [{
+        "name": page_name,
+        "displayName": "Scoreboard",
+        "layout": widgets
+    }],
+    "datasets": [{
+        "name": ds["name"],
+        "displayName": ds["displayName"],
+        "query": ds["query"]
+    } for ds in datasets]
 })
 
-print("Scoreboard initialized!")
-print(f"Teams: {NUM_TEAMS}")
-print(f"Events: 5")
+print(f"Dashboard JSON: {len(serialized)} chars, {len(widgets)} widgets, {len(datasets)} datasets")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Enter Scores
-# MAGIC
-# MAGIC **Instructions:** Update the scores below after each event.
+# MAGIC ## Create / Update Dashboard via Lakeview API
 
 # COMMAND ----------
 
-# =============================================================
-# EVENT 1: SPEED SPRINT (max 10 pts)
-# Enter finishing order: 1st=10, 2nd=8, 3rd=6, 4th=5, 5th=4, 6th+=2
-# =============================================================
+import urllib.request as _urllib_request
 
-scoreboard.loc[0, "event1_speed_sprint"] = 0   # Team 1
-scoreboard.loc[1, "event1_speed_sprint"] = 0   # Team 2
-scoreboard.loc[2, "event1_speed_sprint"] = 0   # Team 3
-scoreboard.loc[3, "event1_speed_sprint"] = 0   # Team 4
-scoreboard.loc[4, "event1_speed_sprint"] = 0   # Team 5
-scoreboard.loc[5, "event1_speed_sprint"] = 0   # Team 6
-scoreboard.loc[6, "event1_speed_sprint"] = 0   # Team 7
-scoreboard.loc[7, "event1_speed_sprint"] = 0   # Team 8
-scoreboard.loc[8, "event1_speed_sprint"] = 0   # Team 9
-scoreboard.loc[9, "event1_speed_sprint"] = 0   # Team 10
+_ws_url = spark.conf.get("spark.databricks.workspaceUrl", "")
+_host = f"https://{_ws_url}"
+_token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
 
-# COMMAND ----------
+def _api(method, path, body=None):
+    data = json.dumps(body).encode() if body else None
+    req = _urllib_request.Request(
+        f"{_host}{path}", data=data, method=method,
+        headers={"Authorization": f"Bearer {_token}", "Content-Type": "application/json"}
+    )
+    return json.loads(_urllib_request.urlopen(req).read())
 
-# =============================================================
-# EVENT 2: ACCURACY CHALLENGE (max 20 pts = 15 F1 + 5 explainability)
-# =============================================================
+existing_id = None
+try:
+    dashboards = _api("GET", "/api/2.0/lakeview/dashboards")
+    for d in dashboards.get("dashboards", []):
+        if d.get("display_name") == DASHBOARD_NAME:
+            existing_id = d["dashboard_id"]
+            break
+except Exception as e:
+    print(f"List dashboards note: {e}")
 
-# F1 scores (enter each team's reported F1)
-f1_scores = {
-    "Team 1": 0.0,
-    "Team 2": 0.0,
-    "Team 3": 0.0,
-    "Team 4": 0.0,
-    "Team 5": 0.0,
-    "Team 6": 0.0,
-    "Team 7": 0.0,
-    "Team 8": 0.0,
-    "Team 9": 0.0,
-    "Team 10": 0.0,
-}
+if existing_id:
+    print(f"Updating existing dashboard: {existing_id}")
+    _api("PATCH", f"/api/2.0/lakeview/dashboards/{existing_id}", {
+        "display_name": DASHBOARD_NAME,
+        "serialized_dashboard": serialized,
+    })
+    dashboard_id = existing_id
+else:
+    try:
+        user_email = spark.sql("SELECT current_user()").collect()[0][0]
+        parent = f"/Workspace/Users/{user_email}/gsk-dataops-olympics/scoring"
+    except Exception:
+        parent = None
 
-# Explainability bonus (judge-rated, max 5)
-explainability_bonus = {
-    "Team 1": 0,
-    "Team 2": 0,
-    "Team 3": 0,
-    "Team 4": 0,
-    "Team 5": 0,
-    "Team 6": 0,
-    "Team 7": 0,
-    "Team 8": 0,
-    "Team 9": 0,
-    "Team 10": 0,
-}
+    body = {
+        "display_name": DASHBOARD_NAME,
+        "serialized_dashboard": serialized,
+    }
+    if parent:
+        body["parent_path"] = parent
 
-# Calculate F1-based points (proportional to best, max 15)
-max_f1 = max(f1_scores.values()) if max(f1_scores.values()) > 0 else 1
-for team in TEAM_NAMES:
-    f1_points = round((f1_scores[team] / max_f1) * 15, 1) if max_f1 > 0 else 0
-    total = f1_points + explainability_bonus[team]
-    scoreboard.loc[scoreboard["team"] == team, "event2_accuracy"] = total
-
-# COMMAND ----------
-
-# =============================================================
-# EVENT 3: INNOVATION SHOWCASE (max 30 pts)
-# Judge-rated: Creativity(10) + Functionality(10) + Usefulness(5) + Demo(5)
-# =============================================================
-
-scoreboard.loc[0, "event3_innovation"] = 0   # Team 1
-scoreboard.loc[1, "event3_innovation"] = 0   # Team 2
-scoreboard.loc[2, "event3_innovation"] = 0   # Team 3
-scoreboard.loc[3, "event3_innovation"] = 0   # Team 4
-scoreboard.loc[4, "event3_innovation"] = 0   # Team 5
-scoreboard.loc[5, "event3_innovation"] = 0   # Team 6
-scoreboard.loc[6, "event3_innovation"] = 0   # Team 7
-scoreboard.loc[7, "event3_innovation"] = 0   # Team 8
-scoreboard.loc[8, "event3_innovation"] = 0   # Team 9
-scoreboard.loc[9, "event3_innovation"] = 0   # Team 10
-
-# COMMAND ----------
-
-# =============================================================
-# EVENT 4: RELAY CHALLENGE (max 25 pts)
-# Time-based (15) + Quality gates (10)
-# =============================================================
-
-# Enter completion times in minutes (including penalties)
-relay_times = {
-    "Team 1": 30.0,
-    "Team 2": 30.0,
-    "Team 3": 30.0,
-    "Team 4": 30.0,
-    "Team 5": 30.0,
-    "Team 6": 30.0,
-    "Team 7": 30.0,
-    "Team 8": 30.0,
-    "Team 9": 30.0,
-    "Team 10": 30.0,
-}
-
-# Quality gate scores (max 10, based on checkpoints passed)
-quality_scores = {
-    "Team 1": 0,
-    "Team 2": 0,
-    "Team 3": 0,
-    "Team 4": 0,
-    "Team 5": 0,
-    "Team 6": 0,
-    "Team 7": 0,
-    "Team 8": 0,
-    "Team 9": 0,
-    "Team 10": 0,
-}
-
-# Calculate time-based points (fastest = 15, inversely proportional)
-min_time = min(relay_times.values())
-for team in TEAM_NAMES:
-    time_points = round((min_time / relay_times[team]) * 15, 1) if relay_times[team] > 0 else 0
-    total = time_points + quality_scores[team]
-    scoreboard.loc[scoreboard["team"] == team, "event4_relay"] = total
-
-# COMMAND ----------
-
-# =============================================================
-# EVENT 5: PLOT TWIST FINALS (max 25 pts)
-# Only top 3 teams compete
-# Judge-rated: Adaptation(10) + Quality(10) + Presentation(5)
-# =============================================================
-
-# Note: Only fill in for the top 3 teams
-scoreboard.loc[0, "event5_plot_twist"] = 0   # Fill if team qualifies
-scoreboard.loc[1, "event5_plot_twist"] = 0   # Fill if team qualifies
-scoreboard.loc[2, "event5_plot_twist"] = 0   # Fill if team qualifies
-# Remaining teams get 0 (they don't compete in this event)
+    result = _api("POST", "/api/2.0/lakeview/dashboards", body)
+    dashboard_id = result["dashboard_id"]
+    print(f"Created new dashboard: {dashboard_id}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Live Scoreboard
+# MAGIC ## Publish Dashboard
 
 # COMMAND ----------
 
-# Calculate totals
-scoreboard["total"] = (
-    scoreboard["event1_speed_sprint"] +
-    scoreboard["event2_accuracy"] +
-    scoreboard["event3_innovation"] +
-    scoreboard["event4_relay"] +
-    scoreboard["event5_plot_twist"]
-)
+try:
+    _api("POST", f"/api/2.0/lakeview/dashboards/{dashboard_id}/published", {
+        "embed_credentials": True,
+        "warehouse_id": ""
+    })
+    print(f"Dashboard published!")
+except Exception as e:
+    print(f"Publish note: {e}")
 
-# Sort by total
-scoreboard_sorted = scoreboard.sort_values("total", ascending=False).reset_index(drop=True)
-scoreboard_sorted.index = scoreboard_sorted.index + 1  # 1-based ranking
-scoreboard_sorted.index.name = "Rank"
-
-print("=" * 80)
-print(f"  🏆 DATAOPS OLYMPICS SCOREBOARD — {datetime.now().strftime('%H:%M:%S')}")
-print("=" * 80)
-print()
-print(scoreboard_sorted.to_string())
-print()
-print("=" * 80)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Visual Scoreboard
-
-# COMMAND ----------
-
-# Bar chart - Total scores
-fig_total = px.bar(
-    scoreboard_sorted.reset_index(),
-    x="team", y="total",
-    title="🏆 DataOps Olympics — Total Scores",
-    text="total",
-    color="total",
-    color_continuous_scale="Viridis"
-)
-fig_total.update_layout(
-    template="plotly_white",
-    font=dict(size=14),
-    title_font_size=24,
-    xaxis_title="",
-    yaxis_title="Total Points",
-    showlegend=False
-)
-fig_total.update_traces(textposition="outside")
-fig_total.show()
-
-# COMMAND ----------
-
-# Stacked bar chart - Score breakdown by event
-event_cols = ["event1_speed_sprint", "event2_accuracy", "event3_innovation", "event4_relay", "event5_plot_twist"]
-event_labels = ["Speed Sprint", "Accuracy", "Innovation", "Relay", "Plot Twist"]
-
-df_melted = scoreboard_sorted.reset_index().melt(
-    id_vars=["team"],
-    value_vars=event_cols,
-    var_name="event",
-    value_name="score"
-)
-df_melted["event"] = df_melted["event"].map(dict(zip(event_cols, event_labels)))
-
-fig_stack = px.bar(
-    df_melted,
-    x="team", y="score", color="event",
-    title="Score Breakdown by Event",
-    barmode="stack",
-    color_discrete_sequence=px.colors.qualitative.Set2
-)
-fig_stack.update_layout(
-    template="plotly_white",
-    font=dict(size=14),
-    title_font_size=20,
-    xaxis_title="",
-    yaxis_title="Points",
-    legend_title="Event"
-)
-fig_stack.show()
-
-# COMMAND ----------
-
-# Radar chart for top 3 teams
-top3 = scoreboard_sorted.head(3)
-
-fig_radar = go.Figure()
-
-for _, team_row in top3.iterrows():
-    fig_radar.add_trace(go.Scatterpolar(
-        r=[team_row[col] for col in event_cols] + [team_row[event_cols[0]]],
-        theta=event_labels + [event_labels[0]],
-        fill="toself",
-        name=team_row["team"]
-    ))
-
-fig_radar.update_layout(
-    polar=dict(
-        radialaxis=dict(visible=True, range=[0, 30])
-    ),
-    title="Top 3 Teams — Performance Radar",
-    title_font_size=20,
-    template="plotly_white"
-)
-fig_radar.show()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Event-by-Event Results
-
-# COMMAND ----------
-
-# Event 1 Results
-fig_e1 = px.bar(
-    scoreboard_sorted.reset_index().sort_values("event1_speed_sprint", ascending=False),
-    x="team", y="event1_speed_sprint",
-    title="Event 1: Speed Sprint Results",
-    text="event1_speed_sprint",
-    color="event1_speed_sprint",
-    color_continuous_scale="Blues"
-)
-fig_e1.update_layout(template="plotly_white", showlegend=False)
-fig_e1.show()
-
-# COMMAND ----------
-
-# Event 2 Results
-fig_e2 = px.bar(
-    scoreboard_sorted.reset_index().sort_values("event2_accuracy", ascending=False),
-    x="team", y="event2_accuracy",
-    title="Event 2: Accuracy Challenge Results",
-    text="event2_accuracy",
-    color="event2_accuracy",
-    color_continuous_scale="Greens"
-)
-fig_e2.update_layout(template="plotly_white", showlegend=False)
-fig_e2.show()
+print(f"\nDashboard URL: https://{_ws_url}/dashboardsv3/{dashboard_id}")
+print(f"\nRe-run this notebook after each event to refresh the scoreboard.")
 
 # COMMAND ----------
 
@@ -336,62 +303,42 @@ fig_e2.show()
 
 # COMMAND ----------
 
-print()
-print("=" * 60)
-print("  🏆 DATAOPS OLYMPICS FINAL RESULTS 🏆")
-print("=" * 60)
+from datetime import datetime
 
-winner = scoreboard_sorted.iloc[0]
-second = scoreboard_sorted.iloc[1]
-third = scoreboard_sorted.iloc[2]
+standings = spark.sql("""
+    SELECT Team, ROUND(SUM(points), 1) AS total, COUNT(DISTINCT event) AS events
+    FROM olympics_leaderboard GROUP BY Team ORDER BY total DESC
+""").toPandas()
 
-print(f"""
-
-  🥇 FIRST PLACE:  {winner['team']}  ({winner['total']:.1f} pts)
-  🥈 SECOND PLACE: {second['team']}  ({second['total']:.1f} pts)
-  🥉 THIRD PLACE:  {third['team']}  ({third['total']:.1f} pts)
-
-""")
-print("=" * 60)
-print("  Congratulations to all teams!")
-print("  Thank you for participating in the DataOps Olympics!")
-print("=" * 60)
+if len(standings) > 0:
+    print("=" * 60)
+    print(f"  DATAOPS OLYMPICS STANDINGS -- {datetime.now().strftime('%H:%M:%S')}")
+    print("=" * 60)
+    for i, row in standings.iterrows():
+        medal = {0: "[GOLD]  ", 1: "[SILVER]", 2: "[BRONZE]"}.get(i, "        ")
+        print(f"  {i+1}. {medal} {row['Team']:12s} | {row['total']:6.1f} pts | {int(row['events'])} events")
+    print("=" * 60)
+else:
+    print("No scores yet. Run event scoring notebooks first.")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Export Results
+# MAGIC ## Printable Certificates
 
 # COMMAND ----------
 
-# Save final results as Delta table
-df_results = spark.createDataFrame(scoreboard_sorted.reset_index())
-df_results.write.format("delta").mode("overwrite").saveAsTable("dataops_olympics.default.dataops_olympics_results")
-print("Results saved to 'dataops_olympics.default.dataops_olympics_results' table")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Printable Certificates (Template)
-
-# COMMAND ----------
-
-for i, (_, row) in enumerate(scoreboard_sorted.head(3).iterrows()):
-    place = ["FIRST", "SECOND", "THIRD"][i]
-    medal = ["GOLD", "SILVER", "BRONZE"][i]
-    score_str = f"{row['total']:.1f}"
-    
-    print("+" + "=" * 58 + "+")
-    print(f"|{' ' * 58}|")
-    print(f"|{' '*10}DATAOPS OLYMPICS CERTIFICATE{' '*20}|")
-    print(f"|{' ' * 58}|")
-    print(f"|{' '*5}{medal} - {place} PLACE{' '*(46-len(place)-len(medal))}|")
-    print(f"|{' ' * 58}|")
-    print(f"|{' '*5}Awarded to: {row['team']:<42}|")
-    print(f"|{' '*5}Score: {score_str} points{' '*(46-len(score_str))}|")
-    print(f"|{' ' * 58}|")
-    print(f"|{' '*5}GSK India x Databricks{' '*31}|")
-    print(f"|{' '*5}{datetime.now().strftime('%B %d, %Y'):<48}|")
-    print(f"|{' ' * 58}|")
-    print("+" + "=" * 58 + "+")
-    print()
+if len(standings) >= 3:
+    for i in range(min(3, len(standings))):
+        row = standings.iloc[i]
+        place = ["FIRST", "SECOND", "THIRD"][i]
+        medal = ["GOLD", "SILVER", "BRONZE"][i]
+        print("+" + "=" * 58 + "+")
+        print(f"|{' '*10}DATAOPS OLYMPICS CERTIFICATE{' '*20}|")
+        print(f"|{' '*5}{medal} - {place} PLACE{' '*(46-len(place)-len(medal))}|")
+        print(f"|{' '*5}Awarded to: {row['Team']:<42}|")
+        print(f"|{' '*5}Score: {row['total']:.1f} points{' '*(42-len(str(row['total'])))}|")
+        print(f"|{' '*5}GSK India x Databricks{' '*31}|")
+        print(f"|{' '*5}{datetime.now().strftime('%B %d, %Y'):<48}|")
+        print("+" + "=" * 58 + "+")
+        print()

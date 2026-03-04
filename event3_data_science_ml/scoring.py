@@ -251,8 +251,6 @@ for team in TEAMS:
 
 # COMMAND ----------
 
-import plotly.graph_objects as go
-
 df_scores = pd.DataFrame([{
     "Team": r["team"],
     "EDA": r["eda"],
@@ -265,68 +263,6 @@ df_scores = pd.DataFrame([{
     "F1": r["f1_score"],
 } for r in results]).sort_values("Total", ascending=False)
 
-MEDAL_COLORS = {0: "#FFD700", 1: "#C0C0C0", 2: "#CD7F32"}
-categories = ["EDA", "Features", "MLflow", "Performance", "Registration", "Bonus"]
-cat_colors = {
-    "EDA": "#3498db", "Features": "#e67e22", "MLflow": "#9b59b6",
-    "Performance": "#2ecc71", "Registration": "#1abc9c", "Bonus": "#e74c3c",
-}
-
-ordered = df_scores.sort_values("Total", ascending=True)
-fig = go.Figure()
-for cat in categories:
-    fig.add_trace(go.Bar(
-        y=ordered["Team"],
-        x=ordered[cat],
-        name=cat,
-        orientation="h",
-        marker=dict(color=cat_colors[cat], line=dict(color="#1a1a2e", width=1)),
-        text=ordered[cat].astype(int),
-        textposition="inside",
-        textfont=dict(size=12, color="white"),
-    ))
-
-fig.update_layout(
-    barmode="stack",
-    title=dict(text="Event 3: ML Challenge — Scores", font=dict(size=24, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
-    font=dict(color="white", size=13),
-    xaxis=dict(title="Points", gridcolor="#2d3436", range=[0, 50]),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-    height=max(350, len(df_scores) * 80 + 120),
-)
-fig.show()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### F1 Score Comparison
-
-# COMMAND ----------
-
-fig2 = go.Figure()
-fig2.add_trace(go.Bar(
-    x=df_scores["Team"],
-    y=df_scores["F1"],
-    marker=dict(
-        color=df_scores["F1"],
-        colorscale=[[0, "#e74c3c"], [0.7, "#f39c12"], [0.85, "#2ecc71"], [1, "#00cec9"]],
-        showscale=True,
-        colorbar=dict(title="F1"),
-    ),
-    text=df_scores["F1"].round(4),
-    textposition="outside",
-    textfont=dict(size=14, color="white"),
-))
-fig2.update_layout(
-    title=dict(text="F1 Score Leaderboard", font=dict(size=22, color="white"), x=0.5),
-    plot_bgcolor="#1a1a2e", paper_bgcolor="#16213e",
-    font=dict(color="white"),
-    yaxis=dict(title="F1 Score", range=[0, 1], gridcolor="#2d3436"),
-    height=400,
-)
-fig2.show()
-
 # COMMAND ----------
 
 # MAGIC %md
@@ -338,3 +274,20 @@ spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsT
     "dataops_olympics.default.event3_scores"
 )
 print("Saved to dataops_olympics.default.event3_scores")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Update Unified Leaderboard
+
+# COMMAND ----------
+
+spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
+spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 3: Data Science'")
+
+for _, row in df_scores.iterrows():
+    spark.sql(f"""
+        INSERT INTO dataops_olympics.default.olympics_leaderboard
+        VALUES ('{row['Team']}', 'Event 3: Data Science', {row['Total']}, 48)
+    """)
+print("Leaderboard updated for Event 3")

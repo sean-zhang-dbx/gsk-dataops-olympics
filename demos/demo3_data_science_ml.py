@@ -46,8 +46,6 @@ from sklearn.metrics import f1_score, classification_report, roc_auc_score
 import mlflow
 import mlflow.sklearn
 from mlflow.models import infer_signature
-import plotly.express as px
-
 df = spark.table("diabetes_readmission").toPandas()
 print(f"Dataset: {df.shape[0]} patients × {df.shape[1]} features")
 print(f"\nReadmission risk distribution:")
@@ -224,14 +222,10 @@ except Exception as e:
 
 # COMMAND ----------
 
+import pandas as _pd
 importances = model_gb.feature_importances_
-fig = px.bar(x=feature_cols, y=importances,
-             title="Feature Importance — What Predicts Readmission?",
-             labels={"x": "Feature", "y": "Importance"},
-             template="plotly_white",
-             color=importances, color_continuous_scale="Reds")
-fig.update_layout(xaxis_tickangle=-45, showlegend=False)
-fig.show()
+imp_df = _pd.DataFrame({"Feature": feature_cols, "Importance": importances}).sort_values("Importance", ascending=False)
+display(spark.createDataFrame(imp_df))
 
 # COMMAND ----------
 

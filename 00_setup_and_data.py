@@ -71,7 +71,7 @@ print("=" * 60)
 
 # COMMAND ----------
 
-# MAGIC %pip install plotly chromadb sentence-transformers --quiet
+# MAGIC %pip install chromadb sentence-transformers --quiet
 
 # COMMAND ----------
 

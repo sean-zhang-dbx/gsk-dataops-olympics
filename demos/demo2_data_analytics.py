@@ -11,7 +11,7 @@
 # MAGIC |------|---------|----------------|
 # MAGIC | 0:00 | **The Problem** | Your CEO asks a question — how fast can you answer? |
 # MAGIC | 1:00 | **SQL Power** | 4 analytical queries, each more insightful |
-# MAGIC | 5:00 | **Plotly Viz** | Interactive charts from SQL results |
+# MAGIC | 5:00 | **Visualizations** | Interactive charts from SQL results |
 # MAGIC | 8:00 | **AI/BI Dashboard** | Quick tour of Lakeview dashboards (UI walkthrough) |
 # MAGIC | 10:00 | **Wow Moment** | Genie — ask data questions in plain English |
 # MAGIC | 14:00 | **Your Turn** | Preview of the practice notebook |
@@ -113,39 +113,30 @@ spark.sql("USE SCHEMA default")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 2. Interactive Visualizations with Plotly
+# MAGIC ## 2. Interactive Visualizations
 # MAGIC
 # MAGIC > **Say this:** "SQL gives you numbers. Charts give you understanding. Let me turn
-# MAGIC > those query results into something visual."
+# MAGIC > those query results into something visual. In Databricks, just use `display()`
+# MAGIC > and click the chart icon to configure your visualization."
 
 # COMMAND ----------
 
-import plotly.express as px
-
-df_scatter = spark.sql("""
+display(spark.sql("""
     SELECT age, thalach as max_heart_rate, chol as cholesterol,
            CASE WHEN target = 1 THEN 'Disease' ELSE 'Healthy' END as status
     FROM heart_disease
-""").toPandas()
-
-fig = px.scatter(df_scatter, x="age", y="max_heart_rate", color="status",
-                 size="cholesterol", hover_data=["cholesterol"],
-                 title="Heart Rate vs Age — Each Dot is a Patient",
-                 labels={"age": "Age (years)", "max_heart_rate": "Max Heart Rate (bpm)"},
-                 template="plotly_white", opacity=0.7,
-                 color_discrete_map={"Disease": "#e74c3c", "Healthy": "#2ecc71"})
-fig.show()
+"""))
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > **Say this:** "Look at the pattern. Healthy patients (green) tend to have higher
-# MAGIC > max heart rates. Diseased patients cluster lower. The dot size is cholesterol.
-# MAGIC > This is a 4-dimensional view in one chart."
+# MAGIC > **Say this:** "Click the chart icon below the table to switch to a scatter plot.
+# MAGIC > Map age to X, max_heart_rate to Y, and color by status.
+# MAGIC > Look at the pattern -- healthy patients tend to have higher max heart rates."
 
 # COMMAND ----------
 
-df_bar = spark.sql("""
+display(spark.sql("""
     SELECT
         CASE
             WHEN age < 40 THEN '1. Under 40'
@@ -158,14 +149,7 @@ df_bar = spark.sql("""
     FROM heart_disease
     GROUP BY 1, 2
     ORDER BY 1, 2
-""").toPandas()
-
-fig2 = px.bar(df_bar, x="age_group", y="patients", color="status", barmode="group",
-              title="Patient Count by Age Group and Disease Status",
-              labels={"age_group": "Age Group", "patients": "Patients"},
-              template="plotly_white",
-              color_discrete_map={"Disease": "#e74c3c", "Healthy": "#2ecc71"})
-fig2.show()
+"""))
 
 # COMMAND ----------
 
@@ -214,8 +198,8 @@ fig2.show()
 # MAGIC ## Your Turn! (Preview)
 # MAGIC
 # MAGIC > **Say this:** "In the practice notebook, you'll write 2 SQL queries and create
-# MAGIC > 1 Plotly chart. It should take about 10 minutes. Then in the competition,
-# MAGIC > you'll build a full dashboard and Genie space. Let's go!"
+# MAGIC > a visualization. It should take about 10 minutes. Then in the competition,
+# MAGIC > you'll build a full AI/BI dashboard and Genie space. Let's go!"
 
 # COMMAND ----------
 
@@ -223,7 +207,7 @@ fig2.show()
 # MAGIC ## Key Takeaways
 # MAGIC
 # MAGIC 1. **SQL is your superpower** — CASE, window functions, GROUP BY solve 90% of analytics
-# MAGIC 2. **Plotly** creates interactive charts from any DataFrame in 3 lines
+# MAGIC 2. **`display()`** creates interactive charts from any DataFrame -- click the chart icon
 # MAGIC 3. **AI/BI Dashboards** (Lakeview) — drag-and-drop dashboards, no code needed
 # MAGIC 4. **Genie** — ask questions in English, get SQL answers automatically
 # MAGIC 5. **Use the Databricks Assistant** (`Cmd+I`) to write SQL queries from English descriptions

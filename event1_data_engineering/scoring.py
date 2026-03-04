@@ -393,8 +393,6 @@ for team in TEAMS:
 
 # COMMAND ----------
 
-import plotly.express as px
-
 df_scores = pd.DataFrame([{
     "Team": r["team"],
     "Path": r["path"],
@@ -414,39 +412,6 @@ for rank, (_, row) in enumerate(df_scores.iterrows(), 1):
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
     print(f"  {rank}. {medal} {row['Team']:12s} | {row['Path']:3s} | {int(row['Total']):2d}/55 pts")
 print("=" * 72)
-
-# COMMAND ----------
-
-fig = px.bar(
-    df_scores.sort_values("Total"),
-    x="Total", y="Team", color="Path",
-    orientation="h",
-    title="Event 1: Data Engineering — Final Scores",
-    text="Total",
-    color_discrete_map={"SDP": "#2ecc71", "SQL": "#3498db", "?": "#95a5a6"},
-)
-fig.update_layout(template="plotly_white", yaxis=dict(categoryorder="total ascending"))
-fig.show()
-
-# COMMAND ----------
-
-fig2 = px.bar(
-    df_scores.melt(
-        id_vars=["Team", "Path", "Total"],
-        value_vars=["Bronze", "Silver", "Gold", "DQ", "Governance", "Bonus"],
-        var_name="Category", value_name="Points",
-    ).sort_values("Total"),
-    x="Points", y="Team", color="Category",
-    orientation="h",
-    title="Score Breakdown by Category",
-    barmode="stack",
-    color_discrete_map={
-        "Bronze": "#cd7f32", "Silver": "#c0c0c0", "Gold": "#ffd700",
-        "DQ": "#3498db", "Governance": "#9b59b6", "Bonus": "#e74c3c",
-    },
-)
-fig2.update_layout(template="plotly_white", yaxis=dict(categoryorder="total ascending"))
-fig2.show()
 
 # COMMAND ----------
 
@@ -471,3 +436,20 @@ spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsT
     "dataops_olympics.default.event1_scores"
 )
 print("Results saved to dataops_olympics.default.event1_scores")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Update Unified Leaderboard
+
+# COMMAND ----------
+
+spark.sql("CREATE TABLE IF NOT EXISTS dataops_olympics.default.olympics_leaderboard (Team STRING, event STRING, points DOUBLE, max_points DOUBLE)")
+spark.sql("DELETE FROM dataops_olympics.default.olympics_leaderboard WHERE event = 'Event 1: Data Engineering'")
+
+for _, row in df_scores.iterrows():
+    spark.sql(f"""
+        INSERT INTO dataops_olympics.default.olympics_leaderboard
+        VALUES ('{row['Team']}', 'Event 1: Data Engineering', {row['Total']}, 55)
+    """)
+print("Leaderboard updated for Event 1")
