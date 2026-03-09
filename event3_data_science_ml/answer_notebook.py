@@ -3,6 +3,9 @@
 # MAGIC # Event 3: Answer Key — Complete ML Solution
 # MAGIC
 # MAGIC **FOR ORGANIZERS ONLY**
+# MAGIC
+# MAGIC This reference implementation uses **Feature Store** (Option B) for maximum points
+# MAGIC and saves results to the team catalog for automated scoring pickup.
 
 # COMMAND ----------
 
@@ -30,7 +33,7 @@ print(f"\nDisease rate: {df['target'].mean()*100:.1f}%")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 2: Feature Engineering
+# MAGIC ## Step 2: Feature Engineering (Feature Store — 8 pts)
 
 # COMMAND ----------
 
@@ -44,18 +47,54 @@ print(f"Added 5 engineered features. New shape: {df.shape}")
 
 # COMMAND ----------
 
+FEATURE_COLS = [
+    "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+    "thalach", "exang", "oldpeak", "slope", "ca", "thal",
+    "hr_reserve", "high_risk", "chol_risk", "age_chol", "bp_hr_ratio",
+]
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Save as Feature Store Table
+# MAGIC
+# MAGIC Using `FeatureEngineeringClient` to create a proper feature table with
+# MAGIC `patient_id` as the primary key. This earns 8 pts (vs 5 for regular table).
+
+# COMMAND ----------
+
+from databricks.feature_engineering import FeatureEngineeringClient
+
+fe = FeatureEngineeringClient()
+
+feature_table_name = f"{CATALOG}.default.heart_features"
+features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id"]])
+
+try:
+    fe.create_table(
+        name=feature_table_name,
+        primary_keys=["patient_id"],
+        df=features_sdf,
+        description="Heart disease patient features for ML prediction — includes 5 engineered features",
+    )
+    print(f"Feature Store table created: {feature_table_name}")
+except Exception as e:
+    if "already exists" in str(e).lower():
+        features_sdf.write.format("delta").mode("overwrite").option(
+            "overwriteSchema", "true"
+        ).saveAsTable(feature_table_name)
+        print(f"Feature table overwritten: {feature_table_name}")
+    else:
+        raise
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Step 3: Train/Test Split
 
 # COMMAND ----------
 
 from sklearn.model_selection import train_test_split
-
-FEATURE_COLS = [
-    "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
-    "thalach", "exang", "oldpeak", "slope", "ca", "thal",
-    "hr_reserve", "high_risk", "chol_risk", "age_chol", "bp_hr_ratio",
-]
 
 X = df[FEATURE_COLS].fillna(0)
 y = df["target"]
@@ -127,7 +166,7 @@ print(f"\nBest: F1={best_f1:.4f} (run_id={best_run_id})")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Step 5: Ensemble
+# MAGIC ## Step 5: Ensemble (Bonus +3)
 
 # COMMAND ----------
 
@@ -148,6 +187,7 @@ with mlflow.start_run(run_name="Ensemble"):
     auc_e = roc_auc_score(y_test, y_proba_e)
 
     mlflow.log_param("model_type", "VotingClassifier")
+    mlflow.log_param("n_features", len(FEATURE_COLS))
     mlflow.log_metric("f1_score", f1_e)
     mlflow.log_metric("roc_auc", auc_e)
 
@@ -164,7 +204,7 @@ with mlflow.start_run(run_name="Ensemble"):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Cross-Validation
+# MAGIC ## Cross-Validation (Bonus +2)
 
 # COMMAND ----------
 
@@ -182,6 +222,35 @@ spark.createDataFrame(cv_df).write.format("delta").mode("overwrite").saveAsTable
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Step 6: Save Results to Catalog
+
+# COMMAND ----------
+
+y_pred_final = model.predict(X_test)
+y_proba_final = model.predict_proba(X_test)[:, 1]
+f1_final = f1_score(y_test, y_pred_final)
+auc_final = roc_auc_score(y_test, y_proba_final)
+acc_final = accuracy_score(y_test, y_pred_final)
+
+model_type = type(model).__name__
+
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {CATALOG}.default.event3_results AS
+    SELECT
+        '{TEAM_NAME}' AS team,
+        '{model_type}' AS model_type,
+        CAST({f1_final} AS DOUBLE) AS f1_score,
+        CAST({auc_final} AS DOUBLE) AS roc_auc,
+        CAST({acc_final} AS DOUBLE) AS accuracy,
+        CAST({len(FEATURE_COLS)} AS INT) AS n_features,
+        '{best_run_id}' AS mlflow_run_id,
+        CURRENT_TIMESTAMP() AS submitted_at
+""")
+print(f"Results saved to {CATALOG}.default.event3_results")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Final Report
 
 # COMMAND ----------
@@ -189,11 +258,10 @@ spark.createDataFrame(cv_df).write.format("delta").mode("overwrite").saveAsTable
 print("=" * 60)
 print(f"  ANSWER KEY — ML CHALLENGE")
 print("=" * 60)
-y_pred_final = model.predict(X_test)
-y_proba_final = model.predict_proba(X_test)[:, 1]
-f1_final = f1_score(y_test, y_pred_final)
-auc_final = roc_auc_score(y_test, y_proba_final)
 print(f"\n  Best F1: {f1_final:.4f}")
 print(f"  AUC-ROC: {auc_final:.4f}")
+print(f"  Accuracy: {acc_final:.4f}")
 print(f"\n{classification_report(y_test, y_pred_final)}")
+print(f"\n  Feature Store table: {CATALOG}.default.heart_features")
+print(f"  Results table: {CATALOG}.default.event3_results")
 print("=" * 60)

@@ -26,12 +26,16 @@
 # MAGIC | Category | Points |
 # MAGIC |----------|--------|
 # MAGIC | Data Loading + EDA | 5 |
-# MAGIC | Feature Engineering | 5 |
+# MAGIC | Feature Engineering (regular table) | 5 |
+# MAGIC | Feature Engineering (Feature Store) | **8** |
 # MAGIC | Model Training + MLflow Logging | 10 |
 # MAGIC | Model Performance (F1-based) | 15 |
 # MAGIC | Model Registration | 5 |
-# MAGIC | **Total** | **40** |
+# MAGIC | Results Saved to Catalog | 2 |
+# MAGIC | **Total (with Feature Store)** | **45** |
 # MAGIC | Bonus: SHAP, Ensemble, Cross-Val | up to 8 |
+# MAGIC
+# MAGIC > **Feature Store gives +3 bonus pts** over a regular table. Both paths work!
 # MAGIC
 # MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) to generate your ML code!
 
@@ -73,23 +77,76 @@ print(f"Working in: {CATALOG}.default")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 2: Feature Engineering (5 pts)
+# MAGIC ## Step 2: Feature Engineering
 # MAGIC
-# MAGIC > Create **at least 2 new features** that might improve prediction.
-# MAGIC >
-# MAGIC > Ideas:
-# MAGIC > - `age_chol` = age * chol (interaction)
-# MAGIC > - `hr_reserve` = 220 - age - thalach (heart rate reserve)
-# MAGIC > - `high_risk` = 1 if age > 55 AND chol > 240 (composite flag)
-# MAGIC > - `bp_category` = binned blood pressure (low/normal/high/very_high)
-# MAGIC > - `chol_risk` = 1 if chol > 240, 0 otherwise
-# MAGIC >
-# MAGIC > More features = more points (up to 5). Quality matters.
+# MAGIC Create **at least 2 new features** that might improve prediction.
+# MAGIC
+# MAGIC **Feature ideas:**
+# MAGIC - `age_chol` = age * chol (interaction)
+# MAGIC - `hr_reserve` = 220 - age - thalach (heart rate reserve)
+# MAGIC - `high_risk` = 1 if age > 55 AND chol > 240 (composite flag)
+# MAGIC - `bp_category` = binned blood pressure (low/normal/high/very_high)
+# MAGIC - `chol_risk` = 1 if chol > 240, 0 otherwise
+# MAGIC
+# MAGIC ### Choose Your Path:
+# MAGIC
+# MAGIC | Option | Points | What to do |
+# MAGIC |--------|--------|------------|
+# MAGIC | **Option A: Regular Table** | 5 pts | Add features to your DataFrame and save as `heart_features` Delta table |
+# MAGIC | **Option B: Feature Store** | **8 pts** | Use `databricks.feature_engineering` to create a Feature Store table |
+# MAGIC
+# MAGIC > Feature Store earns **+3 bonus pts** because it enables feature reuse, lineage tracking,
+# MAGIC > and online serving — production best practices.
 
 # COMMAND ----------
 
-# YOUR CODE HERE — feature engineering
+# MAGIC %md
+# MAGIC ### Option A: Regular Delta Table (5 pts)
+# MAGIC
+# MAGIC > Add features to your pandas DataFrame. Then save the feature table:
+# MAGIC > ```python
+# MAGIC > features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id", "target"]])
+# MAGIC > features_sdf.write.format("delta").mode("overwrite").saveAsTable(
+# MAGIC >     f"{CATALOG}.default.heart_features"
+# MAGIC > )
+# MAGIC > ```
+
+# COMMAND ----------
+
+# YOUR CODE HERE — feature engineering (Option A: regular table)
 # Prompt: "Add 3 new features: hr_reserve, high_risk flag, and chol_risk category"
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Option B: Feature Store (8 pts)
+# MAGIC
+# MAGIC > Use Databricks Feature Engineering to create a proper feature table.
+# MAGIC > This gives you lineage tracking, feature reuse, and online serving capabilities.
+# MAGIC >
+# MAGIC > ```python
+# MAGIC > from databricks.feature_engineering import FeatureEngineeringClient
+# MAGIC > fe = FeatureEngineeringClient()
+# MAGIC >
+# MAGIC > # Create a Spark DataFrame with patient_id as the primary key
+# MAGIC > features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id"]])
+# MAGIC >
+# MAGIC > # Create the feature table (patient_id is the lookup key)
+# MAGIC > fe.create_table(
+# MAGIC >     name=f"{CATALOG}.default.heart_features",
+# MAGIC >     primary_keys=["patient_id"],
+# MAGIC >     df=features_sdf,
+# MAGIC >     description="Heart disease patient features for ML prediction"
+# MAGIC > )
+# MAGIC > ```
+# MAGIC >
+# MAGIC > *Docs: [Feature Engineering](https://docs.databricks.com/en/machine-learning/feature-store/index.html)*
+
+# COMMAND ----------
+
+# YOUR CODE HERE — feature engineering (Option B: Feature Store)
+# Prompt: "Create a Feature Store table with patient features using FeatureEngineeringClient"
 
 
 # COMMAND ----------
@@ -164,31 +221,58 @@ print(f"Working in: {CATALOG}.default")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Final Submission
+# MAGIC ## Step 6: Save & Submit Results (2 pts)
 # MAGIC
-# MAGIC Run this to display your final score.
+# MAGIC > Save your results to `{CATALOG}.default.event3_results`. The scoring notebook
+# MAGIC > reads this table automatically — **this is how we pick up your score for the dashboard**.
+# MAGIC >
+# MAGIC > This cell computes your metrics, displays them, and saves to your catalog.
 
 # COMMAND ----------
+
+from datetime import datetime as _dt
 
 print("=" * 60)
 print(f"  ML CHALLENGE — FINAL SUBMISSION: {TEAM_NAME}")
 print("=" * 60)
 
 try:
-    from sklearn.metrics import f1_score, roc_auc_score, classification_report, confusion_matrix
+    from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, classification_report, confusion_matrix
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
 
     f1 = f1_score(y_test, y_pred)
     auc = roc_auc_score(y_test, y_proba)
+    acc = accuracy_score(y_test, y_pred)
 
     print(f"\n  F1 Score:  {f1:.4f}")
     print(f"  AUC-ROC:   {auc:.4f}")
+    print(f"  Accuracy:  {acc:.4f}")
     print(f"\n{classification_report(y_test, y_pred)}")
 
     cm = confusion_matrix(y_test, y_pred)
     print(f"  Confusion Matrix:  TN={cm[0][0]}  FP={cm[0][1]}  FN={cm[1][0]}  TP={cm[1][1]}")
-    print(f"\n  >>> REPORT THIS F1 SCORE: {f1:.4f} <<<")
+
+    # Save results to team catalog
+    model_type = type(model).__name__
+    n_features = len(FEATURE_COLS) if "FEATURE_COLS" in dir() else X_test.shape[1]
+    _run_id = best_run_id if "best_run_id" in dir() else ""
+
+    spark.sql(f"""
+        CREATE OR REPLACE TABLE {CATALOG}.default.event3_results AS
+        SELECT
+            '{TEAM_NAME}' AS team,
+            '{model_type}' AS model_type,
+            CAST({f1} AS DOUBLE) AS f1_score,
+            CAST({auc} AS DOUBLE) AS roc_auc,
+            CAST({acc} AS DOUBLE) AS accuracy,
+            CAST({n_features} AS INT) AS n_features,
+            '{_run_id}' AS mlflow_run_id,
+            CURRENT_TIMESTAMP() AS submitted_at
+    """)
+
+    print(f"\n  Results saved to {CATALOG}.default.event3_results")
+    print(f"  >>> YOUR F1 SCORE: {f1:.4f} <<<")
 except NameError:
     print("  ERROR: model, X_test, or y_test not defined. Run Steps 3-4 first!")
 print("=" * 60)

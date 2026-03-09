@@ -1,5 +1,6 @@
 # Databricks notebook source
 # Event 3 Simulation: team_01 does full ML challenge + bonuses
+# Uses Feature Store for max feature engineering points
 
 TEAM_NAME = "team_01"
 CATALOG = TEAM_NAME
@@ -22,7 +23,6 @@ print(f"Disease rate: {df['target'].mean()*100:.1f}%")
 
 # COMMAND ----------
 
-# Feature engineering
 df["hr_reserve"] = 220 - df["age"] - df["thalach"]
 df["high_risk"] = ((df["age"] > 55) & (df["chol"] > 240)).astype(int)
 df["chol_risk"] = (df["chol"] > 240).astype(int)
@@ -35,6 +35,32 @@ FEATURE_COLS = [
     "hr_reserve", "high_risk", "chol_risk", "age_chol", "bp_hr_ratio",
 ]
 print(f"Features: {len(FEATURE_COLS)}")
+
+# COMMAND ----------
+
+# === Feature Store (8 pts) ===
+from databricks.feature_engineering import FeatureEngineeringClient
+
+fe = FeatureEngineeringClient()
+feature_table_name = f"{CATALOG}.default.heart_features"
+features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id"]])
+
+try:
+    fe.create_table(
+        name=feature_table_name,
+        primary_keys=["patient_id"],
+        df=features_sdf,
+        description="Heart disease patient features for ML prediction",
+    )
+    print(f"Feature Store table created: {feature_table_name}")
+except Exception as e:
+    if "already exists" in str(e).lower():
+        features_sdf.write.format("delta").mode("overwrite").option(
+            "overwriteSchema", "true"
+        ).saveAsTable(feature_table_name)
+        print(f"Feature table overwritten: {feature_table_name}")
+    else:
+        raise
 
 # COMMAND ----------
 
@@ -181,6 +207,29 @@ try:
     print(f"Model registered: {model_name}")
 except Exception as e:
     print(f"Model registration: {e}")
+
+# COMMAND ----------
+
+# === Save Results to Catalog (2 pts) ===
+y_pred_final = best_model.predict(X_test)
+y_proba_final = best_model.predict_proba(X_test)[:, 1]
+f1_final = f1_score(y_test, y_pred_final)
+auc_final = roc_auc_score(y_test, y_proba_final)
+acc_final = accuracy_score(y_test, y_pred_final)
+
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {CATALOG}.default.event3_results AS
+    SELECT
+        '{TEAM_NAME}' AS team,
+        '{type(best_model).__name__}' AS model_type,
+        CAST({f1_final} AS DOUBLE) AS f1_score,
+        CAST({auc_final} AS DOUBLE) AS roc_auc,
+        CAST({acc_final} AS DOUBLE) AS accuracy,
+        CAST({len(FEATURE_COLS)} AS INT) AS n_features,
+        '{best_run_id}' AS mlflow_run_id,
+        CURRENT_TIMESTAMP() AS submitted_at
+""")
+print(f"Results saved to {CATALOG}.default.event3_results")
 
 # COMMAND ----------
 

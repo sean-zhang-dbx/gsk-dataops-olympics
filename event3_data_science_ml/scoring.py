@@ -12,15 +12,17 @@
 # MAGIC - Model registration
 # MAGIC - Bonus challenges
 # MAGIC
-# MAGIC ### Scoring Breakdown (40 pts + 8 bonus)
+# MAGIC ### Scoring Breakdown (45 pts + 8 bonus)
 # MAGIC
 # MAGIC | Category | Points |
 # MAGIC |----------|--------|
 # MAGIC | Data Loading + EDA | 5 |
-# MAGIC | Feature Engineering | 5 |
+# MAGIC | Feature Engineering (regular table) | 5 |
+# MAGIC | Feature Engineering (Feature Store) | **8** |
 # MAGIC | Model Training + MLflow | 10 |
 # MAGIC | Model Performance (F1) | 15 |
 # MAGIC | Model Registration | 5 |
+# MAGIC | Results Saved to Catalog | 2 |
 # MAGIC | **Bonus: SHAP** | +3 |
 # MAGIC | **Bonus: Ensemble** | +3 |
 # MAGIC | **Bonus: Cross-Val** | +2 |
@@ -108,11 +110,53 @@ def _get_user_email():
         return ""
 
 
+def _is_feature_store_table(catalog, table):
+    """Check if a table was created via Feature Engineering (has feature store metadata)."""
+    fqn = f"{catalog}.{SCHEMA}.{table}"
+    try:
+        from databricks.feature_engineering import FeatureEngineeringClient
+        fe = FeatureEngineeringClient()
+        fe.get_table(name=fqn)
+        return True
+    except Exception:
+        pass
+    try:
+        props = spark.sql(f"DESCRIBE EXTENDED {fqn}").filter("col_name = 'Table Properties'").collect()
+        if props:
+            prop_str = str(props[0]["data_type"]).lower()
+            if "feature" in prop_str or "fe_table" in prop_str:
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _get_team_results(catalog):
+    """Read team's self-reported results from event3_results table."""
+    try:
+        row = spark.table(f"{catalog}.{SCHEMA}.event3_results").orderBy(
+            "submitted_at", ascending=False
+        ).limit(1).collect()
+        if row:
+            return {
+                "f1_score": float(row[0]["f1_score"] or 0),
+                "roc_auc": float(row[0]["roc_auc"] or 0),
+                "accuracy": float(row[0]["accuracy"] or 0),
+                "model_type": str(row[0]["model_type"] or "unknown"),
+                "n_features": int(row[0]["n_features"] or 0),
+                "mlflow_run_id": str(row[0]["mlflow_run_id"] or ""),
+            }
+    except Exception:
+        pass
+    return None
+
+
 def score_team(team_name: str) -> dict:
     catalog = team_name
     scores = {
         "team": team_name, "eda": 0, "features": 0, "mlflow": 0,
-        "performance": 0, "registration": 0, "bonus": 0, "total": 0,
+        "performance": 0, "registration": 0, "results_saved": 0,
+        "bonus": 0, "total": 0,
         "f1_score": 0.0, "details": [],
     }
 
@@ -126,22 +170,39 @@ def score_team(team_name: str) -> dict:
     else:
         log("EDA: heart_silver not found [+0]")
 
-    # ─── Feature Engineering (5 pts) ───
+    # ─── Results saved to catalog (2 pts) ───
+    team_results = _get_team_results(catalog)
+    if team_results:
+        scores["results_saved"] = 2
+        log(f"Results: event3_results table found (F1={team_results['f1_score']:.4f}) [+2]")
+    else:
+        log("Results: event3_results table not found [+0]")
+
+    # ─── Feature Engineering (5 pts regular, 8 pts Feature Store) ───
     best_f1, model_type, n_runs, best_run = _get_best_f1(team_name)
 
-    if best_run:
+    has_features_table = _table_exists(catalog, "heart_features")
+    is_fs = _is_feature_store_table(catalog, "heart_features") if has_features_table else False
+
+    if is_fs:
+        scores["features"] = 8
+        log("Features: heart_features is a Feature Store table [+8]")
+    elif has_features_table:
+        scores["features"] = 5
+        log("Features: heart_features exists as regular Delta table [+5]")
+    elif best_run:
         n_features = int(best_run.data.params.get("n_features", 13))
         if n_features > 15:
             scores["features"] = 5
-            log(f"Features: {n_features} features (good engineering) [+5]")
+            log(f"Features: {n_features} features in MLflow (good engineering, no table saved) [+5]")
         elif n_features > 13:
             scores["features"] = 3
-            log(f"Features: {n_features} features (some engineering) [+3]")
+            log(f"Features: {n_features} features in MLflow (some engineering) [+3]")
         else:
             scores["features"] = 1
-            log(f"Features: {n_features} features (base only) [+1]")
+            log(f"Features: {n_features} features in MLflow (base only) [+1]")
     else:
-        log("Features: no MLflow runs found [+0]")
+        log("Features: no feature table or MLflow runs found [+0]")
 
     # ─── MLflow (10 pts) ───
     if n_runs >= 3:
@@ -156,7 +217,11 @@ def score_team(team_name: str) -> dict:
     else:
         log("MLflow: no runs found [+0]")
 
-    # ─── Performance (15 pts, scaled by F1) ───
+    # ─── Performance (15 pts, scaled by F1) — check MLflow and event3_results ───
+    if team_results and team_results["f1_score"] > best_f1:
+        best_f1 = team_results["f1_score"]
+        model_type = team_results["model_type"]
+        log(f"  Using F1 from event3_results table ({best_f1:.4f}) — higher than MLflow")
     scores["f1_score"] = best_f1
     if best_f1 >= 0.90:
         scores["performance"] = 15
@@ -221,7 +286,8 @@ def score_team(team_name: str) -> dict:
 
     scores["total"] = (
         scores["eda"] + scores["features"] + scores["mlflow"]
-        + scores["performance"] + scores["registration"] + scores["bonus"]
+        + scores["performance"] + scores["registration"]
+        + scores["results_saved"] + scores["bonus"]
     )
     return scores
 
@@ -239,8 +305,8 @@ for team in TEAMS:
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  EDA:{r['eda']}/5  Feat:{r['features']}/5  MLflow:{r['mlflow']}/10  Perf:{r['performance']}/15  Reg:{r['registration']}/5  Bonus:{r['bonus']}/8")
-    print(f"  F1: {r['f1_score']:.4f}  |  TOTAL: {r['total']}/48")
+    print(f"  EDA:{r['eda']}/5  Feat:{r['features']}/8  MLflow:{r['mlflow']}/10  Perf:{r['performance']}/15  Reg:{r['registration']}/5  Results:{r['results_saved']}/2  Bonus:{r['bonus']}/8")
+    print(f"  F1: {r['f1_score']:.4f}  |  TOTAL: {r['total']}/53")
     for d in r["details"]:
         print(f"    {d}")
 
@@ -258,6 +324,7 @@ df_scores = pd.DataFrame([{
     "MLflow": r["mlflow"],
     "Performance": r["performance"],
     "Registration": r["registration"],
+    "Results_Saved": r["results_saved"],
     "Bonus": r["bonus"],
     "Total": r["total"],
     "F1": r["f1_score"],
@@ -296,10 +363,11 @@ for r in results:
     if spark.sql(f"SELECT 1 FROM {_RT} WHERE team = '{_t}'").count() == 0:
         spark.sql(f"INSERT INTO {_RT} VALUES ('{_t}')")
     for cat, pts, mx in [
-        ("EDA", r["eda"], 5), ("Features", r["features"], 5),
+        ("EDA", r["eda"], 5), ("Features", r["features"], 8),
         ("MLflow", r["mlflow"], 10), ("Performance", r["performance"], 15),
-        ("Registration", r["registration"], 5), ("Bonus", r["bonus"], 8),
+        ("Registration", r["registration"], 5), ("Results_Saved", r["results_saved"], 2),
+        ("Bonus", r["bonus"], 8),
     ]:
         spark.sql(f"INSERT INTO {_LB} VALUES ('{_t}', '{_event}', '{cat}', {pts}, {mx}, '{_now}')")
 
-print(f"Leaderboard updated: {len(results)} teams × 6 categories")
+print(f"Leaderboard updated: {len(results)} teams × 7 categories")
