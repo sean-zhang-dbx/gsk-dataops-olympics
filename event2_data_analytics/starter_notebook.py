@@ -94,15 +94,18 @@ display(spark.table(f"{CATALOG}.default.heart_gold"))
 # MAGIC ---
 # MAGIC # BUILD PHASE (8 minutes)
 # MAGIC
-# MAGIC Split your team:
-# MAGIC - **Person A:** Write the 3 practice SQL queries below (warm-up for the race)
-# MAGIC - **Person B:** Set up the Genie space using the **`genie_setup_guide`** notebook
+# MAGIC Work together as a team through both parts:
+# MAGIC 1. **SQL Warm-Up (4 min):** Write 3 practice SQL queries below to get familiar with the data
+# MAGIC 2. **Genie Setup (4 min):** Set up your Genie space using the **`genie_setup_guide`** notebook
+# MAGIC
+# MAGIC > **Tip:** The SQL warm-up helps you understand the data schema, which makes
+# MAGIC > configuring your Genie space faster and more accurate!
 # MAGIC
 # MAGIC ---
 # MAGIC
-# MAGIC ## Practice SQL Queries
+# MAGIC ## Part 1: SQL Warm-Up
 # MAGIC
-# MAGIC Write 3 analytical queries against `heart_silver` to warm up.
+# MAGIC Write 3 analytical queries against `heart_silver` to get comfortable with the data.
 # MAGIC Use Databricks Assistant (`Cmd+I`) to generate them from the business descriptions.
 
 # COMMAND ----------
@@ -149,8 +152,9 @@ display(spark.table(f"{CATALOG}.default.heart_gold"))
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Set Up Your Genie Space
+# MAGIC ## Part 2: Set Up Your Genie Space
 # MAGIC
+# MAGIC Now that you understand the data, set up your Genie space.
 # MAGIC **Open the `genie_setup_guide` notebook** (in this same folder) for detailed instructions.
 # MAGIC
 # MAGIC ### Quick Checklist
@@ -403,60 +407,38 @@ print("=" * 60)
 # MAGIC
 # MAGIC ### Bonus 1: AI-Powered Summary (+3 pts)
 # MAGIC
-# MAGIC > Use `ai_query()` to generate a natural language executive summary of your Gold table.
-# MAGIC > Save the result as a table called `heart_executive_summary`.
+# MAGIC > Use `ai_query()` with a foundation model to generate a **natural language executive
+# MAGIC > summary** of each row in your Gold table. The summary should be 1-2 sentences
+# MAGIC > that a hospital executive would find useful (cohort size, key metrics, risk level).
 # MAGIC >
-# MAGIC > ```sql
-# MAGIC > CREATE OR REPLACE TABLE heart_executive_summary AS
-# MAGIC > SELECT
-# MAGIC >   age_group, diagnosis, patient_count, avg_cholesterol,
-# MAGIC >   ai_query(
-# MAGIC >     'databricks-meta-llama-3-3-70b-instruct',
-# MAGIC >     CONCAT(
-# MAGIC >       'Summarize this patient cohort in 1-2 sentences for a hospital executive: ',
-# MAGIC >       age_group, ' patients, ', diagnosis, ', n=', patient_count,
-# MAGIC >       ', avg cholesterol=', avg_cholesterol, ' mg/dL',
-# MAGIC >       ', avg BP=', avg_blood_pressure, ' mmHg',
-# MAGIC >       ', avg max HR=', avg_max_heart_rate, ' bpm'
-# MAGIC >     )
-# MAGIC >   ) AS executive_summary
-# MAGIC > FROM heart_gold
-# MAGIC > ```
+# MAGIC > Save the result as a table called **`heart_executive_summary`** with all the original
+# MAGIC > Gold columns plus a new `executive_summary` column.
+# MAGIC >
+# MAGIC > *Hint: Look up `ai_query()` in the Databricks SQL docs. You'll need to pass a
+# MAGIC > model name and a prompt that includes the row's data.*
 # MAGIC
 # MAGIC ### Bonus 2: Advanced Cohort Analysis (+2 pts)
 # MAGIC
-# MAGIC > Write a query that compares heart disease patients vs. healthy patients across ALL
-# MAGIC > clinical metrics. For each metric (`trestbps`, `chol`, `thalach`, `oldpeak`),
-# MAGIC > show the average for disease vs. healthy, and the percentage difference.
-# MAGIC > Save as table `heart_cohort_comparison`.
+# MAGIC > Write a query that compares heart disease patients vs. healthy patients across
+# MAGIC > **all 4 key clinical metrics** (`trestbps`, `chol`, `thalach`, `oldpeak`).
+# MAGIC > For each metric, show the average for disease, average for healthy, and the
+# MAGIC > percentage difference between the two groups.
 # MAGIC >
-# MAGIC > ```sql
-# MAGIC > CREATE OR REPLACE TABLE heart_cohort_comparison AS
-# MAGIC > SELECT
-# MAGIC >   'trestbps' AS metric,
-# MAGIC >   ROUND(AVG(CASE WHEN target=1 THEN trestbps END), 1) AS disease_avg,
-# MAGIC >   ROUND(AVG(CASE WHEN target=0 THEN trestbps END), 1) AS healthy_avg,
-# MAGIC >   ROUND((AVG(CASE WHEN target=1 THEN trestbps END) -
-# MAGIC >          AVG(CASE WHEN target=0 THEN trestbps END)) * 100.0 /
-# MAGIC >          AVG(CASE WHEN target=0 THEN trestbps END), 1) AS pct_diff
-# MAGIC > FROM heart_silver
-# MAGIC > UNION ALL
-# MAGIC > -- ... repeat for chol, thalach, oldpeak
-# MAGIC > ```
+# MAGIC > Save as a table called **`heart_cohort_comparison`** with columns:
+# MAGIC > `metric`, `disease_avg`, `healthy_avg`, `pct_diff`.
+# MAGIC >
+# MAGIC > *Hint: Use conditional aggregation with `CASE WHEN target=1 THEN ... END`
+# MAGIC > and `UNION ALL` to stack metrics vertically.*
 # MAGIC
 # MAGIC ### Bonus 3: Statistical Test (+3 pts)
 # MAGIC
-# MAGIC > Run a Chi-squared test to determine if chest pain type is statistically associated
-# MAGIC > with heart disease diagnosis. Use `scipy.stats.chi2_contingency`. Save the p-value
-# MAGIC > as a variable called `chi2_pvalue`. A p-value < 0.05 means statistically significant.
+# MAGIC > Run a **Chi-squared test** to determine if chest pain type (`cp`) is statistically
+# MAGIC > associated with heart disease diagnosis (`target`). Save the results as a table
+# MAGIC > called **`heart_chi2_test`** with columns: `chi2_statistic`, `p_value`, `degrees_of_freedom`,
+# MAGIC > and `is_significant` (boolean, True if p < 0.05).
 # MAGIC >
-# MAGIC > ```python
-# MAGIC > from scipy.stats import chi2_contingency
-# MAGIC > import pandas as pd
-# MAGIC > ct = pd.crosstab(df['cp'], df['target'])
-# MAGIC > chi2, chi2_pvalue, dof, expected = chi2_contingency(ct)
-# MAGIC > print(f"Chi-squared: {chi2:.2f}, p-value: {chi2_pvalue:.6f}")
-# MAGIC > ```
+# MAGIC > *Hint: Use Python's `scipy.stats.chi2_contingency` on a cross-tabulation of
+# MAGIC > `cp` vs `target`. You'll need to convert the Spark DataFrame to pandas first.*
 
 # COMMAND ----------
 
