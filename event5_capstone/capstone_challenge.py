@@ -12,8 +12,12 @@
 # MAGIC > The hospital's Board of Directors meeting is in 30 minutes. The **Chief Medical Officer**
 # MAGIC > is so impressed by your team's work today — the pipeline (Event 1), the analytics
 # MAGIC > (Event 2), the predictive model (Event 3), and the AI agent (Event 4) — that she wants
-# MAGIC > you to build a **"Hospital Command Center"**: a single AI/BI Dashboard that ties
-# MAGIC > everything together into a story the board can understand.
+# MAGIC > you to build a **"Hospital Command Center"**: a **business-user-friendly** interface
+# MAGIC > that ties everything together into a story the board can understand.
+# MAGIC >
+# MAGIC > You have two options for the main deliverable:
+# MAGIC > - **Option A: AI/BI Dashboard** (Lakeview) — 10 pts
+# MAGIC > - **Option B: Databricks App** (Streamlit/Gradio/Dash) — **15 pts** (harder, more points)
 # MAGIC >
 # MAGIC > She also wants a **Genie space** so board members can ask follow-up questions
 # MAGIC > in plain English. And she wants an **AI-generated executive briefing** she can
@@ -27,16 +31,18 @@
 # MAGIC |---|-----------|-------------------|--------|------|
 # MAGIC | 1 | Verify & prepare all data | Unity Catalog | 3 | 2 min |
 # MAGIC | 2 | AI executive briefing | `ai_query()` | 5 | 5 min |
-# MAGIC | 3 | AI/BI Dashboard (5+ charts) | Lakeview Dashboard | 10 | 15 min |
+# MAGIC | 3a | **Option A: AI/BI Dashboard** (5+ charts) | Lakeview Dashboard | **10** | 15 min |
+# MAGIC | 3b | **Option B: Databricks App** (interactive) | Streamlit / Gradio / Dash | **15** | 15 min |
 # MAGIC | 4 | Genie space (all tables) | AI/BI Genie | 5 | 3 min |
 # MAGIC | 5 | Presentation to judges | Live demo | 7 | 5 min |
-# MAGIC | | **Total** | | **30** | **30 min** |
+# MAGIC | | **Total (Dashboard path)** | | **30** | **30 min** |
+# MAGIC | | **Total (App path)** | | **35** | **30 min** |
 # MAGIC | | Bonus: Alerts, Subscriptions, Filters | | +5 | |
 # MAGIC
 # MAGIC ### Databricks Features Showcase
 # MAGIC
-# MAGIC This capstone uses: **Unity Catalog** · **AI/BI Dashboard** · **AI/BI Genie** ·
-# MAGIC **`ai_query()`** · **Delta Lake** · **MLflow** (metrics display) · **Databricks Assistant**
+# MAGIC This capstone uses: **Unity Catalog** · **AI/BI Dashboard** or **Databricks App** ·
+# MAGIC **AI/BI Genie** · **`ai_query()`** · **Delta Lake** · **MLflow** · **Databricks Assistant**
 # MAGIC
 # MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) for everything!
 
@@ -249,12 +255,24 @@ print(f"Saved to {CATALOG}.default.executive_briefing")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 3: Build the AI/BI Dashboard (10 pts, ~15 min)
+# MAGIC ## Step 3: Business Deliverable — Choose Your Path
 # MAGIC
-# MAGIC > This is the main deliverable. Create a **Lakeview AI/BI Dashboard** from the
-# MAGIC > Databricks UI with **at least 5 visualizations**.
+# MAGIC > **Pick ONE of the two options below.** The App path is worth more points
+# MAGIC > because it requires coding, but is harder. The Dashboard path is quicker.
+# MAGIC >
+# MAGIC > | Path | Points | Difficulty |
+# MAGIC > |------|--------|------------|
+# MAGIC > | **Option A: AI/BI Dashboard** | 10 pts | Medium |
+# MAGIC > | **Option B: Databricks App** | **15 pts** | Hard |
 # MAGIC
-# MAGIC ### How to Create
+# MAGIC ---
+# MAGIC
+# MAGIC ### Option A: AI/BI Dashboard (10 pts, ~15 min)
+# MAGIC
+# MAGIC > Create a **Lakeview AI/BI Dashboard** from the Databricks UI with
+# MAGIC > **at least 5 visualizations**.
+# MAGIC
+# MAGIC #### How to Create
 # MAGIC
 # MAGIC 1. Click **+ New** → **Dashboard** in the sidebar
 # MAGIC 2. Name it: `{TEAM_NAME} — Hospital Command Center`
@@ -262,7 +280,7 @@ print(f"Saved to {CATALOG}.default.executive_briefing")
 # MAGIC 4. Drag visualizations onto the canvas
 # MAGIC 5. **Publish** when done
 # MAGIC
-# MAGIC ### Required Charts (5 minimum for full points)
+# MAGIC #### Required Charts (5 minimum for full points)
 # MAGIC
 # MAGIC | # | Chart | SQL Dataset | Chart Type |
 # MAGIC |---|-------|-------------|------------|
@@ -361,6 +379,84 @@ print(f"Saved to {CATALOG}.default.executive_briefing")
 
 # MAGIC %md
 # MAGIC ---
+# MAGIC
+# MAGIC ### Option B: Databricks App (15 pts, ~15 min)
+# MAGIC
+# MAGIC > Build an **interactive web application** that hospital executives can use
+# MAGIC > without any SQL or technical knowledge. Deploy it as a Databricks App.
+# MAGIC
+# MAGIC #### Why More Points?
+# MAGIC > Apps require **coding, UI design, and deployment** — a deeper Databricks skill set.
+# MAGIC > The result is a production-quality interface any business user can operate.
+# MAGIC
+# MAGIC #### What to Build
+# MAGIC
+# MAGIC Your app should include:
+# MAGIC 1. **Patient overview** — key metrics (total patients, disease prevalence)
+# MAGIC 2. **Interactive charts** — at least 3 visualizations (age distribution, risk heatmap, drug ratings)
+# MAGIC 3. **AI insights panel** — display the `clinical_insight` / `ai_summary` from your tables
+# MAGIC 4. **Executive briefing** — render the AI-generated briefing text
+# MAGIC 5. **Filters/interactivity** — let users filter by age group, diagnosis, etc.
+# MAGIC
+# MAGIC #### Recommended Frameworks
+# MAGIC
+# MAGIC | Framework | Difficulty | Best For |
+# MAGIC |-----------|-----------|----------|
+# MAGIC | **Streamlit** | Easiest | Quick dashboards with Python |
+# MAGIC | **Gradio** | Easy | ML model demos |
+# MAGIC | **Dash (Plotly)** | Medium | Rich interactive dashboards |
+# MAGIC
+# MAGIC #### Quick Start (Streamlit)
+# MAGIC
+# MAGIC ```python
+# MAGIC # app.py
+# MAGIC import streamlit as st
+# MAGIC from databricks import sql as dbsql
+# MAGIC
+# MAGIC st.set_page_config(page_title="Hospital Command Center", layout="wide")
+# MAGIC st.title("Hospital Command Center")
+# MAGIC
+# MAGIC # Connect to your tables using Databricks SQL connector or Spark
+# MAGIC # Display charts with st.bar_chart(), st.plotly_chart(), etc.
+# MAGIC # Show AI insights in st.expander() panels
+# MAGIC # Add filters with st.selectbox(), st.slider()
+# MAGIC ```
+# MAGIC
+# MAGIC #### Deploying as a Databricks App
+# MAGIC
+# MAGIC 1. Create `app.yaml` with your app config
+# MAGIC 2. Run `databricks apps create {TEAM_NAME}-hospital-app`
+# MAGIC 3. Deploy with `databricks apps deploy {TEAM_NAME}-hospital-app --source-code-path .`
+# MAGIC 4. Verify the app is running in the Databricks UI
+# MAGIC
+# MAGIC #### Scoring Rubric (App)
+# MAGIC
+# MAGIC | Criteria | Points |
+# MAGIC |----------|--------|
+# MAGIC | App deployed and accessible | 5 |
+# MAGIC | At least 3 interactive visualizations | 4 |
+# MAGIC | Reads from team's Unity Catalog tables | 3 |
+# MAGIC | Includes AI-generated insights or briefing | 2 |
+# MAGIC | Clean, professional UI | 1 |
+# MAGIC | **Total** | **15** |
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Record Your App (if choosing Option B)
+
+# COMMAND ----------
+
+APP_NAME = ""  # e.g., "team_01-hospital-app"
+if APP_NAME:
+    print(f"App name: {APP_NAME}")
+else:
+    print("No app name entered — using Dashboard path (Option A).")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
 # MAGIC ## Step 4: Genie Space — "Ask the Data" (5 pts, ~3 min)
 # MAGIC
 # MAGIC > Connect a Genie space so board members can ask follow-up questions in plain English.
@@ -438,14 +534,14 @@ else:
 # MAGIC
 # MAGIC | Criteria | Points |
 # MAGIC |----------|--------|
-# MAGIC | Dashboard has 5+ charts with clear titles and labels | 4 |
-# MAGIC | Dashboard tells a coherent story (not just random charts) | 3 |
+# MAGIC | Business deliverable (dashboard or app) is functional and complete | 4 |
+# MAGIC | Deliverable tells a coherent data story (not random charts) | 3 |
 # MAGIC | Executive briefing is data-driven and professional | 2 |
 # MAGIC | Genie space answers a live question correctly | 2 |
 # MAGIC | Presentation is clear and within time | 2 |
-# MAGIC | **Bonus: Published dashboard** | +1 |
-# MAGIC | **Bonus: Dashboard has filters/parameters** | +2 |
-# MAGIC | **Bonus: Scheduled email subscription** | +2 |
+# MAGIC | **Bonus: Published dashboard / deployed app** | +1 |
+# MAGIC | **Bonus: Filters, interactivity, or parameters** | +2 |
+# MAGIC | **Bonus: Scheduled email subscription (dashboard) or auth (app)** | +2 |
 
 # COMMAND ----------
 
@@ -489,5 +585,30 @@ else:
 # MAGIC - [ ] Dashboard named `{TEAM_NAME} — Hospital Command Center`
 # MAGIC - [ ] Genie space created/updated with all tables + instructions
 # MAGIC - [ ] Presentation rehearsed (3 min max)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## SUBMIT YOUR WORK
 # MAGIC
-# MAGIC > **Signal judges when ready to present!**
+# MAGIC **Run this cell when you're done!** It records your submission timestamp for the live scoreboard.
+# MAGIC Then signal the judges that you're ready to present!
+
+# COMMAND ----------
+
+from datetime import datetime as _dt
+
+_event_name = "Event 5: Capstone"
+_submit_ts = _dt.now()
+
+spark.sql(f"""
+    INSERT INTO dataops_olympics.default.event_submissions
+    VALUES ('{TEAM_NAME}', '{_event_name}', '{_submit_ts}', NULL)
+""")
+
+print("=" * 60)
+print(f"  SUBMITTED! {TEAM_NAME} — {_event_name}")
+print(f"  Timestamp: {_submit_ts.strftime('%H:%M:%S.%f')}")
+print(f"  Signal the judges that you are READY TO PRESENT!")
+print("=" * 60)

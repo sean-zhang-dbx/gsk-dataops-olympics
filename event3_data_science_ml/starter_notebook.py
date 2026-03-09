@@ -29,11 +29,14 @@
 # MAGIC | Feature Engineering (regular table) | 5 |
 # MAGIC | Feature Engineering (Feature Store) | **8** |
 # MAGIC | Model Training + MLflow Logging | 10 |
-# MAGIC | Model Performance (F1-based) | 15 |
+# MAGIC | Model Performance (**F1 primary**) | 15 |
 # MAGIC | Model Registration | 5 |
 # MAGIC | Results Saved to Catalog | 2 |
 # MAGIC | **Total (with Feature Store)** | **45** |
 # MAGIC | Bonus: SHAP, Ensemble, Cross-Val | up to 8 |
+# MAGIC
+# MAGIC > **F1 score is the primary metric** (up to 15 pts). If you optimize for accuracy
+# MAGIC > instead, you'll receive partial credit (capped at 8 pts). Log `f1_score` in MLflow!
 # MAGIC
 # MAGIC > **Feature Store gives +3 bonus pts** over a regular table. Both paths work!
 # MAGIC
@@ -331,3 +334,29 @@ print("=" * 60)
 # MAGIC > from sklearn.model_selection import cross_val_score
 # MAGIC > cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='f1')
 # MAGIC > ```
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## SUBMIT YOUR WORK
+# MAGIC
+# MAGIC **Run this cell when you're done!** It records your submission timestamp for the live scoreboard.
+
+# COMMAND ----------
+
+from datetime import datetime as _dt
+
+_event_name = "Event 3: Data Science"
+_submit_ts = _dt.now()
+
+spark.sql(f"""
+    INSERT INTO dataops_olympics.default.event_submissions
+    VALUES ('{TEAM_NAME}', '{_event_name}', '{_submit_ts}', NULL)
+""")
+
+print("=" * 60)
+print(f"  SUBMITTED! {TEAM_NAME} — {_event_name}")
+print(f"  Timestamp: {_submit_ts.strftime('%H:%M:%S.%f')}")
+print(f"  Signal the judges that you are DONE!")
+print("=" * 60)

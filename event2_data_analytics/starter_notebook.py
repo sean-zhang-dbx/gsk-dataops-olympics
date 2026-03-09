@@ -476,3 +476,30 @@ print("=" * 60)
 # MAGIC | `avg_cholesterol` | Average cholesterol (mg/dL) |
 # MAGIC | `avg_blood_pressure` | Average resting BP (mmHg) |
 # MAGIC | `avg_max_heart_rate` | Average max heart rate |
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## SUBMIT YOUR WORK
+# MAGIC
+# MAGIC **Run this cell when you're done!** It records your submission timestamp for speed tracking.
+# MAGIC The first team to submit each correct answer gets a **+1 speed bonus**.
+
+# COMMAND ----------
+
+from datetime import datetime as _dt
+
+_event_name = "Event 2: Data Analytics"
+_submit_ts = _dt.now()
+
+spark.sql(f"""
+    INSERT INTO dataops_olympics.default.event_submissions
+    VALUES ('{TEAM_NAME}', '{_event_name}', '{_submit_ts}', NULL)
+""")
+
+print("=" * 60)
+print(f"  SUBMITTED! {TEAM_NAME} — {_event_name}")
+print(f"  Timestamp: {_submit_ts.strftime('%H:%M:%S.%f')}")
+print(f"  Signal the judges that you are DONE!")
+print("=" * 60)

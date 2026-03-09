@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Lightning Talk 2: Data Analytics & AI/BI on Databricks
+# MAGIC # Lightning Talk 2: Data Analytics — SQL, Dashboards & Genie
 # MAGIC
 # MAGIC **Duration: 15 minutes** | Instructor-led live demo
 # MAGIC
@@ -21,11 +21,9 @@
 # MAGIC %md
 # MAGIC ## The Problem
 # MAGIC
-# MAGIC > **Say this:** "Your medical director walks in and says: 'Which age group in our
-# MAGIC > patient cohort has the highest heart disease rate?' You have 60 seconds. Go."
-# MAGIC >
-# MAGIC > "That's what analytics on Databricks looks like — SQL first, viz second, Genie for
-# MAGIC > when you need answers even faster."
+# MAGIC Your medical director walks in: *"Which age group in our patient cohort has the highest heart disease rate?"*
+# MAGIC You have 60 seconds. That's what analytics on Databricks looks like —
+# MAGIC SQL first, viz second, Genie for when you need answers even faster.
 
 # COMMAND ----------
 
@@ -52,8 +50,8 @@ spark.sql("USE SCHEMA default")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > **Say this:** "One query. We now know the exact split. Notice the window function
-# MAGIC > `SUM(COUNT(*)) OVER()` — that's how you calculate percentages in SQL without a subquery."
+# MAGIC One query and we know the exact split. Notice the window function
+# MAGIC `SUM(COUNT(*)) OVER()` — that's how you calculate percentages in SQL without a subquery.
 
 # COMMAND ----------
 
@@ -107,17 +105,16 @@ spark.sql("USE SCHEMA default")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > **Say this:** "Four queries, four different insights. Notice how I used CASE statements
-# MAGIC > to make the output human-readable. That's a tip for your dashboards too."
+# MAGIC Four queries, four different insights. Notice the CASE statements to make the output
+# MAGIC human-readable — that's a pro tip for your dashboards too.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 2. Interactive Visualizations
 # MAGIC
-# MAGIC > **Say this:** "SQL gives you numbers. Charts give you understanding. Let me turn
-# MAGIC > those query results into something visual. In Databricks, just use `display()`
-# MAGIC > and click the chart icon to configure your visualization."
+# MAGIC SQL gives you numbers — charts give you understanding. In Databricks, just use `display()`
+# MAGIC and click the chart icon to configure your visualization.
 
 # COMMAND ----------
 
@@ -130,9 +127,9 @@ display(spark.sql("""
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC > **Say this:** "Click the chart icon below the table to switch to a scatter plot.
-# MAGIC > Map age to X, max_heart_rate to Y, and color by status.
-# MAGIC > Look at the pattern -- healthy patients tend to have higher max heart rates."
+# MAGIC Click the **chart icon** below the table → switch to a scatter plot.
+# MAGIC Map age to X, max_heart_rate to Y, and color by status.
+# MAGIC Notice the pattern: healthy patients tend to have higher max heart rates.
 
 # COMMAND ----------
 
@@ -156,50 +153,46 @@ display(spark.sql("""
 # MAGIC %md
 # MAGIC ## 3. AI/BI Dashboards (Lakeview)
 # MAGIC
-# MAGIC > **Say this:** "In the competition, you'll build a dashboard in the Databricks UI.
-# MAGIC > Let me show you how fast it is."
-# MAGIC >
-# MAGIC > **LIVE UI DEMO (2 min):**
-# MAGIC > 1. Click **+ New** → **Dashboard**
-# MAGIC > 2. Add dataset: `SELECT * FROM heart_disease`
-# MAGIC > 3. Drag in a Counter widget (total patients)
-# MAGIC > 4. Drag in a Bar chart (disease by age group)
-# MAGIC > 5. Add a filter on `target`
-# MAGIC > 6. Click **Publish**
-# MAGIC >
-# MAGIC > **Say this:** "5 clicks, 1 dashboard. No code required. But YOU will use the
-# MAGIC > SQL skills you just learned to make yours better."
+# MAGIC In the competition, you'll build a dashboard in the Databricks UI. Here's how fast it is:
+# MAGIC
+# MAGIC 1. Click **+ New** → **Dashboard**
+# MAGIC 2. Add dataset: `SELECT * FROM heart_disease`
+# MAGIC 3. Drag in a Counter widget (total patients)
+# MAGIC 4. Drag in a Bar chart (disease by age group)
+# MAGIC 5. Add a filter on `target`
+# MAGIC 6. Click **Publish**
+# MAGIC
+# MAGIC 5 clicks, 1 dashboard. No code required — but your SQL skills will make yours better.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## 4. Wow Moment — Genie (Natural Language Analytics)
 # MAGIC
-# MAGIC > **Say this:** "What if you didn't need to write SQL at all? What if you could just
-# MAGIC > ask your data a question in English?"
-# MAGIC >
-# MAGIC > **LIVE UI DEMO (3 min):**
-# MAGIC > 1. Open an existing Genie space (or create: **+ New** → **Genie space**)
-# MAGIC > 2. Name: "Heart Disease Analyst"
-# MAGIC > 3. Add table: `heart_disease`
-# MAGIC > 4. Add instructions:
-# MAGIC >    - "target = 1 means heart disease, 0 means healthy"
-# MAGIC >    - "cp is chest pain type: 0=typical angina, 1=atypical, 2=non-anginal, 3=asymptomatic"
-# MAGIC > 5. Ask: **"What percentage of patients over 50 have heart disease?"**
-# MAGIC > 6. Show the SQL that Genie generates
-# MAGIC > 7. Ask: **"Break that down by chest pain type"**
-# MAGIC >
-# MAGIC > **Say this:** "Genie wrote the SQL for you. It understood 'over 50' means age > 50,
-# MAGIC > it knew 'heart disease' means target = 1. This is the future of data analytics."
+# MAGIC What if you didn't need to write SQL at all? What if you could just ask your data a question in English?
+# MAGIC
+# MAGIC **Genie demo:**
+# MAGIC 1. Open an existing Genie space (or create: **+ New** → **Genie space**)
+# MAGIC 2. Name: "Heart Disease Analyst"
+# MAGIC 3. Add table: `heart_disease`
+# MAGIC 4. Add instructions:
+# MAGIC    - "target = 1 means heart disease, 0 means healthy"
+# MAGIC    - "cp is chest pain type: 0=typical angina, 1=atypical, 2=non-anginal, 3=asymptomatic"
+# MAGIC 5. Ask: **"What percentage of patients over 50 have heart disease?"**
+# MAGIC 6. Check out the SQL that Genie generates
+# MAGIC 7. Ask: **"Break that down by chest pain type"**
+# MAGIC
+# MAGIC Genie wrote the SQL for us. It understood "over 50" means `age > 50`, and "heart disease" means `target = 1`.
+# MAGIC This is the future of data analytics.
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Your Turn! (Preview)
 # MAGIC
-# MAGIC > **Say this:** "In the practice notebook, you'll write 2 SQL queries and create
-# MAGIC > a visualization. It should take about 10 minutes. Then in the competition,
-# MAGIC > you'll build a full AI/BI dashboard and Genie space. Let's go!"
+# MAGIC In the practice notebook, you'll write 2 SQL queries and create a visualization (~10 minutes).
+# MAGIC Then in the competition, you'll build a full AI/BI dashboard and a Genie space.
+# MAGIC Pro tip: **build your Genie space well** — you'll reuse it in Event 4 when you build your AI agent.
 
 # COMMAND ----------
 

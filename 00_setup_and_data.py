@@ -43,8 +43,20 @@ print(f"Setting up for team: {TEAM_NAME}")
 spark.sql(f"CREATE CATALOG IF NOT EXISTS {SHARED_CATALOG}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}.{VOLUME_NAME}")
-print(f"  Shared catalog: {SHARED_CATALOG}")
-print(f"  Volume ready:   {VOLUME_PATH}")
+
+spark.sql(f"""
+    CREATE TABLE IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}.event_submissions (
+        team STRING,
+        event STRING,
+        submitted_at TIMESTAMP,
+        notes STRING
+    )
+""")
+spark.sql(f"COMMENT ON TABLE {SHARED_CATALOG}.{SHARED_SCHEMA}.event_submissions IS 'Tracks when each team submits their work for each event. Used for speed bonuses and the live scoreboard.'")
+
+print(f"  Shared catalog:     {SHARED_CATALOG}")
+print(f"  Volume ready:       {VOLUME_PATH}")
+print(f"  Submissions table:  {SHARED_CATALOG}.{SHARED_SCHEMA}.event_submissions")
 
 # COMMAND ----------
 
@@ -168,15 +180,44 @@ else:
 
     heart_path = f"{VOLUME_PATH}/heart_disease/heart.csv"
     n = 500
+
+    age = np.random.randint(29, 77, n)
+    sex = np.random.binomial(1, 0.68, n)
+    cp = np.random.choice([0, 1, 2, 3], n, p=[0.08, 0.17, 0.28, 0.47])
+    trestbps = np.clip(np.random.normal(132, 18, n).astype(int), 94, 200)
+    chol = np.clip(np.random.normal(246, 52, n).astype(int), 126, 564)
+    fbs = (np.random.uniform(0, 1, n) < 0.15).astype(int)
+    restecg = np.random.choice([0, 1, 2], n, p=[0.48, 0.48, 0.04])
+    thalach = np.clip(np.random.normal(150, 23, n).astype(int), 71, 202)
+    exang = np.random.binomial(1, 0.33, n)
+    oldpeak = np.round(np.clip(np.random.exponential(0.9, n), 0, 6.2), 1)
+    slope = np.random.choice([0, 1, 2], n, p=[0.21, 0.46, 0.33])
+    ca = np.random.choice([0, 1, 2, 3], n, p=[0.58, 0.22, 0.13, 0.07])
+    thal = np.random.choice([3, 6, 7], n, p=[0.39, 0.06, 0.55])
+
+    logit = (
+        -4.5
+        + 0.06 * (age - 50)
+        + 0.8 * sex
+        + np.where(cp == 3, 2.5, np.where(cp == 2, 0.5, np.where(cp == 1, -0.5, -1.0)))
+        + 0.025 * (trestbps - 130)
+        + 0.005 * (chol - 240)
+        + 0.6 * fbs
+        - 0.04 * (thalach - 150)
+        + 1.8 * exang
+        + 0.8 * oldpeak
+        + np.where(slope == 2, 0.9, np.where(slope == 0, -0.5, 0.0))
+        + 1.2 * ca
+        + np.where(thal == 7, 1.4, np.where(thal == 6, 0.8, -0.9))
+    )
+    prob = 1 / (1 + np.exp(-logit))
+    target = (np.random.uniform(0, 1, n) < prob).astype(int)
+
     df_h = pd.DataFrame({
-        "age": np.random.randint(29, 77, n), "sex": np.random.randint(0, 2, n),
-        "cp": np.random.randint(0, 4, n), "trestbps": np.random.randint(94, 200, n),
-        "chol": np.random.randint(126, 564, n), "fbs": np.random.randint(0, 2, n),
-        "restecg": np.random.randint(0, 3, n), "thalach": np.random.randint(71, 202, n),
-        "exang": np.random.randint(0, 2, n),
-        "oldpeak": np.round(np.random.uniform(0, 6.2, n), 1),
-        "slope": np.random.randint(0, 3, n), "ca": np.random.randint(0, 4, n),
-        "thal": np.random.choice([3, 6, 7], n), "target": np.random.randint(0, 2, n),
+        "age": age, "sex": sex, "cp": cp, "trestbps": trestbps,
+        "chol": chol, "fbs": fbs, "restecg": restecg, "thalach": thalach,
+        "exang": exang, "oldpeak": oldpeak, "slope": slope, "ca": ca,
+        "thal": thal, "target": target,
     })
     df_h.to_csv(heart_path, index=False)
     for batch in range(1, 4):

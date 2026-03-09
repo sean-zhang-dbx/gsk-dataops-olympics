@@ -447,3 +447,30 @@ print("=" * 60)
 # MAGIC > **SQL Path only** (streaming tables don't support overwrite):
 # MAGIC > Overwrite your Silver table with bad data, then restore the previous version using
 # MAGIC > `RESTORE TABLE heart_silver TO VERSION AS OF <version_number>`
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## SUBMIT YOUR WORK
+# MAGIC
+# MAGIC **Run this cell when you're done!** It records your submission timestamp for speed tracking.
+# MAGIC The first team to submit gets a speed bonus on the live scoreboard.
+
+# COMMAND ----------
+
+from datetime import datetime as _dt
+
+_event_name = "Event 1: Data Engineering"
+_submit_ts = _dt.now()
+
+spark.sql(f"""
+    INSERT INTO dataops_olympics.default.event_submissions
+    VALUES ('{TEAM_NAME}', '{_event_name}', '{_submit_ts}', NULL)
+""")
+
+print("=" * 60)
+print(f"  SUBMITTED! {TEAM_NAME} — {_event_name}")
+print(f"  Timestamp: {_submit_ts.strftime('%H:%M:%S.%f')}")
+print(f"  Signal the judges that you are DONE!")
+print("=" * 60)

@@ -4,13 +4,14 @@
 # MAGIC
 # MAGIC **FOR ORGANIZERS ONLY**
 # MAGIC
-# MAGIC ### Scoring Breakdown (30 pts + 5 bonus)
+# MAGIC ### Scoring Breakdown (30-35 pts + 5 bonus)
 # MAGIC
 # MAGIC | Category | Points | How Scored |
 # MAGIC |----------|--------|------------|
 # MAGIC | Artifacts verified | 3 | Auto: table existence |
 # MAGIC | Executive briefing | 5 | Auto: briefing table + LLM quality check |
-# MAGIC | AI/BI Dashboard | 10 | Semi-auto: Lakeview API + judge rubric |
+# MAGIC | AI/BI Dashboard (Option A) | 10 | Semi-auto: Lakeview API + judge rubric |
+# MAGIC | OR Databricks App (Option B) | **15** | Auto: app deployment + judge rubric |
 # MAGIC | Genie space | 5 | Auto: Conversation API test |
 # MAGIC | Presentation | 7 | Manual: judge scores |
 # MAGIC | **Bonus** | +5 | Auto: published, filters, schedule |
@@ -103,7 +104,7 @@ def _test_genie(space_id, question="How many patients have heart disease?"):
 def _check_dashboard_exists(team_name):
     """Search for a dashboard with the team name in the title."""
     if not SDK_AVAILABLE:
-        return False, 0
+        return False, None
     try:
         dashboards = w.lakeview.list()
         for d in dashboards:
@@ -114,11 +115,30 @@ def _check_dashboard_exists(team_name):
         return False, None
 
 
+def _check_app_exists(team_name):
+    """Search for a deployed Databricks App with the team name."""
+    if not SDK_AVAILABLE:
+        return False, None
+    try:
+        apps = w.apps.list()
+        for app in apps:
+            if app.name and team_name.lower().replace("_", "-") in app.name.lower():
+                is_running = (
+                    hasattr(app, "active_deployment")
+                    and app.active_deployment is not None
+                )
+                return True, app.name, is_running
+        return False, None, False
+    except Exception:
+        return False, None, False
+
+
 def score_team(team_name: str) -> dict:
     catalog = team_name
     scores = {
         "team": team_name,
-        "artifacts": 0, "briefing": 0, "dashboard": 0,
+        "artifacts": 0, "briefing": 0, "deliverable": 0,
+        "deliverable_type": "none",
         "genie": 0, "presentation": 0, "bonus": 0, "total": 0,
         "details": [],
     }
@@ -164,13 +184,24 @@ def score_team(team_name: str) -> dict:
     else:
         log("Briefing: executive_briefing table not found [+0]")
 
-    # ─── DASHBOARD (10 pts) — auto-detect + manual judge input ───
+    # ─── BUSINESS DELIVERABLE: App (15 pts) or Dashboard (10 pts) ───
+    app_found, app_name, app_running = _check_app_exists(team_name)
     dash_found, dash_name = _check_dashboard_exists(team_name)
-    if dash_found:
-        scores["dashboard"] = 7
+
+    if app_found:
+        scores["deliverable_type"] = "app"
+        if app_running:
+            scores["deliverable"] = 12
+            log(f"App: '{app_name}' deployed and running [+12 auto, judge adds 0-3]")
+        else:
+            scores["deliverable"] = 8
+            log(f"App: '{app_name}' exists but not actively running [+8 auto, judge adds 0-3]")
+    elif dash_found:
+        scores["deliverable_type"] = "dashboard"
+        scores["deliverable"] = 7
         log(f"Dashboard: found '{dash_name}' [+7 auto, judge adds 0-3]")
     else:
-        log("Dashboard: not found via API. Judge may award points manually.")
+        log("Deliverable: no app or dashboard found. Judge may award points manually.")
 
     # ─── GENIE (5 pts) ───
     space_id = GENIE_SPACE_IDS.get(team_name, "")
@@ -193,8 +224,11 @@ def score_team(team_name: str) -> dict:
         log("Presentation: not yet scored (enter in PRESENTATION_SCORES)")
 
     # ─── BONUS (5 pts) ───
-    # Published dashboard (+1)
-    if dash_found:
+    # Published dashboard / deployed app (+1)
+    if scores["deliverable_type"] == "app" and app_running:
+        scores["bonus"] += 1
+        log("Bonus: app is actively deployed [+1]")
+    elif dash_found:
         try:
             for d in w.lakeview.list():
                 if d.display_name and team_name.lower() in d.display_name.lower():
@@ -216,7 +250,7 @@ def score_team(team_name: str) -> dict:
         except Exception:
             pass
 
-    scores["total"] = sum(scores[k] for k in ["artifacts", "briefing", "dashboard", "genie", "presentation", "bonus"])
+    scores["total"] = sum(scores[k] for k in ["artifacts", "briefing", "deliverable", "genie", "presentation", "bonus"])
     return scores
 
 # COMMAND ----------
@@ -233,8 +267,10 @@ for team in TEAMS:
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  Artifacts:{r['artifacts']}/3  Briefing:{r['briefing']}/5  Dashboard:{r['dashboard']}/10  Genie:{r['genie']}/5  Pres:{r['presentation']}/7  Bonus:{r['bonus']}/5")
-    print(f"  TOTAL: {r['total']}/35")
+    d_max = 15 if r["deliverable_type"] == "app" else 10
+    print(f"  Artifacts:{r['artifacts']}/3  Briefing:{r['briefing']}/5  {r['deliverable_type'].title()}:{r['deliverable']}/{d_max}  Genie:{r['genie']}/5  Pres:{r['presentation']}/7  Bonus:{r['bonus']}/5")
+    t_max = 30 if r["deliverable_type"] != "app" else 35
+    print(f"  TOTAL: {r['total']}/{t_max}")
     for d in r["details"]:
         print(f"    {d}")
 
@@ -249,7 +285,8 @@ df_scores = pd.DataFrame([{
     "Team": r["team"],
     "Artifacts": r["artifacts"],
     "Briefing": r["briefing"],
-    "Dashboard": r["dashboard"],
+    "Deliverable_Type": r["deliverable_type"],
+    "Deliverable": r["deliverable"],
     "Genie": r["genie"],
     "Presentation": r["presentation"],
     "Bonus": r["bonus"],
@@ -288,9 +325,10 @@ for r in results:
     _t = r["team"]
     if spark.sql(f"SELECT 1 FROM {_RT} WHERE team = '{_t}'").count() == 0:
         spark.sql(f"INSERT INTO {_RT} VALUES ('{_t}')")
+    _d_mx = 15 if r["deliverable_type"] == "app" else 10
     for cat, pts, mx in [
         ("Artifacts", r["artifacts"], 3), ("Briefing", r["briefing"], 5),
-        ("Dashboard", r["dashboard"], 10), ("Genie", r["genie"], 5),
+        ("Deliverable", r["deliverable"], _d_mx), ("Genie", r["genie"], 5),
         ("Presentation", r["presentation"], 7), ("Bonus", r["bonus"], 5),
     ]:
         spark.sql(f"INSERT INTO {_LB} VALUES ('{_t}', '{_event}', '{cat}', {pts}, {mx}, '{_now}')")

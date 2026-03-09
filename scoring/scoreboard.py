@@ -33,6 +33,11 @@ spark.sql(f"""
         points DOUBLE, max_points DOUBLE, scored_at TIMESTAMP
     )
 """)
+spark.sql(f"""
+    CREATE TABLE IF NOT EXISTS event_submissions (
+        team STRING, event STRING, submitted_at TIMESTAMP, notes STRING
+    )
+""")
 
 catalogs = [r.catalog for r in spark.sql("SHOW CATALOGS").collect()]
 teams = sorted([c for c in catalogs if c not in EXCLUDE_CATALOGS])
@@ -105,6 +110,7 @@ def _uid():
 
 LB = f"{CATALOG}.{SCHEMA}.olympics_leaderboard"
 RT = f"{CATALOG}.{SCHEMA}.registered_teams"
+ES = f"{CATALOG}.{SCHEMA}.event_submissions"
 
 ALL_EVENTS_SQL = ("SELECT 'Event 1: Data Engineering' AS event UNION ALL "
     "SELECT 'Event 2: Data Analytics' UNION ALL SELECT 'Event 3: Data Science' UNION ALL "
@@ -149,6 +155,19 @@ datasets = [
      "query": f"SELECT Path, COUNT(*) AS team_count FROM {CATALOG}.{SCHEMA}.event1_scores GROUP BY Path"},
     {"name": "ds_e3_f1", "displayName": "Event 3 F1 Scores",
      "query": f"SELECT Team, F1 FROM {CATALOG}.{SCHEMA}.event3_scores WHERE F1 IS NOT NULL ORDER BY F1 DESC"},
+    {"name": "ds_first_submit", "displayName": "First to Submit (by Event)",
+     "query": f"WITH ranked AS (SELECT team AS Team, event AS Event, submitted_at, ROW_NUMBER() OVER (PARTITION BY event ORDER BY submitted_at ASC) AS place FROM {ES}), first AS (SELECT Event, MIN(submitted_at) AS first_ts FROM ranked GROUP BY Event) SELECT r.Team, r.Event, r.place AS Place, r.submitted_at AS Submitted_At, ROUND((UNIX_TIMESTAMP(r.submitted_at) - UNIX_TIMESTAMP(f.first_ts)) / 60.0, 1) AS Minutes_Behind_1st FROM ranked r JOIN first f ON r.Event = f.Event ORDER BY r.Event, r.place",
+     "columns": [{"fieldName": "Team", "displayName": "Team"}, {"fieldName": "Event", "displayName": "Event"}, {"fieldName": "Place", "displayName": "Place"}, {"fieldName": "Submitted_At", "displayName": "Submitted At"}, {"fieldName": "Minutes_Behind_1st", "displayName": "Min Behind 1st"}]},
+    {"name": "ds_speed_board", "displayName": "Speed Leaderboard",
+     "query": f"WITH ranked AS (SELECT team AS Team, event AS Event, submitted_at, ROW_NUMBER() OVER (PARTITION BY event ORDER BY submitted_at ASC) AS place FROM {ES}), gold_medals AS (SELECT Team, COUNT(*) AS first_place_finishes FROM ranked WHERE place = 1 GROUP BY Team), all_teams AS (SELECT DISTINCT team AS Team FROM {RT}) SELECT t.Team, COALESCE(g.first_place_finishes, 0) AS First_Place_Finishes, (SELECT COUNT(DISTINCT event) FROM {ES} WHERE team = t.Team) AS Events_Submitted FROM all_teams t LEFT JOIN gold_medals g ON t.Team = g.Team ORDER BY First_Place_Finishes DESC, Events_Submitted DESC",
+     "columns": [{"fieldName": "Team", "displayName": "Team"}, {"fieldName": "First_Place_Finishes", "displayName": "1st Place Finishes"}, {"fieldName": "Events_Submitted", "displayName": "Events Submitted"}]},
+    {"name": "ds_submit_timeline", "displayName": "Submission Timeline",
+     "query": f"SELECT team AS Team, event AS Event, submitted_at AS Submitted_At FROM {ES} ORDER BY submitted_at ASC",
+     "columns": [{"fieldName": "Team", "displayName": "Team"}, {"fieldName": "Event", "displayName": "Event"}, {"fieldName": "Submitted_At", "displayName": "Submitted At"}]},
+    {"name": "ds_kpi_submissions", "displayName": "KPI: Total Submissions",
+     "query": f"SELECT COUNT(*) AS total_submissions FROM {ES}"},
+    {"name": "ds_kpi_latest_submit", "displayName": "KPI: Latest Submission",
+     "query": f"SELECT MAX(submitted_at) AS latest_submission FROM {ES}"},
 ]
 
 event_tables = {
@@ -295,13 +314,19 @@ page2 = [
     _make_text("org_rank_hdr", "## Rankings & Standings", 0, 4),
     _make_table("tbl_rankings", "ds_rankings", "Full Rankings", y=5, h=5),
     _make_bar("bar_gap", "ds_gap_to_leader", "Team", "Gap", "Gap to Leader (points behind 1st place)", sort_x="y", label=True, y=10, h=4),
-    _make_text("org_comp_hdr", "## Event Completion Tracking", 0, 14),
-    _make_bar("bar_completion", "ds_completion_pct", "Event", "Completion_Pct", "Completion Rate by Event (%)", label=True, x=0, y=15, w=3, h=5),
-    _make_table("tbl_completion", "ds_completion", "Team x Event Status", x=3, y=15, w=3, h=5),
-    _make_text("org_insights_hdr", "## Event Insights", 0, 20),
-    _make_pie("pie_e1_path", "ds_e1_paths", "team_count", "Path", "Event 1: SDP vs SQL Path", x=0, y=21),
-    _make_bar("bar_e3_f1", "ds_e3_f1", "Team", "F1", "Event 3: ML Model F1 Scores", sort_x="y-reversed", label=True, x=3, y=21, w=3, h=5),
-    _make_line("line_timeline", "ds_timeline", "scored_minute", "submissions", "Scoring Activity Timeline", y=26, h=5),
+    _make_text("org_speed_hdr", "## Speed Tracking — Who Submitted First?", 0, 14),
+    _make_counter("kpi_submissions", "ds_kpi_submissions", "total_submissions", "Total Submissions", x=0, y=15, w=3, h=3),
+    _make_counter("kpi_latest_sub", "ds_kpi_latest_submit", "latest_submission", "Latest Submission", x=3, y=15, w=3, h=3),
+    _make_table("tbl_first_submit", "ds_first_submit", "First to Submit (by Event) — Place, Time, Gap", y=18, h=6),
+    _make_bar("bar_speed", "ds_speed_board", "Team", "First_Place_Finishes", "Speed Kings: 1st Place Finishes by Team", sort_x="y-reversed", label=True, y=24, h=4),
+    _make_table("tbl_submit_log", "ds_submit_timeline", "Live Submission Feed", y=28, h=4),
+    _make_text("org_comp_hdr", "## Event Completion Tracking", 0, 32),
+    _make_bar("bar_completion", "ds_completion_pct", "Event", "Completion_Pct", "Completion Rate by Event (%)", label=True, x=0, y=33, w=3, h=5),
+    _make_table("tbl_completion", "ds_completion", "Team x Event Status", x=3, y=33, w=3, h=5),
+    _make_text("org_insights_hdr", "## Event Insights", 0, 38),
+    _make_pie("pie_e1_path", "ds_e1_paths", "team_count", "Path", "Event 1: SDP vs SQL Path", x=0, y=39),
+    _make_bar("bar_e3_f1", "ds_e3_f1", "Team", "F1", "Event 3: ML Model F1 Scores", sort_x="y-reversed", label=True, x=3, y=39, w=3, h=5),
+    _make_line("line_timeline", "ds_timeline", "scored_minute", "submissions", "Scoring Activity Timeline", y=44, h=5),
 ]
 
 # COMMAND ----------

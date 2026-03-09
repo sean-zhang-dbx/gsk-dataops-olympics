@@ -20,7 +20,7 @@
 # MAGIC | Feature Engineering (regular table) | 5 |
 # MAGIC | Feature Engineering (Feature Store) | **8** |
 # MAGIC | Model Training + MLflow | 10 |
-# MAGIC | Model Performance (F1) | 15 |
+# MAGIC | Model Performance (F1 primary, accuracy fallback) | 15 |
 # MAGIC | Model Registration | 5 |
 # MAGIC | Results Saved to Catalog | 2 |
 # MAGIC | **Bonus: SHAP** | +3 |
@@ -55,8 +55,8 @@ def _table_exists(catalog, table):
         return False
 
 
-def _get_best_f1(team_name):
-    """Find the best F1 score from team's MLflow experiment."""
+def _get_best_metrics(team_name):
+    """Find the best F1 and accuracy scores from team's MLflow experiment."""
     try:
         user_email = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
     except Exception:
@@ -67,6 +67,7 @@ def _get_best_f1(team_name):
     ]
 
     best_f1 = 0.0
+    best_accuracy = 0.0
     best_run = None
     model_type = "unknown"
     n_runs = 0
@@ -78,20 +79,25 @@ def _get_best_f1(team_name):
                 continue
             runs = client.search_runs(
                 experiment_ids=[exp.experiment_id],
-                order_by=["metrics.f1_score DESC"],
                 max_results=20,
             )
             n_runs += len(runs)
             for run in runs:
                 f1 = run.data.metrics.get("f1_score", 0)
+                acc = run.data.metrics.get("accuracy", 0)
                 if f1 > best_f1:
                     best_f1 = f1
                     best_run = run
                     model_type = run.data.params.get("model_type", "unknown")
+                if acc > best_accuracy:
+                    best_accuracy = acc
+                    if best_run is None:
+                        best_run = run
+                        model_type = run.data.params.get("model_type", "unknown")
         except Exception:
             continue
 
-    return best_f1, model_type, n_runs, best_run
+    return best_f1, best_accuracy, model_type, n_runs, best_run
 
 
 def _has_registered_model(catalog):
@@ -179,7 +185,7 @@ def score_team(team_name: str) -> dict:
         log("Results: event3_results table not found [+0]")
 
     # ─── Feature Engineering (5 pts regular, 8 pts Feature Store) ───
-    best_f1, model_type, n_runs, best_run = _get_best_f1(team_name)
+    best_f1, best_accuracy_mlflow, model_type, n_runs, best_run = _get_best_metrics(team_name)
 
     has_features_table = _table_exists(catalog, "heart_features")
     is_fs = _is_feature_store_table(catalog, "heart_features") if has_features_table else False
@@ -217,29 +223,57 @@ def score_team(team_name: str) -> dict:
     else:
         log("MLflow: no runs found [+0]")
 
-    # ─── Performance (15 pts, scaled by F1) — check MLflow and event3_results ───
-    if team_results and team_results["f1_score"] > best_f1:
-        best_f1 = team_results["f1_score"]
-        model_type = team_results["model_type"]
-        log(f"  Using F1 from event3_results table ({best_f1:.4f}) — higher than MLflow")
+    # ─── Performance (15 pts) — F1 is primary; accuracy is fallback ───
+    best_accuracy = best_accuracy_mlflow
+    if team_results:
+        if team_results["f1_score"] > best_f1:
+            best_f1 = team_results["f1_score"]
+            model_type = team_results["model_type"]
+            log(f"  Using F1 from event3_results table ({best_f1:.4f}) — higher than MLflow")
+        results_acc = team_results.get("accuracy", 0.0)
+        if results_acc > best_accuracy:
+            best_accuracy = results_acc
+
     scores["f1_score"] = best_f1
+
+    # F1 scoring tiers (primary metric — full points available)
     if best_f1 >= 0.90:
-        scores["performance"] = 15
-        log(f"Performance: F1={best_f1:.4f} (excellent) [+15]")
+        f1_pts = 15
     elif best_f1 >= 0.85:
-        scores["performance"] = 12
-        log(f"Performance: F1={best_f1:.4f} (very good) [+12]")
+        f1_pts = 12
     elif best_f1 >= 0.80:
-        scores["performance"] = 10
-        log(f"Performance: F1={best_f1:.4f} (good) [+10]")
+        f1_pts = 10
     elif best_f1 >= 0.70:
-        scores["performance"] = 7
-        log(f"Performance: F1={best_f1:.4f} (fair) [+7]")
+        f1_pts = 7
     elif best_f1 > 0:
-        scores["performance"] = 4
-        log(f"Performance: F1={best_f1:.4f} (needs improvement) [+4]")
+        f1_pts = 4
     else:
-        log("Performance: no F1 score recorded [+0]")
+        f1_pts = 0
+
+    # Accuracy fallback tiers (capped at 8 — penalizes wrong metric choice)
+    if best_accuracy >= 0.90:
+        acc_pts = 8
+    elif best_accuracy >= 0.85:
+        acc_pts = 6
+    elif best_accuracy >= 0.80:
+        acc_pts = 5
+    elif best_accuracy >= 0.70:
+        acc_pts = 3
+    elif best_accuracy > 0:
+        acc_pts = 2
+    else:
+        acc_pts = 0
+
+    if f1_pts >= acc_pts:
+        scores["performance"] = f1_pts
+        log(f"Performance: F1={best_f1:.4f} → {f1_pts}/15 pts (optimized for correct metric)")
+    elif best_accuracy > best_f1 + 0.05:
+        scores["performance"] = acc_pts
+        log(f"Performance: Accuracy={best_accuracy:.4f} → {acc_pts}/15 pts (optimized for accuracy, not F1 — capped at 8)")
+        log(f"  Tip: F1 was only {best_f1:.4f}. Optimizing for F1 would have earned more points.")
+    else:
+        scores["performance"] = max(f1_pts, acc_pts)
+        log(f"Performance: F1={best_f1:.4f}, Acc={best_accuracy:.4f} → {max(f1_pts, acc_pts)}/15 pts")
 
     if model_type != "unknown":
         log(f"  Best model type: {model_type}")
