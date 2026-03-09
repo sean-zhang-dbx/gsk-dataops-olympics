@@ -10,6 +10,7 @@
 # MAGIC - Test Prompt Evaluation (5 pts)
 # MAGIC - Bonus: MCP Server (+5 pts)
 # MAGIC - Bonus: Routing Instructions (+3 pts)
+# MAGIC - Bonus: DSPy Prompt Optimization (+3 pts)
 
 # COMMAND ----------
 
@@ -323,6 +324,22 @@ def _score_routing_bonus(catalog: str, team: str, mas_id: str) -> tuple:
 
     return 0, "No advanced routing instructions found"
 
+
+def _score_dspy_bonus(catalog: str) -> tuple:
+    """Check for DSPy prompt optimization (bonus). Returns (points, details)."""
+    try:
+        df = spark.table(f"{catalog}.default.dspy_optimized_prompt")
+        rows = df.collect()
+        if rows:
+            prompt_text = str(rows[0]["optimized_prompt"] or "")
+            if len(prompt_text) > 50:
+                return 3, f"DSPy optimized prompt found ({len(prompt_text)} chars)"
+            else:
+                return 1, "DSPy table exists but prompt is very short"
+        return 0, "dspy_optimized_prompt table exists but empty"
+    except Exception:
+        return 0, "No dspy_optimized_prompt table found"
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -358,8 +375,11 @@ def score_event4(team: str) -> dict:
     route_pts, route_det = _score_routing_bonus(catalog, team, mas_id)
     print(f"  Bonus Routing:    {route_pts}/3  — {route_det}")
 
-    total = uc_pts + genie_pts + ka_pts + mas_pts + test_pts + mcp_pts + route_pts
-    max_total = 10 + 8 + 7 + 10 + 5 + 5 + 3
+    dspy_pts, dspy_det = _score_dspy_bonus(catalog)
+    print(f"  Bonus DSPy:       {dspy_pts}/3  — {dspy_det}")
+
+    total = uc_pts + genie_pts + ka_pts + mas_pts + test_pts + mcp_pts + route_pts + dspy_pts
+    max_total = 10 + 8 + 7 + 10 + 5 + 5 + 3 + 3
     print(f"\n  TOTAL: {total}/{max_total}")
 
     return {
@@ -371,6 +391,7 @@ def score_event4(team: str) -> dict:
         "test_prompts": test_pts,
         "bonus_mcp": mcp_pts,
         "bonus_routing": route_pts,
+        "bonus_dspy": dspy_pts,
         "total": total,
     }
 
@@ -410,6 +431,7 @@ for r in results:
         ("Test Prompts",        r["test_prompts"],         5),
         ("Bonus: MCP Server",   r["bonus_mcp"],            5),
         ("Bonus: Routing",      r["bonus_routing"],        3),
+        ("Bonus: DSPy",         r["bonus_dspy"],           3),
     ]
     for cat, pts, mx in categories:
         spark.sql(f"INSERT INTO {_LB} VALUES ('{t}', '{_EVENT}', '{cat}', {pts}, {mx}, '{_now}')")

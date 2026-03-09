@@ -35,6 +35,7 @@
 # MAGIC | **Total** | **40** |
 # MAGIC | Bonus: MCP Server | +5 |
 # MAGIC | Bonus: Routing Instructions | +3 |
+# MAGIC | Bonus: DSPy Prompt Optimization | +3 |
 # MAGIC
 # MAGIC ### Data Sources
 # MAGIC
@@ -416,3 +417,106 @@ if results:
 # MAGIC > - Guardrails (no medical advice, cite sources)
 # MAGIC >
 # MAGIC > *Better instructions = better routing = better agent performance!*
+# MAGIC
+# MAGIC ### Bonus 3: DSPy Prompt Optimization (+3 pts)
+# MAGIC
+# MAGIC > Use **[DSPy](https://dspy.ai/)** to *automatically optimize* the prompt in your
+# MAGIC > `patient_risk_assessment` UC function. Instead of hand-crafting the prompt,
+# MAGIC > let DSPy find the best one by evaluating against labeled examples.
+# MAGIC >
+# MAGIC > **What to do:**
+# MAGIC > 1. Define a DSPy signature for risk classification
+# MAGIC > 2. Create a few labeled examples (training data)
+# MAGIC > 3. Use a DSPy optimizer (e.g., `MIPROv2` or `BootstrapFewShot`) to find the best prompt
+# MAGIC > 4. Update your UC function with the optimized prompt
+# MAGIC > 5. Save the optimized prompt to `{CATALOG}.default.dspy_optimized_prompt`
+# MAGIC >
+# MAGIC > *DSPy treats prompts as programs — it optimizes them the way you'd tune model hyperparameters!*
+# MAGIC >
+# MAGIC > See the example below to get started.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### DSPy Example: Optimizing Risk Classification Prompt
+
+# COMMAND ----------
+
+# MAGIC %pip install dspy -q
+
+# COMMAND ----------
+
+# Restart Python after pip install
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
+# === DSPy Prompt Optimization Example ===
+# This shows how to use DSPy to find a better prompt for risk classification.
+# Instead of hand-crafting, DSPy searches for the optimal prompt automatically.
+
+import dspy
+
+TEAM_NAME = "team_XX"  # <-- re-set after restartPython
+CATALOG = TEAM_NAME
+
+# Connect DSPy to the Databricks Foundation Model API
+lm = dspy.LM("databricks/databricks-meta-llama-3-3-70b-instruct")
+dspy.configure(lm=lm)
+
+
+class RiskClassification(dspy.Signature):
+    """Classify cardiovascular risk based on patient vitals."""
+    age: int = dspy.InputField(desc="Patient age in years")
+    cholesterol: float = dspy.InputField(desc="Serum cholesterol in mg/dL")
+    blood_pressure: float = dspy.InputField(desc="Resting blood pressure in mmHg")
+    heart_rate: float = dspy.InputField(desc="Max heart rate achieved in bpm")
+    risk_level: str = dspy.OutputField(desc="Exactly one of: LOW, MEDIUM, or HIGH")
+    explanation: str = dspy.OutputField(desc="One sentence clinical explanation")
+
+
+classify_risk = dspy.ChainOfThought(RiskClassification)
+
+# Training examples with known labels
+trainset = [
+    dspy.Example(age=35, cholesterol=180, blood_pressure=120, heart_rate=160,
+                 risk_level="LOW", explanation="Young patient with normal vitals.").with_inputs("age", "cholesterol", "blood_pressure", "heart_rate"),
+    dspy.Example(age=52, cholesterol=230, blood_pressure=138, heart_rate=145,
+                 risk_level="MEDIUM", explanation="Middle-aged with borderline cholesterol and BP.").with_inputs("age", "cholesterol", "blood_pressure", "heart_rate"),
+    dspy.Example(age=68, cholesterol=290, blood_pressure=165, heart_rate=130,
+                 risk_level="HIGH", explanation="Elderly with elevated cholesterol and hypertension.").with_inputs("age", "cholesterol", "blood_pressure", "heart_rate"),
+    dspy.Example(age=45, cholesterol=210, blood_pressure=125, heart_rate=155,
+                 risk_level="LOW", explanation="Normal range vitals for age.").with_inputs("age", "cholesterol", "blood_pressure", "heart_rate"),
+    dspy.Example(age=61, cholesterol=260, blood_pressure=155, heart_rate=140,
+                 risk_level="HIGH", explanation="Over 60 with high cholesterol and BP above 150.").with_inputs("age", "cholesterol", "blood_pressure", "heart_rate"),
+]
+
+
+def risk_metric(example, pred, trace=None):
+    return pred.risk_level.strip().upper() == example.risk_level.strip().upper()
+
+
+# Quick test before optimization
+result = classify_risk(age=62, cholesterol=280, blood_pressure=155, heart_rate=140)
+print(f"Before optimization: {result.risk_level} — {result.explanation}")
+
+# Optimize with BootstrapFewShot (fast, good for small datasets)
+optimizer = dspy.BootstrapFewShot(metric=risk_metric, max_bootstrapped_demos=3)
+optimized_classifier = optimizer.compile(classify_risk, trainset=trainset)
+
+# Test after optimization
+result2 = optimized_classifier(age=62, cholesterol=280, blood_pressure=155, heart_rate=140)
+print(f"After optimization:  {result2.risk_level} — {result2.explanation}")
+
+# Save optimized prompt for scoring
+optimized_prompt = lm.history[-1]["prompt"] if hasattr(lm, "history") else str(optimized_classifier)
+spark.sql(f"USE CATALOG {CATALOG}")
+spark.sql(f"USE SCHEMA default")
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {CATALOG}.default.dspy_optimized_prompt AS
+    SELECT
+        'patient_risk_assessment' AS function_name,
+        '{optimized_prompt[:2000].replace("'", "''")}' AS optimized_prompt,
+        current_timestamp() AS created_at
+""")
+print(f"\nOptimized prompt saved to {CATALOG}.default.dspy_optimized_prompt")

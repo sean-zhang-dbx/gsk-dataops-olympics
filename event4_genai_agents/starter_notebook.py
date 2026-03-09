@@ -24,7 +24,7 @@
 # MAGIC > 3. Handle multiple question types gracefully
 # MAGIC > 4. Be evaluated against 5 test prompts
 # MAGIC >
-# MAGIC > **This is the capstone** — bring everything together!
+# MAGIC > **Bring everything together** — this event ties your data platform into one AI interface!
 # MAGIC
 # MAGIC ### Scoring Overview
 # MAGIC
