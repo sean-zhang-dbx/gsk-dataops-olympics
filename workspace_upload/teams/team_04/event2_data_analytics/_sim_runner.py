@@ -12,9 +12,11 @@ spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_gold_correct AS
 # COMMAND ----------
 spark.sql(f"""CREATE TABLE IF NOT EXISTS {CATALOG}.default.event2_submissions (
     team STRING, question_id STRING, answer STRING, method STRING, submitted_at TIMESTAMP)""")
-answers = [("Q1", "264"), ("Q2", "55, 50"), ("Q3", "50%"), ("Q4", "2"), ("Q5", "200, 200"), ("Q6", "264"), ("Q7", "40-49"), ("Q8", "160")]
+# Only managed Q1 and Q2 before time ran out
+answers = [("Q1", "264"), ("Q2", "Heart Disease: 56.1, Healthy: 49.5")]
 for qid, ans in answers:
     spark.sql(f"INSERT INTO {CATALOG}.default.event2_submissions VALUES ('{TEAM_NAME}', '{qid}', '{ans}', 'SQL', current_timestamp())")
-print("Submitted 8 answers (most wrong)")
+print("Submitted 2/8 answers (struggling team)")
 # COMMAND ----------
-submit("event2", {"answers": 8})
+submit("event2", {"answers": 2})
+print("team_04 Event 2 complete (only Q1, Q2)")

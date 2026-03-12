@@ -12,32 +12,32 @@ spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_gold_correct AS
 # COMMAND ----------
 spark.sql(f"""CREATE TABLE IF NOT EXISTS {CATALOG}.default.event2_submissions (
     team STRING, question_id STRING, answer STRING, method STRING, submitted_at TIMESTAMP)""")
-# All correct
-answers = [
-    ("Q1", "264"), ("Q2", "Heart Disease: 56.1, Healthy: 49.5"), ("Q3", "46.8%"),
-    ("Q4", "3 (asymptomatic)"), ("Q5", "253.8, 233.6"), ("Q6", "71"),
-    ("Q7", "60+ (65.2%)"), ("Q8", "150.4")
+# COMMAND ----------
+import time
+
+# First attempt: got some wrong
+first_try = [
+    ("Q1", "264"), ("Q2", "56, 50"), ("Q3", "46.8%"),
+    ("Q4", "3"), ("Q5", "250, 230"), ("Q6", "71"),
+    ("Q7", "60+"), ("Q8", "155")
 ]
-for qid, ans in answers:
+for qid, ans in first_try:
     spark.sql(f"INSERT INTO {CATALOG}.default.event2_submissions VALUES ('{TEAM_NAME}', '{qid}', '{ans}', 'SQL', current_timestamp())")
+time.sleep(2)
+print("First attempt: 8 answers submitted (some wrong)")
 # COMMAND ----------
-# Bonus 1: Executive summary
-spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_executive_summary AS
-    SELECT 'Heart Disease Analysis Summary' AS title,
-        CONCAT('Total patients: ', COUNT(*), '. Disease rate: ', ROUND(SUM(CASE WHEN target=1 THEN 1 ELSE 0 END)*100.0/COUNT(*), 1), '%') AS summary
-    FROM {CATALOG}.default.heart_silver_correct""")
+# Second attempt: fix Q2, Q4, Q5, Q7, Q8
+corrections = [
+    ("Q2", "Heart Disease: 56.1, Healthy: 49.5"),
+    ("Q4", "3 (asymptomatic)"),
+    ("Q5", "253.8, 233.6"),
+    ("Q7", "60+ (65.2%)"),
+    ("Q8", "150.4"),
+]
+for qid, ans in corrections:
+    spark.sql(f"INSERT INTO {CATALOG}.default.event2_submissions VALUES ('{TEAM_NAME}', '{qid}', '{ans}', 'SQL', current_timestamp())")
+time.sleep(1)
+print("Second attempt: 5 corrections submitted")
 # COMMAND ----------
-# Bonus 2: Cohort comparison
-spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_cohort_comparison AS
-    SELECT CASE WHEN target = 1 THEN 'Heart Disease' ELSE 'Healthy' END AS cohort,
-        COUNT(*) AS n, ROUND(AVG(age),1) AS avg_age, ROUND(AVG(chol),1) AS avg_chol,
-        ROUND(AVG(trestbps),1) AS avg_bp, ROUND(AVG(thalach),1) AS avg_hr
-    FROM {CATALOG}.default.heart_silver_correct GROUP BY target""")
-# COMMAND ----------
-# Bonus 3: Chi-squared test
-spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_chi2_test AS
-    SELECT 'sex_vs_target' AS test_name, 'chi2' AS test_type,
-        12.5 AS statistic, 0.0004 AS p_value, 'significant' AS result""")
-# COMMAND ----------
-submit("event2", {"answers": 8, "bonus": ["executive_summary", "cohort_comparison", "chi2_test"]})
-print("team_05 Event 2 complete (MAX SCORE - all correct + 3 bonus)")
+submit("event2", {"answers": 8, "attempts": 2})
+print("team_05 Event 2 complete (all correct after 2 attempts, no bonus)")

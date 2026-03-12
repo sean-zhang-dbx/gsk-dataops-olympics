@@ -97,11 +97,42 @@ print("Governance comments applied")
 
 # COMMAND ----------
 
-submit("event1", {"tables": ["heart_bronze", "heart_silver", "heart_gold"]})
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Bonus: UC Tags
 
 # COMMAND ----------
 
-print(f"EVENT 1 COMPLETE for {TEAM_NAME}")
+spark.sql(f"ALTER TABLE {CATALOG}.default.heart_silver SET TAGS ('domain' = 'cardiology', 'quality_tier' = 'silver', 'pii' = 'false')")
+spark.sql(f"ALTER TABLE {CATALOG}.default.heart_gold SET TAGS ('domain' = 'cardiology', 'quality_tier' = 'gold')")
+print("UC tags applied")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Bonus: AI Gold Table
+
+# COMMAND ----------
+
+spark.sql(f"""CREATE OR REPLACE TABLE {CATALOG}.default.heart_gold_ai AS
+    SELECT *, CASE WHEN avg_cholesterol > 250 AND avg_blood_pressure > 140 THEN 'High Risk'
+        WHEN avg_cholesterol > 200 OR avg_blood_pressure > 130 THEN 'Moderate Risk' ELSE 'Low Risk' END AS cardiovascular_risk
+    FROM {CATALOG}.default.heart_gold""")
+print(f"Bonus heart_gold_ai: {spark.table(f'{CATALOG}.default.heart_gold_ai').count()} rows")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Submit
+
+# COMMAND ----------
+
+submit("event1", {"tables": ["heart_bronze", "heart_silver", "heart_gold", "heart_gold_ai"]})
+
+# COMMAND ----------
+
+print(f"EVENT 1 COMPLETE for {TEAM_NAME} (POWER TEAM — max score + bonus)")
 print(f"  Bronze: {bronze_count} rows")
 print(f"  Silver: {silver_count} rows")
 print(f"  Gold:   {gold_count} rows")

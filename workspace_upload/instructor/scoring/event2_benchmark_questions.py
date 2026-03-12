@@ -315,6 +315,6 @@ for qid, q in questions.items():
 
 key_df = spark.createDataFrame(pd.DataFrame(key_rows))
 key_df.write.format("delta").mode("overwrite").saveAsTable(
-    "dataops_olympics_instructor.default.event2_answer_key"
+    "dataops_olympics.default.event2_answer_key"
 )
-print("Answer key saved to dataops_olympics_instructor.default.event2_answer_key")
+print("Answer key saved to dataops_olympics.default.event2_answer_key")
