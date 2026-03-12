@@ -6,21 +6,24 @@
 # MAGIC
 # MAGIC This notebook:
 # MAGIC 1. Pre-computes correct answers for all 8 benchmark questions
-# MAGIC 2. Prints a formatted answer key to reference during the race
-# MAGIC 3. Provides a speed-tracking template
+# MAGIC 2. Prints the questions exactly as you will read them aloud (with format hints)
+# MAGIC 3. Prints a formatted answer key to reference during the race
 # MAGIC
 # MAGIC Run this **before** the event using any team's data (or the shared reference).
+# MAGIC
+# MAGIC ### Design Rules
+# MAGIC - Every question returns a **single value** (one number or one word)
+# MAGIC - Every question specifies the **exact format** expected (e.g. "Answer as a whole number")
+# MAGIC - Every question includes an **example** of what the answer looks like
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ## Configuration
-# MAGIC
-# MAGIC Use any team catalog that has correct Silver/Gold tables, or the answer_key catalog.
 
 # COMMAND ----------
 
-REFERENCE_CATALOG = "team_01"  # Use any team with correct Silver/Gold tables
+REFERENCE_CATALOG = "team_01"
 SCHEMA = "default"
 
 spark.sql(f"USE CATALOG {REFERENCE_CATALOG}")
@@ -33,14 +36,15 @@ spark.sql(f"USE SCHEMA {SCHEMA}")
 
 # COMMAND ----------
 
-import json
-
 questions = {}
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q1: How many patients in the dataset have heart disease?
+# MAGIC ### Q1: Patient count with heart disease
+# MAGIC
+# MAGIC **Read aloud:** "How many patients in the dataset have heart disease (target = 1)?
+# MAGIC Answer as a **whole number**. Example: `312`"
 
 # COMMAND ----------
 
@@ -51,7 +55,7 @@ q1 = spark.sql("""
 """).collect()[0]["answer"]
 
 questions["Q1"] = {
-    "question": "How many patients in the dataset have heart disease?",
+    "question": "How many patients in the dataset have heart disease (target = 1)? Answer as a whole number. Example: 312",
     "answer": str(q1),
     "type": "exact_number",
     "table": "heart_silver_correct",
@@ -62,117 +66,120 @@ print(f"Q1 Answer: {q1}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q2: Average age — heart disease vs healthy?
+# MAGIC ### Q2: Average age of heart disease patients
+# MAGIC
+# MAGIC **Read aloud:** "What is the average age of patients WITH heart disease (target = 1)?
+# MAGIC Round to 1 decimal place. Answer as a **single number**. Example: `52.3`"
 
 # COMMAND ----------
 
-q2_df = spark.sql("""
-    SELECT
-        CASE WHEN target = 1 THEN 'Heart Disease' ELSE 'Healthy' END AS diagnosis,
-        ROUND(AVG(age), 1) AS avg_age
+q2 = spark.sql("""
+    SELECT ROUND(AVG(age), 1) AS answer
     FROM heart_silver_correct
-    GROUP BY target
-    ORDER BY target DESC
-""").toPandas()
-
-q2_disease = q2_df[q2_df["diagnosis"] == "Heart Disease"]["avg_age"].values[0]
-q2_healthy = q2_df[q2_df["diagnosis"] == "Healthy"]["avg_age"].values[0]
+    WHERE target = 1
+""").collect()[0]["answer"]
 
 questions["Q2"] = {
-    "question": "What is the average age of patients WITH heart disease vs WITHOUT? (give both numbers)",
-    "answer": f"Heart Disease: {q2_disease}, Healthy: {q2_healthy}",
-    "accept": [str(q2_disease), str(q2_healthy)],
-    "type": "two_numbers",
+    "question": "What is the average age of patients WITH heart disease (target = 1)? Round to 1 decimal place. Answer as a single number. Example: 52.3",
+    "answer": str(q2),
+    "type": "number",
     "table": "heart_silver_correct",
     "difficulty": "easy",
 }
-print(f"Q2 Answer: Heart Disease = {q2_disease}, Healthy = {q2_healthy}")
+print(f"Q2 Answer: {q2}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q3: What percentage of female patients have heart disease?
+# MAGIC ### Q3: Heart disease rate among female patients
+# MAGIC
+# MAGIC **Read aloud:** "What percentage of female patients (sex = 0) have heart disease?
+# MAGIC Round to 1 decimal place. Answer as a **number without the % sign**. Example: `63.2`"
 
 # COMMAND ----------
 
 q3 = spark.sql("""
     SELECT ROUND(
         SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1
-    ) AS pct
+    ) AS answer
     FROM heart_silver_correct
     WHERE sex = 0
-""").collect()[0]["pct"]
+""").collect()[0]["answer"]
 
 questions["Q3"] = {
-    "question": "What percentage of female patients (sex=0) have heart disease?",
-    "answer": f"{q3}%",
-    "accept": [str(q3)],
+    "question": "What percentage of female patients (sex = 0) have heart disease? Round to 1 decimal place. Answer as a number without the % sign. Example: 63.2",
+    "answer": str(q3),
     "type": "percentage",
     "table": "heart_silver_correct",
     "difficulty": "medium",
 }
-print(f"Q3 Answer: {q3}%")
+print(f"Q3 Answer: {q3}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q4: Most common chest pain type among heart disease patients?
+# MAGIC ### Q4: Most common chest pain type in heart disease patients
+# MAGIC
+# MAGIC **Read aloud:** "What is the `cp` value (0, 1, 2, or 3) of the most common chest pain type
+# MAGIC among heart disease patients (target = 1)?
+# MAGIC Answer as a **single digit**. Example: `1`"
 
 # COMMAND ----------
 
-q4_df = spark.sql("""
-    SELECT cp, COUNT(*) AS cnt
+q4 = spark.sql("""
+    SELECT cp
     FROM heart_silver_correct
     WHERE target = 1
     GROUP BY cp
-    ORDER BY cnt DESC
+    ORDER BY COUNT(*) DESC
     LIMIT 1
-""").collect()[0]
+""").collect()[0]["cp"]
 
 cp_names = {0: "typical angina", 1: "atypical angina", 2: "non-anginal pain", 3: "asymptomatic"}
-q4_cp = int(q4_df["cp"])
-q4_name = cp_names[q4_cp]
 
 questions["Q4"] = {
-    "question": "Which chest pain type (cp) is most common among heart disease patients?",
-    "answer": f"{q4_cp} ({q4_name})",
-    "accept": [str(q4_cp), q4_name],
-    "type": "category",
+    "question": "What is the cp value (0, 1, 2, or 3) of the most common chest pain type among heart disease patients (target = 1)? Answer as a single digit. Example: 1",
+    "answer": str(int(q4)),
+    "type": "exact_number",
     "table": "heart_silver_correct",
     "difficulty": "medium",
 }
-print(f"Q4 Answer: cp = {q4_cp} ({q4_name}), count = {q4_df['cnt']}")
+print(f"Q4 Answer: {int(q4)} ({cp_names[int(q4)]})")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q5: Average cholesterol for patients in the 60+ age group?
+# MAGIC ### Q5: Average cholesterol for 60+ heart disease patients
+# MAGIC
+# MAGIC **Read aloud:** "In the heart_gold_correct table, what is the average cholesterol for
+# MAGIC **Heart Disease** patients in the **60+** age group?
+# MAGIC Round to 1 decimal place. Answer as a **single number**. Example: `241.5`"
 
 # COMMAND ----------
 
 q5 = spark.sql("""
     SELECT ROUND(avg_cholesterol, 1) AS answer
     FROM heart_gold_correct
-    WHERE age_group = '60+'
-""").toPandas()
-
-q5_values = q5["answer"].tolist()
-q5_str = ", ".join(str(v) for v in q5_values)
+    WHERE age_group = '60+' AND diagnosis = 'Heart Disease'
+""").collect()[0]["answer"]
 
 questions["Q5"] = {
-    "question": "What is the average cholesterol for patients in the 60+ age group? (both diagnoses)",
-    "answer": q5_str,
-    "accept": [str(v) for v in q5_values],
-    "type": "number_or_list",
+    "question": "In the heart_gold_correct table, what is the average cholesterol for Heart Disease patients in the 60+ age group? Round to 1 decimal place. Answer as a single number. Example: 241.5",
+    "answer": str(q5),
+    "type": "number",
     "table": "heart_gold_correct",
     "difficulty": "easy",
 }
-print(f"Q5 Answer: {q5_str}")
+print(f"Q5 Answer: {q5}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q6: Patients with cholesterol > 240 AND resting BP > 140?
+# MAGIC ### Q6: High-risk patient count
+# MAGIC
+# MAGIC **Read aloud:** "How many patients have BOTH cholesterol above 240 (chol > 240)
+# MAGIC AND resting blood pressure above 140 (trestbps > 140)?
+# MAGIC Answer as a **whole number**. Example: `45`"
 
 # COMMAND ----------
 
@@ -183,7 +190,7 @@ q6 = spark.sql("""
 """).collect()[0]["answer"]
 
 questions["Q6"] = {
-    "question": "How many patients have BOTH cholesterol > 240 AND resting blood pressure > 140?",
+    "question": "How many patients have BOTH cholesterol above 240 (chol > 240) AND resting blood pressure above 140 (trestbps > 140)? Answer as a whole number. Example: 45",
     "answer": str(q6),
     "type": "exact_number",
     "table": "heart_silver_correct",
@@ -194,42 +201,45 @@ print(f"Q6 Answer: {q6}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q7: Which age group has the highest heart disease rate?
+# MAGIC ### Q7: Age group with highest disease rate
+# MAGIC
+# MAGIC **Read aloud:** "Which age group has the highest heart disease rate?
+# MAGIC Use these groups: Under 40, 40-49, 50-59, 60+.
+# MAGIC Answer with the **age group name only**. Example: `50-59`"
 
 # COMMAND ----------
 
-q7_df = spark.sql("""
+q7 = spark.sql("""
     SELECT
         CASE
             WHEN age < 40 THEN 'Under 40'
             WHEN age < 50 THEN '40-49'
             WHEN age < 60 THEN '50-59'
             ELSE '60+'
-        END AS age_group,
-        ROUND(SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS disease_rate
+        END AS age_group
     FROM heart_silver_correct
     GROUP BY 1
-    ORDER BY disease_rate DESC
+    ORDER BY SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) DESC
     LIMIT 1
-""").collect()[0]
-
-q7_group = q7_df["age_group"]
-q7_rate = q7_df["disease_rate"]
+""").collect()[0]["age_group"]
 
 questions["Q7"] = {
-    "question": "Which age group has the highest heart disease rate (% of patients with target=1)?",
-    "answer": f"{q7_group} ({q7_rate}%)",
-    "accept": [q7_group, str(q7_rate)],
-    "type": "category_with_number",
+    "question": "Which age group has the highest heart disease rate? Use these groups: Under 40, 40-49, 50-59, 60+. Answer with the age group name only. Example: 50-59",
+    "answer": q7,
+    "type": "category",
     "table": "heart_silver_correct",
     "difficulty": "hard",
 }
-print(f"Q7 Answer: {q7_group} at {q7_rate}%")
+print(f"Q7 Answer: {q7}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Q8: Average max heart rate for healthy patients under 50?
+# MAGIC ### Q8: Average max heart rate for healthy patients under 50
+# MAGIC
+# MAGIC **Read aloud:** "What is the average maximum heart rate (thalach) for healthy patients
+# MAGIC (target = 0) who are under 50 years old (age < 50)?
+# MAGIC Round to 1 decimal place. Answer as a **single number**. Example: `145.7`"
 
 # COMMAND ----------
 
@@ -240,7 +250,7 @@ q8 = spark.sql("""
 """).collect()[0]["answer"]
 
 questions["Q8"] = {
-    "question": "What is the average max heart rate (thalach) for healthy patients under 50?",
+    "question": "What is the average maximum heart rate (thalach) for healthy patients (target = 0) who are under 50 years old (age < 50)? Round to 1 decimal place. Answer as a single number. Example: 145.7",
     "answer": str(q8),
     "type": "number",
     "table": "heart_silver_correct",
@@ -265,36 +275,24 @@ for qid in sorted(questions.keys()):
     diff = q["difficulty"].upper()
     print(f"\n  {qid} [{diff}]: {q['question']}")
     print(f"  >>> ANSWER: {q['answer']}")
-    print(f"      Table: {q['table']} | Accept: {q.get('accept', [q['answer']])}")
 print("\n" + "=" * 72)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Speed Tracking Template
+# MAGIC ## Questions to Read Aloud (Copy-Paste for Slides/Chat)
 # MAGIC
-# MAGIC Fill this in during the race — record which team answers first per question.
+# MAGIC Use this formatted list to announce each question during the race.
 
 # COMMAND ----------
 
-TEAMS = [f"team_{i:02d}" for i in range(1, 16)]  # team_01 through team_15
-
-speed_winners = {
-    "Q1": "",  # team name of first correct answer
-    "Q2": "",
-    "Q3": "",
-    "Q4": "",
-    "Q5": "",
-    "Q6": "",
-    "Q7": "",
-    "Q8": "",
-}
-
-team_answers = {team: {f"Q{i}": {"answer": "", "method": ""} for i in range(1, 9)} for team in TEAMS}
-
-print("Speed Tracking — fill in team names during the race:")
-for q in sorted(speed_winners.keys()):
-    print(f"  {q}: first correct = {speed_winners[q] or '________'}")
+print("=" * 72)
+print("  QUESTIONS TO READ ALOUD DURING THE RACE")
+print("=" * 72)
+for qid in sorted(questions.keys()):
+    q = questions[qid]
+    print(f"\n  {qid}: {q['question']}")
+print("\n" + "=" * 72)
 
 # COMMAND ----------
 

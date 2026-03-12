@@ -35,7 +35,8 @@ spark.sql(f"""
 """)
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS event_submissions (
-        team STRING, event STRING, submitted_at TIMESTAMP, notes STRING
+        team_name STRING, event_name STRING, submission_type STRING,
+        asset_reference STRING, submitted_at TIMESTAMP, submitted_by STRING
     )
 """)
 
@@ -427,12 +428,12 @@ standings = spark.sql(f"""
         FROM best GROUP BY team
     ),
     last_sub AS (
-        SELECT team, MAX(submitted_at) AS last_submitted
-        FROM {ES} GROUP BY team
+        SELECT team_name, MAX(submitted_at) AS last_submitted
+        FROM {ES} GROUP BY team_name
     )
     SELECT t.team, t.total, t.events, ls.last_submitted
     FROM totals t
-    LEFT JOIN last_sub ls ON t.team = ls.team
+    LEFT JOIN last_sub ls ON t.team = ls.team_name
     ORDER BY t.total DESC, ls.last_submitted ASC
 """).toPandas()
 

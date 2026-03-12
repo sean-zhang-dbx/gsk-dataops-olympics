@@ -46,10 +46,12 @@ spark.sql(f"CREATE VOLUME IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}.{VOLUME
 
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS {SHARED_CATALOG}.{SHARED_SCHEMA}.event_submissions (
-        team STRING,
-        event STRING,
+        team_name STRING,
+        event_name STRING,
+        submission_type STRING,
+        asset_reference STRING,
         submitted_at TIMESTAMP,
-        notes STRING
+        submitted_by STRING
     )
 """)
 spark.sql(f"COMMENT ON TABLE {SHARED_CATALOG}.{SHARED_SCHEMA}.event_submissions IS 'Tracks when each team submits their work for each event. Used for speed bonuses and the live scoreboard.'")
@@ -93,7 +95,7 @@ print("=" * 60)
 
 # COMMAND ----------
 
-ALL_TEAMS = [f"team_{i:02d}" for i in range(1, 16)]  # team_01 through team_15
+ALL_TEAMS = [f"team_{i:02d}" for i in range(1, 11)]  # team_01 through team_10
 
 dbutils.widgets.text("TEAM_MEMBERS", "", "Team Member Emails (comma-separated)")
 _members_raw = dbutils.widgets.get("TEAM_MEMBERS")
@@ -467,6 +469,61 @@ if "note_id" not in _df_notes.columns:
 sdf = spark.createDataFrame(_df_notes)
 sdf.write.format("delta").mode("overwrite").saveAsTable(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.clinical_notes")
 print(f"  clinical_notes: {sdf.count()} rows")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Step 5.5: Generate Event 1 Answer Tables
+# MAGIC
+# MAGIC Pre-generates the exact correct Bronze, Silver, and Gold tables from the raw NDJSON data.
+# MAGIC These are used by self-check notebooks and the scoring engine for exact comparison.
+
+# COMMAND ----------
+
+_RAW_EVENTS = f"{VOLUME_PATH}/heart_events/"
+
+spark.read.json(f"{_RAW_EVENTS}*.json").write.format("delta").mode("overwrite").saveAsTable(
+    f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_bronze"
+)
+
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_silver AS
+    SELECT event_id, event_timestamp, source_system, record_version, patient_id,
+           age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang,
+           oldpeak, slope, ca, thal, target
+    FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) AS _rn
+        FROM {SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_bronze
+    )
+    WHERE _rn = 1
+      AND age IS NOT NULL AND age BETWEEN 1 AND 120
+      AND trestbps BETWEEN 50 AND 300
+      AND chol >= 0
+""")
+
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_gold AS
+    SELECT
+        CASE
+            WHEN age < 40 THEN 'Under 40'
+            WHEN age < 50 THEN '40-49'
+            WHEN age < 60 THEN '50-59'
+            ELSE '60+'
+        END AS age_group,
+        CASE WHEN target = 1 THEN 'Heart Disease' ELSE 'Healthy' END AS diagnosis,
+        COUNT(*) AS patient_count,
+        ROUND(AVG(chol), 1) AS avg_cholesterol,
+        ROUND(AVG(trestbps), 1) AS avg_blood_pressure,
+        ROUND(AVG(thalach), 1) AS avg_max_heart_rate
+    FROM {SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_silver
+    GROUP BY 1, 2
+    ORDER BY 1, 2
+""")
+
+_ab = spark.table(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_bronze").count()
+_as = spark.table(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_silver").count()
+_ag = spark.table(f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_gold").count()
+print(f"  Event 1 answer tables: Bronze={_ab}, Silver={_as}, Gold={_ag}")
 
 # COMMAND ----------
 

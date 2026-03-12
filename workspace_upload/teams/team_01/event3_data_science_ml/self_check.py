@@ -50,27 +50,27 @@ except Exception as e:
 # COMMAND ----------
 
 import mlflow
+from mlflow.tracking import MlflowClient
 
 try:
-    # Search for experiments matching the team name
-    experiments = [e for e in mlflow.search_experiments() if TEAM_NAME in e.name]
-    if experiments:
-        exp = experiments[0]
-        print(f"  [PASS] MLflow experiment found: {exp.name}")
-        runs = mlflow.search_runs(experiment_ids=[exp.experiment_id])
-        run_count = len(runs)
+    _client = MlflowClient()
+    _exp = _client.get_experiment_by_name(EXPERIMENT_PATH)
+    if _exp:
+        print(f"  [PASS] MLflow experiment found: {_exp.name}")
+        _runs = _client.search_runs(experiment_ids=[_exp.experiment_id])
+        run_count = len(_runs)
         if run_count > 0:
             print(f"         Total runs: {run_count}")
-            if "metrics.f1_score" in runs.columns:
-                best_f1 = runs["metrics.f1_score"].max()
+            best_f1 = max((r.data.metrics.get("f1_score", 0) for r in _runs), default=0)
+            if best_f1 > 0:
                 print(f"         Best F1 score: {best_f1:.4f}")
             else:
                 print(f"  [WARN] No f1_score metric found in runs — make sure to log f1_score")
         else:
             print(f"  [FAIL] Experiment exists but has no runs")
     else:
-        print(f"  [WARN] No MLflow experiment found containing '{TEAM_NAME}'")
-        print(f"         Expected: /Users/<email>/{TEAM_NAME}_heart_ml")
+        print(f"  [WARN] No MLflow experiment found at {EXPERIMENT_PATH}")
+        print(f"         Run Step 4 in the starter notebook first")
 except Exception as e:
     print(f"  [SKIP] Could not check MLflow experiments: {e}")
 

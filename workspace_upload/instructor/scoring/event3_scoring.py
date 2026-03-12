@@ -67,15 +67,8 @@ def _table_exists(catalog, table):
 
 
 def _get_best_metrics(team_name):
-    """Find the best F1 and accuracy scores from team's MLflow experiment."""
-    try:
-        user_email = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
-    except Exception:
-        user_email = ""
-    possible_paths = [
-        f"/Users/{user_email}/{team_name}_heart_ml",
-        f"/Users/{user_email}/{team_name}_ml_challenge",
-    ]
+    """Find the best F1 and accuracy scores from team's MLflow experiment at /Shared/."""
+    exp_path = f"/Shared/{team_name}_heart_ml"
 
     best_f1 = 0.0
     best_accuracy = 0.0
@@ -83,16 +76,14 @@ def _get_best_metrics(team_name):
     model_type = "unknown"
     n_runs = 0
 
-    for exp_path in possible_paths:
-        try:
-            exp = client.get_experiment_by_name(exp_path)
-            if exp is None:
-                continue
+    try:
+        exp = client.get_experiment_by_name(exp_path)
+        if exp is not None:
             runs = client.search_runs(
                 experiment_ids=[exp.experiment_id],
-                max_results=20,
+                max_results=50,
             )
-            n_runs += len(runs)
+            n_runs = len(runs)
             for run in runs:
                 f1 = run.data.metrics.get("f1_score", 0)
                 acc = run.data.metrics.get("accuracy", 0)
@@ -105,8 +96,8 @@ def _get_best_metrics(team_name):
                     if best_run is None:
                         best_run = run
                         model_type = run.data.params.get("model_type", "unknown")
-        except Exception:
-            continue
+    except Exception:
+        pass
 
     return best_f1, best_accuracy, model_type, n_runs, best_run
 
@@ -119,12 +110,6 @@ def _has_registered_model(catalog):
     except Exception:
         return False
 
-
-def _get_user_email():
-    try:
-        return dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
-    except Exception:
-        return ""
 
 
 def _is_feature_store_table(catalog, table):
@@ -308,10 +293,7 @@ def score_team(team_name: str) -> dict:
     # Ensemble (+3): check for VotingClassifier in MLflow runs
     if best_run:
         try:
-            user_email = _get_user_email()
-            exp = client.get_experiment_by_name(
-                f"/Users/{user_email}/{team_name}_heart_ml"
-            )
+            exp = client.get_experiment_by_name(f"/Shared/{team_name}_heart_ml")
             if exp:
                 runs = client.search_runs(experiment_ids=[exp.experiment_id])
                 has_ensemble = any(

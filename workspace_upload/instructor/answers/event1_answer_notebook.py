@@ -71,9 +71,12 @@ print(f"Bronze: {df_bronze.count()} rows")
 
 spark.sql(f"""
     CREATE OR REPLACE TABLE {CATALOG}.default.heart_silver AS
-    SELECT *, current_timestamp() as ingested_at
+    SELECT event_id, event_timestamp, source_system, record_version, patient_id,
+           age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang,
+           oldpeak, slope, ca, thal, target,
+           current_timestamp() AS ingested_at
     FROM (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) as _rn
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) AS _rn
         FROM {CATALOG}.default.heart_bronze
     )
     WHERE _rn = 1

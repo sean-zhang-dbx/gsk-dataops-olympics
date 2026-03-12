@@ -205,7 +205,7 @@ print("=" * 60)
 SHARED_CATALOG = "dataops_olympics"
 SHARED_SCHEMA = "default"
 VOLUME_NAME = "raw_data"
-ALL_TEAMS = [f"team_{i:02d}" for i in range(1, 16)]
+ALL_TEAMS = [f"team_{i:02d}" for i in range(1, 11)]
 
 if not ASSIGNMENTS:
     print("\n  No assignments configured! Edit the ASSIGNMENTS dict above.")
@@ -258,7 +258,7 @@ print("=" * 60)
 print("  CURRENT GROUP MEMBERSHIPS")
 print("=" * 60)
 
-for i in range(1, 16):
+for i in range(1, 11):
     team = f"team_{i:02d}"
     group_id = get_group_id(team)
     if group_id:

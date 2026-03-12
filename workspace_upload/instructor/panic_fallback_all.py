@@ -79,21 +79,18 @@ spark.sql(f"COMMENT ON TABLE {TEAM_NAME}.default.heart_bronze IS 'Raw patient in
 
 spark.sql(f"""
     CREATE OR REPLACE TABLE {TEAM_NAME}.default.heart_silver AS
-    SELECT * FROM (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp DESC) AS _rn
+    SELECT event_id, event_timestamp, source_system, record_version, patient_id,
+           age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang,
+           oldpeak, slope, ca, thal, target,
+           current_timestamp() AS ingested_at
+    FROM (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY event_id ORDER BY event_timestamp) AS _rn
         FROM {TEAM_NAME}.default.heart_bronze
-        WHERE age IS NOT NULL
-          AND age > 0
-          AND trestbps BETWEEN 50 AND 300
-    ) WHERE _rn = 1
-""")
-
-# Drop the helper column
-cols = [c.name for c in spark.table(f"{TEAM_NAME}.default.heart_silver").schema if c.name != "_rn"]
-col_list = ", ".join(cols)
-spark.sql(f"""
-    CREATE OR REPLACE TABLE {TEAM_NAME}.default.heart_silver AS
-    SELECT {col_list} FROM {TEAM_NAME}.default.heart_silver
+    )
+    WHERE _rn = 1
+      AND age IS NOT NULL AND age BETWEEN 1 AND 120
+      AND trestbps BETWEEN 50 AND 300
+      AND chol >= 0
 """)
 
 cnt = spark.table(f"{TEAM_NAME}.default.heart_silver").count()

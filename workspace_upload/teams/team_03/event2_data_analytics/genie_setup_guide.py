@@ -23,8 +23,8 @@
 # MAGIC
 # MAGIC In the Genie space settings (gear icon), add these tables:
 # MAGIC
-# MAGIC - `{TEAM_NAME}.default.heart_silver` — patient-level clinical data (~488 rows)
-# MAGIC - `{TEAM_NAME}.default.heart_gold` — aggregated metrics by age group (~8 rows)
+# MAGIC - `{TEAM_NAME}.default.heart_silver_correct` — patient-level clinical data (~488 rows)
+# MAGIC - `{TEAM_NAME}.default.heart_gold_correct` — aggregated metrics by age group (~8 rows)
 # MAGIC
 # MAGIC > Replace `{TEAM_NAME}` with your actual team name (e.g., `team_01`).
 # MAGIC
@@ -43,12 +43,12 @@
 # MAGIC DOMAIN: Heart disease patient analytics from a hospital intake system.
 # MAGIC
 # MAGIC DATA TABLES:
-# MAGIC - heart_silver: Patient-level clinical records. Each row is one patient visit.
+# MAGIC - heart_silver_correct: Patient-level clinical records. Each row is one patient visit.
 # MAGIC   ~488 rows after data quality filtering.
-# MAGIC - heart_gold: Pre-aggregated metrics grouped by age_group and diagnosis.
+# MAGIC - heart_gold_correct: Pre-aggregated metrics grouped by age_group and diagnosis.
 # MAGIC   ~8 rows (4 age groups x 2 diagnoses).
 # MAGIC
-# MAGIC KEY COLUMNS IN heart_silver:
+# MAGIC KEY COLUMNS IN heart_silver_correct:
 # MAGIC - target: Diagnosis flag. 1 = heart disease present, 0 = healthy/no disease.
 # MAGIC - sex: Patient sex. 0 = female, 1 = male.
 # MAGIC - cp: Chest pain type. 0 = typical angina, 1 = atypical angina,
@@ -64,7 +64,7 @@
 # MAGIC - restecg: Resting ECG results. 0 = normal, 1 = ST-T wave abnormality,
 # MAGIC   2 = probable or definite left ventricular hypertrophy.
 # MAGIC
-# MAGIC KEY COLUMNS IN heart_gold:
+# MAGIC KEY COLUMNS IN heart_gold_correct:
 # MAGIC - age_group: One of "Under 40", "40-49", "50-59", "60+".
 # MAGIC - diagnosis: "Heart Disease" (target=1) or "Healthy" (target=0).
 # MAGIC - patient_count: Number of patients in that group.
@@ -80,8 +80,8 @@
 # MAGIC - When grouping by age, use these buckets:
 # MAGIC   Under 40 (age < 40), 40-49 (40 <= age < 50),
 # MAGIC   50-59 (50 <= age < 60), 60+ (age >= 60).
-# MAGIC - For aggregated questions (by age group, by diagnosis), prefer heart_gold.
-# MAGIC - For patient-level questions, use heart_silver.
+# MAGIC - For aggregated questions (by age group, by diagnosis), prefer heart_gold_correct.
+# MAGIC - For patient-level questions, use heart_silver_correct.
 # MAGIC ```
 # MAGIC
 # MAGIC ---
@@ -99,7 +99,7 @@
 # MAGIC   COUNT(*) AS total_patients,
 # MAGIC   SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) AS with_disease,
 # MAGIC   ROUND(SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS disease_pct
-# MAGIC FROM heart_silver
+# MAGIC FROM heart_silver_correct
 # MAGIC ```
 # MAGIC
 # MAGIC ### Example 2: Metrics by Age Group
@@ -108,7 +108,7 @@
 # MAGIC
 # MAGIC ```sql
 # MAGIC SELECT age_group, diagnosis, avg_cholesterol, avg_blood_pressure, avg_max_heart_rate
-# MAGIC FROM heart_gold
+# MAGIC FROM heart_gold_correct
 # MAGIC ORDER BY age_group
 # MAGIC ```
 # MAGIC
@@ -118,7 +118,7 @@
 # MAGIC
 # MAGIC ```sql
 # MAGIC SELECT COUNT(*) AS female_heart_disease
-# MAGIC FROM heart_silver
+# MAGIC FROM heart_silver_correct
 # MAGIC WHERE sex = 0 AND target = 1
 # MAGIC ```
 # MAGIC
@@ -135,7 +135,7 @@
 # MAGIC     ELSE '60+'
 # MAGIC   END AS age_group,
 # MAGIC   ROUND(SUM(CASE WHEN target = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS disease_rate_pct
-# MAGIC FROM heart_silver
+# MAGIC FROM heart_silver_correct
 # MAGIC GROUP BY 1
 # MAGIC ORDER BY disease_rate_pct DESC
 # MAGIC ```

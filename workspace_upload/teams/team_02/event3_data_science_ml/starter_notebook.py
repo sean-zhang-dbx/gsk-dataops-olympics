@@ -21,6 +21,17 @@
 # MAGIC > **Your job:** Train a classifier, track it with MLflow, and register the best model.
 # MAGIC > Highest F1 score on the standardized test set wins.
 # MAGIC
+# MAGIC ### How This Works
+# MAGIC
+# MAGIC > **This notebook gives you a working baseline model.** Just click **Run All** to get a score.
+# MAGIC >
+# MAGIC > Then use **Databricks Assistant** (`Cmd+I` / `Ctrl+I`) to iteratively improve:
+# MAGIC > - Add better features
+# MAGIC > - Try different algorithms
+# MAGIC > - Tune hyperparameters
+# MAGIC >
+# MAGIC > Each improvement → re-run → higher score. **The team with the best F1 wins!**
+# MAGIC
 # MAGIC ### Scoring Overview
 # MAGIC
 # MAGIC | Category | Points |
@@ -58,6 +69,7 @@
 # COMMAND ----------
 
 print(f"Working in: {CATALOG}.default")
+print(f"MLflow Experiment: {EXPERIMENT_PATH}")
 
 # COMMAND ----------
 
@@ -91,100 +103,75 @@ print(f"  heart_gold_correct:   {spark.table(f'{CATALOG}.default.heart_gold_corr
 
 # COMMAND ----------
 
-
 # MAGIC %md
 # MAGIC ---
 # MAGIC ## Step 1: Load Data & EDA (5 pts)
 # MAGIC
-# MAGIC > Load your `heart_silver_correct` table into a Pandas DataFrame.
-# MAGIC > Show the shape, target distribution, and basic statistics.
-# MAGIC >
-# MAGIC > **Feature columns:** `age`, `sex`, `cp`, `trestbps`, `chol`, `fbs`, `restecg`,
-# MAGIC > `thalach`, `exang`, `oldpeak`, `slope`, `ca`, `thal`
-# MAGIC >
-# MAGIC > **Target column:** `target` (1 = heart disease, 0 = healthy)
+# MAGIC Load your `heart_silver_correct` table and explore it.
+# MAGIC
+# MAGIC **Feature columns:** `age`, `sex`, `cp`, `trestbps`, `chol`, `fbs`, `restecg`,
+# MAGIC `thalach`, `exang`, `oldpeak`, `slope`, `ca`, `thal`
+# MAGIC
+# MAGIC **Target column:** `target` (1 = heart disease, 0 = healthy)
 
 # COMMAND ----------
 
-# YOUR CODE HERE — load data into pandas
-# Prompt: "Load heart_silver_correct from Spark into pandas, show shape, describe, and target distribution"
+import pandas as pd
 
+df = spark.table(f"{CATALOG}.default.heart_silver_correct").toPandas()
+print(f"Dataset shape: {df.shape}")
+print(f"\nTarget distribution:\n{df['target'].value_counts()}")
+print(f"\nBasic statistics:")
+df.describe()
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Step 2: Feature Engineering
+# MAGIC ## Step 2: Feature Engineering (5 pts regular / 8 pts Feature Store)
 # MAGIC
-# MAGIC Create **at least 2 new features** that might improve prediction.
+# MAGIC We start with one example feature. **Use Databricks Assistant to add more!**
 # MAGIC
-# MAGIC **Feature ideas:**
-# MAGIC - `age_chol` = age * chol (interaction)
-# MAGIC - `hr_reserve` = 220 - age - thalach (heart rate reserve)
-# MAGIC - `high_risk` = 1 if age > 55 AND chol > 240 (composite flag)
-# MAGIC - `bp_category` = binned blood pressure (low/normal/high/very_high)
-# MAGIC - `chol_risk` = 1 if chol > 240, 0 otherwise
-# MAGIC
-# MAGIC ### Choose Your Path:
-# MAGIC
-# MAGIC | Option | Points | What to do |
-# MAGIC |--------|--------|------------|
-# MAGIC | **Option A: Regular Table** | 5 pts | Add features to your DataFrame and save as `heart_features` Delta table |
-# MAGIC | **Option B: Feature Store** | **8 pts** | Use `databricks.feature_engineering` to create a Feature Store table |
-# MAGIC
-# MAGIC > Feature Store earns **+3 bonus pts** because it enables feature reuse, lineage tracking,
-# MAGIC > and online serving — production best practices.
+# MAGIC **Ask AI:** *"Add 3 more features to improve heart disease prediction:
+# MAGIC hr_reserve (220 - age - thalach), high_risk flag (age > 55 AND chol > 240),
+# MAGIC and chol_risk (1 if chol > 240)"*
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ### Option A: Regular Delta Table (5 pts)
-# MAGIC
-# MAGIC > Add features to your pandas DataFrame. Then save the feature table:
-# MAGIC > ```python
-# MAGIC > features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id", "target"]])
-# MAGIC > features_sdf.write.format("delta").mode("overwrite").saveAsTable(
-# MAGIC >     f"{CATALOG}.default.heart_features"
-# MAGIC > )
-# MAGIC > ```
+FEATURE_COLS = [
+    "age", "sex", "cp", "trestbps", "chol", "fbs", "restecg",
+    "thalach", "exang", "oldpeak", "slope", "ca", "thal",
+    # Engineered features — add more here!
+    "age_chol",
+]
 
-# COMMAND ----------
+df["age_chol"] = df["age"] * df["chol"]
 
-# YOUR CODE HERE — feature engineering (Option A: regular table)
-# Prompt: "Add 3 new features: hr_reserve, high_risk flag, and chol_risk category"
+# ──── ADD MORE FEATURES BELOW (use Cmd+I to ask AI) ────
+# Example prompts:
+#   "Add hr_reserve = 220 - age - thalach"
+#   "Add a high_risk flag for age > 55 and chol > 240"
+#   "Create interaction features for the top correlated columns"
 
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Option B: Feature Store (8 pts)
+# MAGIC ### Save Feature Table
 # MAGIC
-# MAGIC > Use Databricks Feature Engineering to create a proper feature table.
-# MAGIC > This gives you lineage tracking, feature reuse, and online serving capabilities.
-# MAGIC >
-# MAGIC > ```python
-# MAGIC > from databricks.feature_engineering import FeatureEngineeringClient
-# MAGIC > fe = FeatureEngineeringClient()
-# MAGIC >
-# MAGIC > # Create a Spark DataFrame with patient_id as the primary key
-# MAGIC > features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["patient_id"]])
-# MAGIC >
-# MAGIC > # Create the feature table (patient_id is the lookup key)
-# MAGIC > fe.create_table(
-# MAGIC >     name=f"{CATALOG}.default.heart_features",
-# MAGIC >     primary_keys=["patient_id"],
-# MAGIC >     df=features_sdf,
-# MAGIC >     description="Heart disease patient features for ML prediction"
-# MAGIC > )
-# MAGIC > ```
-# MAGIC >
-# MAGIC > *Docs: [Feature Engineering](https://docs.databricks.com/en/machine-learning/feature-store/index.html)*
+# MAGIC **Option A: Regular Delta Table (5 pts)** — runs by default below.
+# MAGIC
+# MAGIC **Option B: Feature Store (8 pts)** — for +3 bonus pts, ask AI:
+# MAGIC *"Convert this to use FeatureEngineeringClient to create a Feature Store table
+# MAGIC with patient_id as primary key"*
 
 # COMMAND ----------
 
-# YOUR CODE HERE — feature engineering (Option B: Feature Store)
-# Prompt: "Create a Feature Store table with patient features using FeatureEngineeringClient"
-
+features_sdf = spark.createDataFrame(df[FEATURE_COLS + ["target"]])
+features_sdf.write.format("delta").mode("overwrite").saveAsTable(
+    f"{CATALOG}.default.heart_features"
+)
+print(f"Saved heart_features: {len(FEATURE_COLS)} features")
 
 # COMMAND ----------
 
@@ -192,18 +179,20 @@ print(f"  heart_gold_correct:   {spark.table(f'{CATALOG}.default.heart_gold_corr
 # MAGIC ---
 # MAGIC ## Step 3: Train/Test Split
 # MAGIC
-# MAGIC > **MUST use these exact settings** so all teams are evaluated on the same test set:
-# MAGIC > - `test_size=0.2`
-# MAGIC > - `random_state=42`
-# MAGIC > - `stratify=y`
-# MAGIC >
-# MAGIC > Define `FEATURE_COLS` with all the columns you want to use (original + engineered).
+# MAGIC > **These settings are fixed** so all teams are evaluated on the same test set.
+# MAGIC > Do NOT change `test_size`, `random_state`, or `stratify`.
 
 # COMMAND ----------
 
-# YOUR CODE HERE — split data
-# IMPORTANT: random_state=42, test_size=0.2, stratify=y
+from sklearn.model_selection import train_test_split
 
+X = df[FEATURE_COLS]
+y = df["target"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+print(f"Train: {X_train.shape[0]} samples  |  Test: {X_test.shape[0]} samples")
 
 # COMMAND ----------
 
@@ -211,26 +200,68 @@ print(f"  heart_gold_correct:   {spark.table(f'{CATALOG}.default.heart_gold_corr
 # MAGIC ---
 # MAGIC ## Step 4: Train Model + MLflow (10 pts)
 # MAGIC
-# MAGIC > Train a classification model and log to MLflow:
-# MAGIC >
-# MAGIC > 1. Set experiment: `mlflow.set_experiment(f"/Users/<your_email>/{TEAM_NAME}_heart_ml")`
-# MAGIC > 2. Start a run: `with mlflow.start_run(run_name="my_model"):`
-# MAGIC > 3. Log parameters: model type, hyperparameters, feature count
-# MAGIC > 4. Log metrics: `f1_score`, `roc_auc_score`, `accuracy_score`
-# MAGIC > 5. Log the model: `mlflow.sklearn.log_model(model, "model", signature=signature)`
-# MAGIC >
-# MAGIC > **You can run this cell multiple times** — try different algorithms!
-# MAGIC > - `RandomForestClassifier`
-# MAGIC > - `GradientBoostingClassifier`
-# MAGIC > - `LogisticRegression`
-# MAGIC > - `VotingClassifier` (ensemble)
-# MAGIC >
-# MAGIC > The **best F1 score** is what gets scored.
+# MAGIC ### 4a: Baseline Model (runs out of the box)
+# MAGIC
+# MAGIC This gives you a working LogisticRegression baseline. Just run it!
 
 # COMMAND ----------
 
-# YOUR CODE HERE — train + log to MLflow
-# Prompt: "Train a GradientBoostingClassifier, log params/metrics/model to MLflow"
+import mlflow
+import mlflow.sklearn
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
+
+mlflow.set_tracking_uri("databricks")
+mlflow.set_experiment(EXPERIMENT_PATH)
+
+with mlflow.start_run(run_name=f"{TEAM_NAME}_baseline"):
+    model = LogisticRegression(max_iter=1000, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+
+    f1 = f1_score(y_test, y_pred)
+    auc = roc_auc_score(y_test, y_proba)
+    acc = accuracy_score(y_test, y_pred)
+
+    mlflow.log_param("model_type", "LogisticRegression")
+    mlflow.log_param("n_features", len(FEATURE_COLS))
+    mlflow.log_metric("f1_score", f1)
+    mlflow.log_metric("roc_auc", auc)
+    mlflow.log_metric("accuracy", acc)
+    mlflow.sklearn.log_model(model, "model")
+
+    print(f"BASELINE — F1: {f1:.4f}  |  AUC: {auc:.4f}  |  Accuracy: {acc:.4f}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 4b: Improve with AI! (this is where you compete)
+# MAGIC
+# MAGIC Use **Databricks Assistant** (`Cmd+I`) to try better models. Each run is tracked in MLflow.
+# MAGIC
+# MAGIC **Prompt ideas:**
+# MAGIC - *"Train a RandomForestClassifier with 200 trees and log to MLflow"*
+# MAGIC - *"Train a GradientBoostingClassifier with tuned hyperparameters and log to MLflow"*
+# MAGIC - *"Try XGBoost with learning_rate=0.1 and max_depth=5"*
+# MAGIC - *"Build a VotingClassifier ensemble combining RF, GBT, and LR"* (bonus!)
+# MAGIC
+# MAGIC > **Tip:** Run this cell multiple times with different models.
+# MAGIC > The scoring picks your **best F1 score** across all runs.
+
+# COMMAND ----------
+
+# ──── YOUR IMPROVED MODEL HERE ────
+# Use Cmd+I (Databricks Assistant) to generate better model code.
+# Make sure to:
+#   1. Use mlflow.start_run(run_name="...")
+#   2. Log params: model_type, n_features
+#   3. Log metrics: f1_score, roc_auc, accuracy
+#   4. Log the model: mlflow.sklearn.log_model(model, "model")
+#
+# Example prompt: "Train a GradientBoostingClassifier, log params/metrics/model to MLflow,
+#   use EXPERIMENT_PATH, X_train, y_train, X_test, y_test, FEATURE_COLS"
 
 
 # COMMAND ----------
@@ -239,20 +270,40 @@ print(f"  heart_gold_correct:   {spark.table(f'{CATALOG}.default.heart_gold_corr
 # MAGIC ---
 # MAGIC ## Step 5: Register Best Model (5 pts)
 # MAGIC
-# MAGIC > Register your best model in MLflow Model Registry:
-# MAGIC >
-# MAGIC > ```python
-# MAGIC > model_name = f"{CATALOG}.default.heart_disease_model"
-# MAGIC > mlflow.register_model(f"runs:/{best_run_id}/model", model_name)
-# MAGIC > ```
-# MAGIC >
-# MAGIC > If Unity Catalog registration fails due to permissions, that's OK.
-# MAGIC > Just make sure the model is logged in MLflow — the organizer can verify.
+# MAGIC Finds your best MLflow run and registers it in Unity Catalog.
 
 # COMMAND ----------
 
-# YOUR CODE HERE — register model
+import mlflow
+from mlflow.tracking import MlflowClient
 
+mlflow.set_registry_uri("databricks-uc")
+client = MlflowClient()
+
+exp = client.get_experiment_by_name(EXPERIMENT_PATH)
+if exp:
+    best_runs = client.search_runs(
+        experiment_ids=[exp.experiment_id],
+        order_by=["metrics.f1_score DESC"],
+        max_results=1,
+    )
+    if best_runs:
+        best_run = best_runs[0]
+        best_run_id = best_run.info.run_id
+        best_f1 = best_run.data.metrics.get("f1_score", 0)
+        print(f"Best run: {best_run_id}  |  F1: {best_f1:.4f}")
+
+        model_name = f"{CATALOG}.default.heart_disease_model"
+        try:
+            mlflow.register_model(f"runs:/{best_run_id}/model", model_name)
+            print(f"Model registered: {model_name}")
+        except Exception as e:
+            print(f"Registration note: {e}")
+            print("This is OK — the organizer can verify via MLflow directly.")
+    else:
+        print("No runs found. Run Step 4 first!")
+else:
+    print(f"Experiment not found at {EXPERIMENT_PATH}. Run Step 4 first!")
 
 # COMMAND ----------
 
@@ -260,21 +311,19 @@ print(f"  heart_gold_correct:   {spark.table(f'{CATALOG}.default.heart_gold_corr
 # MAGIC ---
 # MAGIC ## Step 6: Save & Submit Results (2 pts)
 # MAGIC
-# MAGIC > Save your results to `{CATALOG}.default.event3_results`. The scoring notebook
-# MAGIC > reads this table automatically — **this is how we pick up your score for the dashboard**.
-# MAGIC >
-# MAGIC > This cell computes your metrics, displays them, and saves to your catalog.
+# MAGIC Computes your final metrics and saves to `event3_results`.
+# MAGIC The scoring notebook reads this table automatically.
 
 # COMMAND ----------
 
 from datetime import datetime as _dt
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, classification_report, confusion_matrix
 
 print("=" * 60)
 print(f"  ML CHALLENGE — FINAL SUBMISSION: {TEAM_NAME}")
 print("=" * 60)
 
 try:
-    from sklearn.metrics import f1_score, roc_auc_score, accuracy_score, classification_report, confusion_matrix
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
 
@@ -290,9 +339,8 @@ try:
     cm = confusion_matrix(y_test, y_pred)
     print(f"  Confusion Matrix:  TN={cm[0][0]}  FP={cm[0][1]}  FN={cm[1][0]}  TP={cm[1][1]}")
 
-    # Save results to team catalog
     model_type = type(model).__name__
-    n_features = len(FEATURE_COLS) if "FEATURE_COLS" in dir() else X_test.shape[1]
+    n_features = len(FEATURE_COLS)
     _run_id = best_run_id if "best_run_id" in dir() else ""
 
     spark.sql(f"""
@@ -318,56 +366,31 @@ print("=" * 60)
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## Bonus Challenges
+# MAGIC ## Bonus Challenges (up to +8 pts)
 # MAGIC
 # MAGIC ### Bonus 1: SHAP Explainability (+3 pts)
 # MAGIC
-# MAGIC > Generate SHAP feature importance values and save the top-5 features.
-# MAGIC > Save as a table called `heart_shap_importance` (columns: `feature`, `importance`).
+# MAGIC > **Ask AI:** *"Generate SHAP feature importance for my model using TreeExplainer,
+# MAGIC > get top 5 features, and save as heart_shap_importance table with columns
+# MAGIC > feature and importance"*
 # MAGIC >
-# MAGIC > **Note:** You may need to install `shap` first:
-# MAGIC > ```python
-# MAGIC > %pip install shap
-# MAGIC > ```
-# MAGIC >
-# MAGIC > Then:
-# MAGIC > ```python
-# MAGIC > import shap
-# MAGIC > explainer = shap.TreeExplainer(model)
-# MAGIC > shap_values = explainer.shap_values(X_test)
-# MAGIC >
-# MAGIC > # Get feature importances from mean absolute SHAP values
-# MAGIC > import numpy as np
-# MAGIC > shap_imp = np.abs(shap_values).mean(axis=0) if len(shap_values.shape) == 2 else np.abs(shap_values[1]).mean(axis=0)
-# MAGIC > top5 = sorted(zip(FEATURE_COLS, shap_imp), key=lambda x: -x[1])[:5]
-# MAGIC > shap_df = spark.createDataFrame(top5, ["feature", "importance"])
-# MAGIC > shap_df.write.format("delta").mode("overwrite").saveAsTable(f"{CATALOG}.default.heart_shap_importance")
-# MAGIC > ```
+# MAGIC > You may need `%pip install shap` first.
 # MAGIC
 # MAGIC ### Bonus 2: Ensemble Model (+3 pts)
 # MAGIC
-# MAGIC > Build a `VotingClassifier` combining at least 3 different algorithms.
-# MAGIC > Log it as a separate MLflow run. Compare F1 to your single-model run.
-# MAGIC >
-# MAGIC > ```python
-# MAGIC > from sklearn.ensemble import VotingClassifier, RandomForestClassifier, GradientBoostingClassifier
-# MAGIC > from sklearn.linear_model import LogisticRegression
-# MAGIC > ensemble = VotingClassifier(estimators=[
-# MAGIC >     ('rf', RandomForestClassifier(n_estimators=100, random_state=42)),
-# MAGIC >     ('gb', GradientBoostingClassifier(n_estimators=100, random_state=42)),
-# MAGIC >     ('lr', LogisticRegression(max_iter=1000, random_state=42)),
-# MAGIC > ], voting='soft')
-# MAGIC > ```
+# MAGIC > **Ask AI:** *"Build a VotingClassifier combining RandomForest, GradientBoosting,
+# MAGIC > and LogisticRegression with soft voting. Log it to MLflow with model_type='VotingClassifier'"*
 # MAGIC
 # MAGIC ### Bonus 3: Cross-Validation Report (+2 pts)
 # MAGIC
-# MAGIC > Run 5-fold stratified cross-validation and log the mean and std of F1 scores.
-# MAGIC > Save as a table `heart_cv_results` with columns: fold, f1_score.
-# MAGIC >
-# MAGIC > ```python
-# MAGIC > from sklearn.model_selection import cross_val_score
-# MAGIC > cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='f1')
-# MAGIC > ```
+# MAGIC > **Ask AI:** *"Run 5-fold stratified cross-validation on my model, log mean and std F1,
+# MAGIC > and save per-fold results as heart_cv_results table with columns fold and f1_score"*
+
+# COMMAND ----------
+
+# ──── BONUS CODE HERE ────
+# Use Cmd+I to generate bonus challenge code
+
 
 # COMMAND ----------
 

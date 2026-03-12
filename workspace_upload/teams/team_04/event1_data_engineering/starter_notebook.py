@@ -35,11 +35,12 @@
 # MAGIC ### Raw Data Location
 # MAGIC ```
 # MAGIC /Volumes/dataops_olympics/default/raw_data/heart_events/
-# MAGIC   ├── intake_batch_001.json   (100 records, clean)
-# MAGIC   ├── intake_batch_002.json   (100 records, clean)
-# MAGIC   ├── intake_batch_003.json   (100 records, ~8 dirty + 1 duplicate)
-# MAGIC   ├── intake_batch_004.json   (100 records, clean)
-# MAGIC   └── intake_batch_005.json   (100 records, ~4 dirty + 2 duplicates)
+# MAGIC   ├── intake_batch_001.json   (100 records)
+# MAGIC   ├── intake_batch_002.json   (100 records)
+# MAGIC   ├── intake_batch_003.json   (106 records — includes dirty rows + duplicates)
+# MAGIC   ├── intake_batch_004.json   (100 records)
+# MAGIC   └── intake_batch_005.json   (104 records — includes dirty rows + duplicates)
+# MAGIC   TOTAL: 510 raw records
 # MAGIC ```
 # MAGIC
 # MAGIC > **Vibe Coding:** Use **Databricks Assistant** (`Cmd+I`) to generate your code!
@@ -70,13 +71,13 @@ print(f"Raw data:   {RAW_DATA_PATH}")
 # MAGIC # Pipeline Overview
 # MAGIC
 # MAGIC ```
-# MAGIC  NDJSON Files          Bronze              Silver              Gold
-# MAGIC ┌──────────┐     ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-# MAGIC │ batch_001│     │              │    │  Validated   │    │  Aggregated  │
-# MAGIC │ batch_002│────>│  Raw ingest  │───>│  Cleaned     │───>│  By age_group│
-# MAGIC │ batch_003│     │  ~500 rows   │    │  Deduplicated│    │  & diagnosis │
-# MAGIC │ batch_004│     │              │    │  ~485 rows   │    │  ~8 rows     │
-# MAGIC │ batch_005│     └──────────────┘    └──────────────┘    └──────────────┘
+# MAGIC  NDJSON Files          Bronze               Silver               Gold
+# MAGIC ┌──────────┐     ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
+# MAGIC │ batch_001│     │               │    │  Validated    │    │  Aggregated   │
+# MAGIC │ batch_002│────>│  Raw ingest   │───>│  Cleaned      │───>│  By age_group │
+# MAGIC │ batch_003│     │  510 rows     │    │  Deduplicated │    │  & diagnosis  │
+# MAGIC │ batch_004│     │  (all records)│    │  491 rows     │    │  8 rows       │
+# MAGIC │ batch_005│     └───────────────┘    └───────────────┘    └───────────────┘
 # MAGIC └──────────┘
 # MAGIC ```
 
@@ -136,9 +137,35 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > Read **all 5 NDJSON batch files** from the Volume path and save them
 # MAGIC > as a single Delta table called `heart_bronze` in your team catalog.
 # MAGIC >
-# MAGIC > **No cleaning** — Bronze is the raw landing zone. All ~500 records should be present.
+# MAGIC > **No cleaning** — Bronze is the raw landing zone. All 510 records must be present.
 # MAGIC >
 # MAGIC > *SDP Path: This is the `heart_bronze` streaming table — uses Auto Loader.*
+# MAGIC
+# MAGIC ### Expected Output: `{TEAM_NAME}.default.heart_bronze`
+# MAGIC
+# MAGIC | Column | Type | Description |
+# MAGIC |--------|------|-------------|
+# MAGIC | `event_id` | STRING | Unique event identifier (e.g., `EVT-00001`) |
+# MAGIC | `event_timestamp` | STRING | ISO 8601 timestamp |
+# MAGIC | `source_system` | STRING | `hospital_ehr`, `clinic_intake`, or `emergency_dept` |
+# MAGIC | `record_version` | BIGINT | Always 1 |
+# MAGIC | `patient_id` | STRING | Patient identifier (e.g., `PT-0001`) |
+# MAGIC | `age` | BIGINT | Patient age — **nullable** (some records have NULL) |
+# MAGIC | `sex` | BIGINT | 0 = female, 1 = male |
+# MAGIC | `cp` | BIGINT | Chest pain type (0–3) |
+# MAGIC | `trestbps` | BIGINT | Resting blood pressure in mmHg |
+# MAGIC | `chol` | BIGINT | Serum cholesterol in mg/dL |
+# MAGIC | `fbs` | BIGINT | Fasting blood sugar > 120 mg/dL (0/1) |
+# MAGIC | `restecg` | BIGINT | Resting ECG results (0–2) |
+# MAGIC | `thalach` | BIGINT | Maximum heart rate achieved |
+# MAGIC | `exang` | BIGINT | Exercise-induced angina (0/1) |
+# MAGIC | `oldpeak` | DOUBLE | ST depression induced by exercise |
+# MAGIC | `slope` | BIGINT | Slope of peak exercise ST segment (0–2) |
+# MAGIC | `ca` | BIGINT | Number of major vessels (0–3) |
+# MAGIC | `thal` | BIGINT | Thalassemia (3, 6, or 7) |
+# MAGIC | `target` | BIGINT | Diagnosis: 1 = heart disease, 0 = healthy |
+# MAGIC
+# MAGIC **Expected row count: 510**
 
 # COMMAND ----------
 
@@ -162,9 +189,23 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC > 4. **Remove** rows where `chol` (cholesterol) is negative
 # MAGIC > 5. **Deduplicate** on `event_id` — if multiple rows share the same `event_id`,
 # MAGIC >    keep only the one with the **earliest** `event_timestamp`
-# MAGIC > 6. Add an `ingested_at` column with the current timestamp
+# MAGIC > 6. (Optional) Add an `ingested_at` column with the current timestamp
 # MAGIC >
 # MAGIC > *SDP Path: This is the `heart_silver` streaming table with `@dp.expect_or_drop` expectations.*
+# MAGIC
+# MAGIC ### Expected Output: `{TEAM_NAME}.default.heart_silver`
+# MAGIC
+# MAGIC Same columns as Bronze (all 19 clinical columns including `event_id`, `event_timestamp`,
+# MAGIC `source_system`, `record_version`, `patient_id`), optionally plus `ingested_at`.
+# MAGIC
+# MAGIC **Data quality after filtering:**
+# MAGIC - No rows with `age IS NULL`
+# MAGIC - No rows with `age` outside 1–120
+# MAGIC - No rows with `trestbps` outside 50–300
+# MAGIC - No rows with `chol < 0`
+# MAGIC - No duplicate `event_id` values
+# MAGIC
+# MAGIC **Expected row count: 491** (510 raw − 10 duplicates − 9 dirty unique records)
 
 # COMMAND ----------
 
@@ -180,18 +221,25 @@ print(f"Duplicate event_ids: {dup_count}")
 # MAGIC ### Business Requirement
 # MAGIC
 # MAGIC > Create a Gold table called `heart_gold` from the Silver table.
-# MAGIC > Aggregate heart disease metrics **by age group and diagnosis**:
-# MAGIC >
-# MAGIC > | Column | Definition |
-# MAGIC > |--------|-----------|
-# MAGIC > | `age_group` | Bucket ages: "Under 40", "40-49", "50-59", "60+" |
-# MAGIC > | `diagnosis` | Map `target`: 1 = "Heart Disease", 0 = "Healthy" |
-# MAGIC > | `patient_count` | Number of patients in each group |
-# MAGIC > | `avg_cholesterol` | Average of `chol`, rounded to 1 decimal |
-# MAGIC > | `avg_blood_pressure` | Average of `trestbps`, rounded to 1 decimal |
-# MAGIC > | `avg_max_heart_rate` | Average of `thalach`, rounded to 1 decimal |
+# MAGIC > Aggregate heart disease metrics **by age group and diagnosis**.
 # MAGIC >
 # MAGIC > *SDP Path: This is the `heart_gold` materialized view via `@dp.table` with a batch read.*
+# MAGIC
+# MAGIC ### Expected Output: `{TEAM_NAME}.default.heart_gold`
+# MAGIC
+# MAGIC | Column | Type | Definition |
+# MAGIC |--------|------|-----------|
+# MAGIC | `age_group` | STRING | Bucket ages: `Under 40` (age < 40), `40-49` (40 ≤ age < 50), `50-59` (50 ≤ age < 60), `60+` (age ≥ 60) |
+# MAGIC | `diagnosis` | STRING | Map `target`: 1 → `Heart Disease`, 0 → `Healthy` |
+# MAGIC | `patient_count` | BIGINT | `COUNT(*)` per group |
+# MAGIC | `avg_cholesterol` | DOUBLE | `ROUND(AVG(chol), 1)` |
+# MAGIC | `avg_blood_pressure` | DOUBLE | `ROUND(AVG(trestbps), 1)` |
+# MAGIC | `avg_max_heart_rate` | DOUBLE | `ROUND(AVG(thalach), 1)` |
+# MAGIC
+# MAGIC **Expected row count: 8** (4 age groups × 2 diagnoses)
+# MAGIC
+# MAGIC > **Column names must match exactly** — the scoring engine compares your table against
+# MAGIC > the answer key row-by-row. Use the exact column names above.
 
 # COMMAND ----------
 
@@ -305,75 +353,75 @@ display(spark.sql(f"DESCRIBE TABLE EXTENDED {CATALOG}.default.heart_silver"))
 # MAGIC ---
 # MAGIC # Step 6: Validation
 # MAGIC
-# MAGIC Run this to check your work and get a preliminary score.
+# MAGIC Run this to check your tables against the official answer key.
 # MAGIC The organizer will run the official `scoring.py` separately.
+# MAGIC
+# MAGIC > For a **detailed self-check** with schema validation and row-by-row comparison,
+# MAGIC > open and run the **`self_check`** notebook in this folder.
 
 # COMMAND ----------
+
+_ANSWER_BRONZE = f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_bronze"
+_ANSWER_SILVER = f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_silver"
+_ANSWER_GOLD = f"{SHARED_CATALOG}.{SHARED_SCHEMA}.event1_answer_gold"
+
+_exp_b = spark.table(_ANSWER_BRONZE).count()
+_exp_s = spark.table(_ANSWER_SILVER).count()
+_exp_g = spark.table(_ANSWER_GOLD).count()
 
 print("=" * 60)
 print(f"  EVENT 1 VALIDATION — {TEAM_NAME}")
 print(f"  Catalog: {CATALOG}.default")
+print(f"  Answer key: Bronze={_exp_b}, Silver={_exp_s}, Gold={_exp_g}")
 print("=" * 60)
-score = 0
 
-try:
-    cnt = spark.table(f"{CATALOG}.default.heart_bronze").count()
-    if cnt >= 490:
-        print(f"  [PASS] Bronze table: {cnt} rows")
-        score += 5
-    else:
-        print(f"  [WARN] Bronze table: {cnt} rows (expected ~500)")
-        score += 2
-except Exception as e:
-    print(f"  [FAIL] Bronze table missing: {e}")
+for tbl_name, answer, exp_cnt, required_cols in [
+    ("heart_bronze", _ANSWER_BRONZE, _exp_b,
+     {"event_id", "event_timestamp", "source_system", "patient_id", "age", "sex", "cp", "trestbps", "chol", "target"}),
+    ("heart_silver", _ANSWER_SILVER, _exp_s,
+     {"event_id", "age", "sex", "cp", "trestbps", "chol", "target"}),
+    ("heart_gold", _ANSWER_GOLD, _exp_g,
+     {"age_group", "diagnosis", "patient_count", "avg_cholesterol", "avg_blood_pressure", "avg_max_heart_rate"}),
+]:
+    print()
+    try:
+        df = spark.table(f"{CATALOG}.default.{tbl_name}")
+        cnt = df.count()
+        cols = set(c.lower() for c in df.columns)
+        missing_cols = required_cols - cols
 
-try:
-    s_cnt = spark.table(f"{CATALOG}.default.heart_silver").count()
-    if s_cnt < cnt:
-        print(f"  [PASS] Silver table: {s_cnt} rows (filtered {cnt - s_cnt} bad/duplicate rows)")
-        score += 4
-    else:
-        print(f"  [WARN] Silver table: {s_cnt} rows (no filtering detected)")
-        score += 1
-except Exception as e:
-    print(f"  [FAIL] Silver table missing: {e}")
+        if missing_cols:
+            print(f"  [{tbl_name}] SCHEMA: missing columns {missing_cols}")
+        else:
+            print(f"  [{tbl_name}] SCHEMA: OK — all required columns present")
 
-try:
-    g = spark.table(f"{CATALOG}.default.heart_gold")
-    g_cnt = g.count()
-    cols = set(g.columns)
-    has_agg = "patient_count" in cols or "avg_cholesterol" in cols
-    if g_cnt > 0 and has_agg:
-        print(f"  [PASS] Gold table: {g_cnt} rows with aggregations")
-        score += 4
-    elif g_cnt > 0:
-        print(f"  [WARN] Gold table: {g_cnt} rows but missing expected aggregation columns")
-        score += 2
-    else:
-        print(f"  [WARN] Gold table is empty")
-except Exception as e:
-    print(f"  [FAIL] Gold table missing: {e}")
+        if cnt == exp_cnt:
+            print(f"  [{tbl_name}] ROWS: {cnt} — exact match!")
+        else:
+            print(f"  [{tbl_name}] ROWS: {cnt} (expected {exp_cnt}) — off by {abs(cnt - exp_cnt)}")
 
-try:
-    desc = spark.sql(f"DESCRIBE TABLE EXTENDED {CATALOG}.default.heart_silver").collect()
-    has_tbl_comment = any("comment" in str(r).lower() and r[1] and len(str(r[1])) > 5 for r in desc)
-    col_comments = sum(1 for r in desc if r[2] and len(str(r[2])) > 5 and r[0] not in ["", "#"])
-    if has_tbl_comment:
-        print(f"  [PASS] Table comment found on Silver")
-        score += 2
-    else:
-        print(f"  [FAIL] No table comment on Silver")
-    if col_comments >= 2:
-        print(f"  [PASS] {col_comments} column comments found")
-        score += 3
-    else:
-        print(f"  [WARN] Only {col_comments} column comments (need 3+)")
-        score += col_comments
-except Exception as e:
-    print(f"  [FAIL] Cannot verify governance: {e}")
+        if "event_id" in cols and "event_id" in [c.lower() for c in spark.table(answer).columns]:
+            missing = spark.sql(f"SELECT COUNT(*) FROM (SELECT event_id FROM {answer} EXCEPT SELECT event_id FROM {CATALOG}.default.{tbl_name})").collect()[0][0]
+            match_pct = (exp_cnt - missing) / exp_cnt * 100
+            if missing == 0:
+                print(f"  [{tbl_name}] DATA: 100% match against answer key")
+            else:
+                print(f"  [{tbl_name}] DATA: {match_pct:.1f}% match — {missing} event_ids missing from your table")
+        elif tbl_name == "heart_gold" and not missing_cols and cnt > 0:
+            gold_match = spark.sql(f"""
+                SELECT COUNT(*) FROM {answer} a
+                JOIN {CATALOG}.default.{tbl_name} t
+                ON a.age_group = t.age_group AND a.diagnosis = t.diagnosis
+                WHERE a.patient_count = t.patient_count
+            """).collect()[0][0]
+            print(f"  [{tbl_name}] DATA: {gold_match}/{exp_cnt} rows match answer key patient_counts")
 
-print(f"\n  PRELIMINARY SCORE: {score}/~20 (SQL path estimate)")
-print(f"  NOTE: SDP path scores up to 50 pts — run the official scoring.py!")
+    except Exception as e:
+        print(f"  [{tbl_name}] NOT FOUND — {str(e)[:80]}")
+
+print()
+print("=" * 60)
+print("  Run the self_check notebook for detailed scoring breakdown.")
 print("=" * 60)
 
 # COMMAND ----------

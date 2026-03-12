@@ -4,29 +4,24 @@
 # MAGIC
 # MAGIC **FOR ORGANIZERS ONLY**
 # MAGIC
-# MAGIC Run this notebook to automatically score all teams.
-# MAGIC Update the `TEAMS` list below, then **Run All**.
-# MAGIC
-# MAGIC Each team name **is** the catalog name (e.g., `team_01` → catalog `team_01`).
-# MAGIC Tables are always `heart_bronze`, `heart_silver`, `heart_gold` — no prefixes.
+# MAGIC Scores each team's Event 1 submission by comparing their Bronze, Silver, and Gold
+# MAGIC tables against pre-generated answer tables in `dataops_olympics.default`.
 # MAGIC
 # MAGIC ### Scoring Breakdown (50 pts max + 5 bonus)
 # MAGIC
 # MAGIC | Category | SDP Path | SQL Path |
 # MAGIC |----------|----------|----------|
-# MAGIC | **Bronze** — table exists, row count, schema | 10 | 10 |
-# MAGIC | **Silver** — cleaned, filtered, deduplicated | 15 | 8 |
-# MAGIC | **Gold** — aggregation with correct columns | 15 | 8 |
-# MAGIC | **Data Quality** — DQ report / expectations | 5 | 2 |
+# MAGIC | **Bronze** — row count, schema, data match | 10 | 10 |
+# MAGIC | **Silver** — row count, data match, DQ, dedup | 15 | 8 |
+# MAGIC | **Gold** — row count, schema, value accuracy | 15 | 8 |
+# MAGIC | **Data Quality** — DQ expectations / evidence | 5 | 2 |
 # MAGIC | **Governance** — table + column comments | 5 | 3 |
 # MAGIC | **TOTAL** | **50** | **31** |
-# MAGIC | --- | --- | --- |
-# MAGIC | **Bonus: UC Tags** — 3+ tags across tables | +3 | +3 |
-# MAGIC | **Bonus: AI Functions** → `heart_gold_ai` with `cardiovascular_risk` col | +2 | +2 |
+# MAGIC | **Bonus: UC Tags** | +3 | +3 |
+# MAGIC | **Bonus: AI Functions** (`heart_gold_ai`) | +2 | +2 |
 
 # COMMAND ----------
 
-# Only score teams that have submitted for this event
 _event_filter = "event1"
 _submitted = spark.sql(f"""
     SELECT DISTINCT team_name FROM dataops_olympics.default.event_submissions
@@ -39,6 +34,28 @@ else:
     print(f"Scoring {len(TEAMS)} teams that submitted: {TEAMS}")
 
 SCHEMA = "default"
+SHARED = "dataops_olympics"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Load Answer Keys
+
+# COMMAND ----------
+
+ANSWER_BRONZE = f"{SHARED}.{SCHEMA}.event1_answer_bronze"
+ANSWER_SILVER = f"{SHARED}.{SCHEMA}.event1_answer_silver"
+ANSWER_GOLD = f"{SHARED}.{SCHEMA}.event1_answer_gold"
+
+EXPECTED_BRONZE = spark.table(ANSWER_BRONZE).count()
+EXPECTED_SILVER = spark.table(ANSWER_SILVER).count()
+EXPECTED_GOLD = spark.table(ANSWER_GOLD).count()
+print(f"Answer key: Bronze={EXPECTED_BRONZE}, Silver={EXPECTED_SILVER}, Gold={EXPECTED_GOLD}")
+
+BRONZE_REQUIRED = {"event_id", "event_timestamp", "source_system", "patient_id",
+                   "age", "sex", "cp", "trestbps", "chol", "target"}
+GOLD_REQUIRED = {"age_group", "diagnosis", "patient_count",
+                 "avg_cholesterol", "avg_blood_pressure", "avg_max_heart_rate"}
 
 # COMMAND ----------
 
@@ -48,13 +65,6 @@ SCHEMA = "default"
 # COMMAND ----------
 
 import pandas as pd
-
-EXPECTED_BRONZE_COLS = {
-    "event_id", "event_timestamp", "source_system", "patient_id",
-    "age", "sex", "cp", "trestbps", "chol", "target",
-}
-EXPECTED_GOLD_COLS = {"age_group", "diagnosis", "patient_count"}
-EXPECTED_GOLD_AGG_COLS = {"avg_cholesterol", "avg_blood_pressure", "avg_max_heart_rate"}
 
 
 def _fqn(catalog, table):
@@ -70,7 +80,6 @@ def _table_exists(catalog, table):
 
 
 def _is_sdp_table(catalog, table):
-    """Detect if a table was created by an SDP pipeline."""
     try:
         rows = spark.sql(f"SHOW TBLPROPERTIES {_fqn(catalog, table)}").collect()
         props = {str(r[0]).lower(): str(r[1]) for r in rows}
@@ -80,7 +89,6 @@ def _is_sdp_table(catalog, table):
 
 
 def _count_comments(catalog, table):
-    """Return (has_table_comment, column_comment_count)."""
     try:
         desc = spark.sql(f"DESCRIBE TABLE EXTENDED {_fqn(catalog, table)}").collect()
         has_tbl = False
@@ -100,7 +108,6 @@ def _count_comments(catalog, table):
 
 
 def _count_uc_tags(catalog):
-    """Count Unity Catalog tags across all heart_* tables in the team catalog."""
     try:
         rows = spark.sql(f"""
             SELECT COUNT(*) AS cnt FROM system.information_schema.table_tags
@@ -112,21 +119,71 @@ def _count_uc_tags(catalog):
         return 0
 
 
-def _check_ai_functions(catalog):
-    """Check for heart_gold_ai table with cardiovascular_risk column. Returns (exists, has_column, row_count)."""
-    try:
-        if not _table_exists(catalog, "heart_gold_ai"):
-            return False, False, 0
-        df = spark.table(_fqn(catalog, "heart_gold_ai"))
-        cols = set(c.lower() for c in df.columns)
-        has_col = "cardiovascular_risk" in cols
-        return True, has_col, df.count()
-    except Exception:
-        return False, False, 0
+def _event_id_match(team_table, answer_table):
+    """Returns (missing_from_team, extra_in_team) counts based on event_id EXCEPT."""
+    missing = spark.sql(f"""
+        SELECT COUNT(*) FROM (
+            SELECT event_id FROM {answer_table}
+            EXCEPT
+            SELECT event_id FROM {team_table}
+        )
+    """).collect()[0][0]
+    extra = spark.sql(f"""
+        SELECT COUNT(*) FROM (
+            SELECT event_id FROM {team_table}
+            EXCEPT
+            SELECT event_id FROM {answer_table}
+        )
+    """).collect()[0][0]
+    return missing, extra
+
+
+def _compare_gold_values(catalog):
+    """Join team gold with answer gold on (age_group, diagnosis) and compare values.
+    Returns (matched_rows, count_matches, avg_matches, details_list)."""
+    team_table = _fqn(catalog, "heart_gold")
+    rows = spark.sql(f"""
+        SELECT
+            a.age_group, a.diagnosis,
+            a.patient_count AS exp_count, t.patient_count AS act_count,
+            a.avg_cholesterol AS exp_chol, t.avg_cholesterol AS act_chol,
+            a.avg_blood_pressure AS exp_bp, t.avg_blood_pressure AS act_bp,
+            a.avg_max_heart_rate AS exp_hr, t.avg_max_heart_rate AS act_hr
+        FROM {ANSWER_GOLD} a
+        LEFT JOIN {team_table} t
+            ON a.age_group = t.age_group AND a.diagnosis = t.diagnosis
+        ORDER BY a.age_group, a.diagnosis
+    """).collect()
+
+    matched = 0
+    count_ok = 0
+    avg_ok = 0
+    details = []
+    for r in rows:
+        if r.act_count is None:
+            details.append(f"  MISSING: {r.age_group} / {r.diagnosis}")
+            continue
+        matched += 1
+        c_ok = r.exp_count == r.act_count
+        a_ok = (abs(r.exp_chol - r.act_chol) <= 0.5 and
+                abs(r.exp_bp - r.act_bp) <= 0.5 and
+                abs(r.exp_hr - r.act_hr) <= 0.5)
+        if c_ok:
+            count_ok += 1
+        if a_ok:
+            avg_ok += 1
+        if not c_ok or not a_ok:
+            parts = []
+            if not c_ok:
+                parts.append(f"count {r.act_count} != {r.exp_count}")
+            if not a_ok:
+                parts.append(f"avgs off")
+            details.append(f"  MISMATCH: {r.age_group}/{r.diagnosis}: {', '.join(parts)}")
+
+    return matched, count_ok, avg_ok, details
 
 
 def score_team(team_name: str) -> dict:
-    """Score a single team's Event 1 submission. Catalog = team_name."""
     catalog = team_name
     scores = {
         "team": team_name, "bronze": 0, "silver": 0, "gold": 0,
@@ -137,7 +194,6 @@ def score_team(team_name: str) -> dict:
     def log(msg):
         scores["details"].append(msg)
 
-    # ─── Detect path: SDP or SQL ───
     is_sdp = (
         _table_exists(catalog, "heart_bronze") and _is_sdp_table(catalog, "heart_bronze")
     ) or (
@@ -151,37 +207,54 @@ def score_team(team_name: str) -> dict:
     if _table_exists(catalog, "heart_bronze"):
         bronze = spark.table(_fqn(catalog, "heart_bronze"))
         b_cnt = bronze.count()
-        b_cols = set(bronze.columns)
+        b_cols = set(c.lower() for c in bronze.columns)
 
-        if b_cnt >= 505:
-            scores["bronze"] += 5
-            log(f"Bronze: {b_cnt} rows (all batches) [+5]")
-        elif b_cnt >= 400:
-            scores["bronze"] += 4
-            log(f"Bronze: {b_cnt} rows (most batches) [+4]")
-        elif b_cnt > 0:
-            scores["bronze"] += 2
-            log(f"Bronze: {b_cnt} rows (partial) [+2]")
-        else:
-            log("Bronze: table exists but empty [+0]")
-
-        if b_cnt >= 510:
-            scores["bronze"] += 3
-            log("Bronze: all 5 batches ingested [+3]")
-        elif b_cnt >= 300:
-            scores["bronze"] += 1
-            log(f"Bronze: partial batches [+1]")
-
-        if EXPECTED_BRONZE_COLS.issubset(b_cols):
+        # Schema check (2 pts)
+        if BRONZE_REQUIRED.issubset(b_cols):
             scores["bronze"] += 2
             log("Bronze: schema correct [+2]")
+        elif len(BRONZE_REQUIRED - b_cols) <= 2:
+            scores["bronze"] += 1
+            log(f"Bronze: mostly correct schema, missing {BRONZE_REQUIRED - b_cols} [+1]")
         else:
-            missing = EXPECTED_BRONZE_COLS - b_cols
-            if len(missing) <= 2:
+            log(f"Bronze: missing columns {BRONZE_REQUIRED - b_cols} [+0]")
+
+        # Row count (4 pts): exact = 4, close = 2, partial = 1
+        if b_cnt == EXPECTED_BRONZE:
+            scores["bronze"] += 4
+            log(f"Bronze: {b_cnt} rows — exact match [+4]")
+        elif abs(b_cnt - EXPECTED_BRONZE) <= 10:
+            scores["bronze"] += 3
+            log(f"Bronze: {b_cnt} rows — close (expected {EXPECTED_BRONZE}) [+3]")
+        elif b_cnt >= 400:
+            scores["bronze"] += 2
+            log(f"Bronze: {b_cnt} rows — most batches loaded [+2]")
+        elif b_cnt > 0:
+            scores["bronze"] += 1
+            log(f"Bronze: {b_cnt} rows — partial [+1]")
+        else:
+            log("Bronze: table empty [+0]")
+
+        # Data accuracy via EXCEPT (4 pts)
+        if "event_id" in b_cols:
+            missing, extra = _event_id_match(_fqn(catalog, "heart_bronze"), ANSWER_BRONZE)
+            match_pct = (EXPECTED_BRONZE - missing) / EXPECTED_BRONZE * 100
+            if missing == 0 and extra == 0:
+                scores["bronze"] += 4
+                log(f"Bronze: all event_ids match answer key [+4]")
+            elif match_pct >= 95:
+                scores["bronze"] += 3
+                log(f"Bronze: {match_pct:.0f}% event_id match (missing {missing}, extra {extra}) [+3]")
+            elif match_pct >= 80:
+                scores["bronze"] += 2
+                log(f"Bronze: {match_pct:.0f}% event_id match [+2]")
+            elif match_pct >= 50:
                 scores["bronze"] += 1
-                log(f"Bronze: mostly correct schema, missing {missing} [+1]")
+                log(f"Bronze: {match_pct:.0f}% event_id match [+1]")
             else:
-                log(f"Bronze: missing columns {missing} [+0]")
+                log(f"Bronze: {match_pct:.0f}% event_id match [+0]")
+        else:
+            log("Bronze: no event_id column — cannot verify data accuracy [+0]")
     else:
         log(f"Bronze: TABLE NOT FOUND ({_fqn(catalog, 'heart_bronze')})")
 
@@ -191,47 +264,86 @@ def score_team(team_name: str) -> dict:
     if _table_exists(catalog, "heart_silver"):
         silver = spark.table(_fqn(catalog, "heart_silver"))
         s_cnt = silver.count()
+        s_cols = set(c.lower() for c in silver.columns)
 
         if is_sdp:
-            scores["silver"] += 10
-            log(f"Silver (SDP): pipeline-managed table, {s_cnt} rows [+10]")
+            # SDP path: 15 pts
+            scores["silver"] += 5
+            log(f"Silver (SDP): pipeline-managed table [+5]")
 
-            if 485 <= s_cnt <= 500:
-                scores["silver"] += 3
-                log(f"Silver: correct row count after filtering [+3]")
-            elif s_cnt < 510:
-                scores["silver"] += 1
-                log(f"Silver: some filtering applied [+1]")
-
-            distinct_ids = silver.select("event_id").distinct().count()
-            if distinct_ids == s_cnt:
-                scores["silver"] += 2
-                log("Silver: no duplicate event_ids [+2]")
-            else:
-                log(f"Silver: {s_cnt - distinct_ids} duplicates remain [+0]")
-        else:
-            if s_cnt > 0:
+            if s_cnt == EXPECTED_SILVER:
                 scores["silver"] += 4
-                log(f"Silver (SQL): {s_cnt} rows [+4]")
-            else:
-                log("Silver (SQL): exists but empty [+0]")
-
-            if 485 <= s_cnt <= 500:
-                scores["silver"] += 2
-                log("Silver: quality filters correctly applied [+2]")
-            elif s_cnt < 510:
+                log(f"Silver: {s_cnt} rows — exact match [+4]")
+            elif abs(s_cnt - EXPECTED_SILVER) <= 5:
+                scores["silver"] += 3
+                log(f"Silver: {s_cnt} rows — close (expected {EXPECTED_SILVER}) [+3]")
+            elif s_cnt < EXPECTED_BRONZE:
                 scores["silver"] += 1
-                log("Silver: some filtering applied [+1]")
-
-            distinct_ids = silver.select("event_id").distinct().count()
-            if distinct_ids == s_cnt:
-                scores["silver"] += 2
-                log("Silver: deduplicated [+2]")
+                log(f"Silver: {s_cnt} rows — some filtering applied [+1]")
             else:
-                log(f"Silver: {s_cnt - distinct_ids} duplicates remain [+0]")
+                log(f"Silver: {s_cnt} rows — no filtering detected [+0]")
 
-        if "ingested_at" in set(silver.columns):
-            log("Silver: ingested_at column present [info]")
+            if "event_id" in s_cols:
+                missing, extra = _event_id_match(_fqn(catalog, "heart_silver"), ANSWER_SILVER)
+                match_pct = (EXPECTED_SILVER - missing) / EXPECTED_SILVER * 100
+                if missing == 0 and extra == 0:
+                    scores["silver"] += 4
+                    log(f"Silver: all event_ids match answer key [+4]")
+                elif match_pct >= 95:
+                    scores["silver"] += 3
+                    log(f"Silver: {match_pct:.0f}% match [+3]")
+                elif match_pct >= 80:
+                    scores["silver"] += 2
+                    log(f"Silver: {match_pct:.0f}% match [+2]")
+                else:
+                    scores["silver"] += 1
+                    log(f"Silver: {match_pct:.0f}% match [+1]")
+
+                dup_cnt = s_cnt - silver.select("event_id").distinct().count()
+                if dup_cnt == 0:
+                    scores["silver"] += 2
+                    log("Silver: no duplicate event_ids [+2]")
+                else:
+                    log(f"Silver: {dup_cnt} duplicates remain [+0]")
+            else:
+                log("Silver: no event_id column — cannot verify [+0]")
+        else:
+            # SQL path: 8 pts
+            if s_cnt == EXPECTED_SILVER:
+                scores["silver"] += 3
+                log(f"Silver (SQL): {s_cnt} rows — exact match [+3]")
+            elif abs(s_cnt - EXPECTED_SILVER) <= 5:
+                scores["silver"] += 2
+                log(f"Silver (SQL): {s_cnt} rows — close (expected {EXPECTED_SILVER}) [+2]")
+            elif 0 < s_cnt < EXPECTED_BRONZE:
+                scores["silver"] += 1
+                log(f"Silver (SQL): {s_cnt} rows — some filtering [+1]")
+            else:
+                log(f"Silver (SQL): {s_cnt} rows [+0]")
+
+            if "event_id" in s_cols:
+                missing, extra = _event_id_match(_fqn(catalog, "heart_silver"), ANSWER_SILVER)
+                match_pct = (EXPECTED_SILVER - missing) / EXPECTED_SILVER * 100
+                if missing == 0 and extra == 0:
+                    scores["silver"] += 3
+                    log(f"Silver: all event_ids match answer key [+3]")
+                elif match_pct >= 90:
+                    scores["silver"] += 2
+                    log(f"Silver: {match_pct:.0f}% match [+2]")
+                elif match_pct >= 70:
+                    scores["silver"] += 1
+                    log(f"Silver: {match_pct:.0f}% match [+1]")
+                else:
+                    log(f"Silver: {match_pct:.0f}% match [+0]")
+
+                dup_cnt = s_cnt - silver.select("event_id").distinct().count()
+                if dup_cnt == 0:
+                    scores["silver"] += 2
+                    log("Silver: no duplicate event_ids [+2]")
+                else:
+                    log(f"Silver: {dup_cnt} duplicates remain [+0]")
+            else:
+                log("Silver: no event_id column — cannot verify [+0]")
     else:
         log(f"Silver: TABLE NOT FOUND ({_fqn(catalog, 'heart_silver')})")
 
@@ -244,51 +356,90 @@ def score_team(team_name: str) -> dict:
         g_cols = set(c.lower() for c in gold.columns)
 
         if is_sdp:
-            if g_cnt > 0:
-                scores["gold"] += 7
-                log(f"Gold (SDP): {g_cnt} rows [+7]")
-            else:
-                log("Gold (SDP): exists but empty [+0]")
-
-            has_expected = EXPECTED_GOLD_COLS.issubset(g_cols)
-            has_agg = EXPECTED_GOLD_AGG_COLS.issubset(g_cols)
-            if has_expected and has_agg:
-                scores["gold"] += 5
-                log("Gold: all expected columns present [+5]")
-            elif has_expected or any("avg" in c for c in g_cols):
+            # SDP path: 15 pts
+            if GOLD_REQUIRED.issubset(g_cols):
                 scores["gold"] += 3
-                log("Gold: some aggregation columns [+3]")
-
-            has_tbl_comment, _ = _count_comments(catalog, "heart_gold")
-            if has_tbl_comment:
-                scores["gold"] += 3
-                log("Gold: table comment from pipeline code [+3]")
-        else:
-            if g_cnt > 0:
-                scores["gold"] += 4
-                log(f"Gold (SQL): {g_cnt} rows [+4]")
-
-            has_expected = EXPECTED_GOLD_COLS.issubset(g_cols)
-            has_agg = any("avg" in c for c in g_cols) or "patient_count" in g_cols
-            if has_expected and has_agg:
+                log("Gold (SDP): all required columns present [+3]")
+            elif {"age_group", "diagnosis", "patient_count"}.issubset(g_cols):
                 scores["gold"] += 2
-                log("Gold: correct columns [+2]")
-            elif has_agg:
+                log("Gold (SDP): core columns present, missing some avg columns [+2]")
+            elif g_cnt > 0:
                 scores["gold"] += 1
-                log("Gold: partial columns [+1]")
+                log(f"Gold (SDP): exists with {g_cnt} rows but schema incomplete [+1]")
 
-            has_tbl_comment, _ = _count_comments(catalog, "heart_gold")
-            if has_tbl_comment:
+            if g_cnt == EXPECTED_GOLD:
                 scores["gold"] += 2
-                log("Gold: governance comment [+2]")
+                log(f"Gold: {g_cnt} rows — exact match [+2]")
+            elif g_cnt > 0:
+                scores["gold"] += 1
+                log(f"Gold: {g_cnt} rows (expected {EXPECTED_GOLD}) [+1]")
 
-        if g_cnt > 0 and "age_group" in g_cols:
-            age_groups = set(gold.select("age_group").distinct().toPandas()["age_group"])
-            expected_groups = {"Under 40", "40-49", "50-59", "60+"}
-            if age_groups == expected_groups:
-                log("Gold: age groups correct [info]")
-            else:
-                log(f"Gold: age groups = {age_groups} (expected {expected_groups}) [info]")
+            if GOLD_REQUIRED.issubset(g_cols) and g_cnt > 0:
+                matched, count_ok, avg_ok, g_details = _compare_gold_values(catalog)
+                if count_ok == EXPECTED_GOLD:
+                    scores["gold"] += 5
+                    log(f"Gold: all {EXPECTED_GOLD} patient_counts match exactly [+5]")
+                elif count_ok >= 6:
+                    scores["gold"] += 4
+                    log(f"Gold: {count_ok}/{EXPECTED_GOLD} patient_counts match [+4]")
+                elif count_ok >= 4:
+                    scores["gold"] += 3
+                    log(f"Gold: {count_ok}/{EXPECTED_GOLD} patient_counts match [+3]")
+                elif count_ok > 0:
+                    scores["gold"] += 1
+                    log(f"Gold: {count_ok}/{EXPECTED_GOLD} patient_counts match [+1]")
+
+                if avg_ok == EXPECTED_GOLD:
+                    scores["gold"] += 5
+                    log(f"Gold: all averages within tolerance [+5]")
+                elif avg_ok >= 6:
+                    scores["gold"] += 4
+                    log(f"Gold: {avg_ok}/{EXPECTED_GOLD} rows have correct averages [+4]")
+                elif avg_ok >= 4:
+                    scores["gold"] += 3
+                    log(f"Gold: {avg_ok}/{EXPECTED_GOLD} rows have correct averages [+3]")
+                elif avg_ok > 0:
+                    scores["gold"] += 1
+                    log(f"Gold: {avg_ok}/{EXPECTED_GOLD} rows have correct averages [+1]")
+
+                for d in g_details:
+                    log(d)
+        else:
+            # SQL path: 8 pts
+            if GOLD_REQUIRED.issubset(g_cols):
+                scores["gold"] += 2
+                log("Gold (SQL): all required columns present [+2]")
+            elif {"age_group", "patient_count"}.issubset(g_cols):
+                scores["gold"] += 1
+                log("Gold (SQL): partial columns [+1]")
+
+            if g_cnt == EXPECTED_GOLD:
+                scores["gold"] += 1
+                log(f"Gold: {g_cnt} rows — exact match [+1]")
+            elif g_cnt > 0:
+                log(f"Gold: {g_cnt} rows (expected {EXPECTED_GOLD}) [+0]")
+
+            if GOLD_REQUIRED.issubset(g_cols) and g_cnt > 0:
+                matched, count_ok, avg_ok, g_details = _compare_gold_values(catalog)
+                if count_ok == EXPECTED_GOLD:
+                    scores["gold"] += 3
+                    log(f"Gold: all {EXPECTED_GOLD} patient_counts match exactly [+3]")
+                elif count_ok >= 6:
+                    scores["gold"] += 2
+                    log(f"Gold: {count_ok}/{EXPECTED_GOLD} patient_counts match [+2]")
+                elif count_ok > 0:
+                    scores["gold"] += 1
+                    log(f"Gold: {count_ok}/{EXPECTED_GOLD} patient_counts match [+1]")
+
+                if avg_ok == EXPECTED_GOLD:
+                    scores["gold"] += 2
+                    log(f"Gold: all averages within tolerance [+2]")
+                elif avg_ok >= 6:
+                    scores["gold"] += 1
+                    log(f"Gold: {avg_ok}/{EXPECTED_GOLD} rows have correct averages [+1]")
+
+                for d in g_details:
+                    log(d)
     else:
         log(f"Gold: TABLE NOT FOUND ({_fqn(catalog, 'heart_gold')})")
 
@@ -299,19 +450,20 @@ def score_team(team_name: str) -> dict:
         scores["dq"] += 5
         log("DQ: SDP expectations provide automatic DQ tracking [+5]")
     else:
-        if _table_exists(catalog, "heart_bronze") and _table_exists(catalog, "heart_silver"):
-            try:
-                b_cnt = spark.table(_fqn(catalog, "heart_bronze")).count()
-                s_cnt = spark.table(_fqn(catalog, "heart_silver")).count()
-                if s_cnt < b_cnt:
-                    scores["dq"] += 2
-                    log(f"DQ: filtering evidence (Bronze {b_cnt} → Silver {s_cnt}) [+2]")
-                else:
-                    log("DQ: no filtering evidence [+0]")
-            except Exception:
-                log("DQ: cannot verify [+0]")
+        if _table_exists(catalog, "heart_silver"):
+            silver = spark.table(_fqn(catalog, "heart_silver"))
+            null_ages = silver.filter("age IS NULL").count()
+            bad_bp = silver.filter("trestbps NOT BETWEEN 50 AND 300").count()
+            if null_ages == 0 and bad_bp == 0:
+                scores["dq"] += 2
+                log("DQ: silver has no null ages or invalid BP — filters correct [+2]")
+            elif null_ages == 0 or bad_bp == 0:
+                scores["dq"] += 1
+                log(f"DQ: partial filtering (null_ages={null_ages}, bad_bp={bad_bp}) [+1]")
+            else:
+                log(f"DQ: dirty rows remain in silver (null_ages={null_ages}, bad_bp={bad_bp}) [+0]")
         else:
-            log("DQ: tables missing [+0]")
+            log("DQ: silver table missing [+0]")
 
     # ═══════════════════════════════════════
     # GOVERNANCE (SDP: 5 pts / SQL: 3 pts)
@@ -319,7 +471,7 @@ def score_team(team_name: str) -> dict:
     best_tbl_comment = False
     best_col_count = 0
 
-    for tbl in ["heart_silver", "heart_bronze", "heart_gold"]:
+    for tbl in ["heart_bronze", "heart_silver", "heart_gold"]:
         if _table_exists(catalog, tbl):
             has_tc, cc = _count_comments(catalog, tbl)
             if has_tc:
@@ -350,8 +502,6 @@ def score_team(team_name: str) -> dict:
     # ═══════════════════════════════════════
     # BONUS (+5 max)
     # ═══════════════════════════════════════
-
-    # UC Tags (+3): check for tags across heart_* tables
     tag_count = _count_uc_tags(catalog)
     if tag_count >= 3:
         scores["bonus"] += 3
@@ -360,21 +510,20 @@ def score_team(team_name: str) -> dict:
         scores["bonus"] += tag_count
         log(f"Bonus: {tag_count} UC Tags (need 3+ for full credit) [+{tag_count}]")
 
-    # AI Functions (+2): check heart_gold_ai table with cardiovascular_risk column
-    ai_exists, ai_has_col, ai_rows = _check_ai_functions(catalog)
-    if ai_exists and ai_has_col and ai_rows > 0:
-        scores["bonus"] += 2
-        log(f"Bonus: heart_gold_ai with cardiovascular_risk column, {ai_rows} rows [+2]")
-    elif ai_exists and ai_rows > 0:
-        scores["bonus"] += 1
-        log(f"Bonus: heart_gold_ai exists ({ai_rows} rows) but missing cardiovascular_risk column [+1]")
-    elif ai_exists:
-        log("Bonus: heart_gold_ai exists but is empty [+0]")
+    if _table_exists(catalog, "heart_gold_ai"):
+        ai_df = spark.table(_fqn(catalog, "heart_gold_ai"))
+        ai_cols = set(c.lower() for c in ai_df.columns)
+        ai_cnt = ai_df.count()
+        if "cardiovascular_risk" in ai_cols and ai_cnt > 0:
+            scores["bonus"] += 2
+            log(f"Bonus: heart_gold_ai with cardiovascular_risk, {ai_cnt} rows [+2]")
+        elif ai_cnt > 0:
+            scores["bonus"] += 1
+            log(f"Bonus: heart_gold_ai exists ({ai_cnt} rows) but missing cardiovascular_risk [+1]")
+        else:
+            log("Bonus: heart_gold_ai exists but is empty [+0]")
 
-    scores["total"] = (
-        scores["bronze"] + scores["silver"] + scores["gold"]
-        + scores["dq"] + scores["governance"] + scores["bonus"]
-    )
+    scores["total"] = sum(scores[k] for k in ["bronze", "silver", "gold", "dq", "governance", "bonus"])
     return scores
 
 # COMMAND ----------
@@ -391,9 +540,9 @@ for team in TEAMS:
     print(f"{'='*60}")
     r = score_team(team)
     results.append(r)
-    print(f"  Path: {r['path']}  |  TOTAL: {r['total']}/50 (+{r['bonus']} bonus)")
-    print(f"  Bronze: {r['bronze']}/10  Silver: {r['silver']}/15  Gold: {r['gold']}/15  DQ: {r['dq']}/5  Gov: {r['governance']}/5  Bonus: {r['bonus']}/5")
-    print()
+    sdp_max = 55 if r["path"] == "SDP" else 36
+    print(f"  Path: {r['path']}  |  TOTAL: {r['total']}/{sdp_max}")
+    print(f"  Bronze:{r['bronze']}/10  Silver:{r['silver']}/{'15' if r['path']=='SDP' else '8'}  Gold:{r['gold']}/{'15' if r['path']=='SDP' else '8'}  DQ:{r['dq']}/{'5' if r['path']=='SDP' else '2'}  Gov:{r['governance']}/{'5' if r['path']=='SDP' else '3'}  Bonus:{r['bonus']}/5")
     for d in r["details"]:
         print(f"    {d}")
 
@@ -405,14 +554,9 @@ for team in TEAMS:
 # COMMAND ----------
 
 df_scores = pd.DataFrame([{
-    "Team": r["team"],
-    "Path": r["path"],
-    "Bronze": r["bronze"],
-    "Silver": r["silver"],
-    "Gold": r["gold"],
-    "DQ": r["dq"],
-    "Governance": r["governance"],
-    "Bonus": r["bonus"],
+    "Team": r["team"], "Path": r["path"],
+    "Bronze": r["bronze"], "Silver": r["silver"], "Gold": r["gold"],
+    "DQ": r["dq"], "Governance": r["governance"], "Bonus": r["bonus"],
     "Total": r["total"],
 } for r in results]).sort_values("Total", ascending=False)
 
@@ -421,13 +565,8 @@ print("  EVENT 1: DATA ENGINEERING — FINAL LEADERBOARD")
 print("=" * 72)
 for rank, (_, row) in enumerate(df_scores.iterrows(), 1):
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
-    print(f"  {rank}. {medal} {row['Team']:12s} | {row['Path']:3s} | {int(row['Total']):2d}/55 pts")
+    print(f"  {rank}. {medal} {row['Team']:12s} | {row['Path']:3s} | {int(row['Total']):2d} pts")
 print("=" * 72)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Detailed Results Table
 
 # COMMAND ----------
 
@@ -436,12 +575,9 @@ display(spark.createDataFrame(df_scores))
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Save Results
+# MAGIC ## Save Results & Update Leaderboard
 
 # COMMAND ----------
-
-spark.sql("USE CATALOG dataops_olympics")
-spark.sql("USE SCHEMA default")
 
 spark.createDataFrame(df_scores).write.format("delta").mode("overwrite").saveAsTable(
     "dataops_olympics.default.event1_scores"
@@ -450,31 +586,25 @@ print("Results saved to dataops_olympics.default.event1_scores")
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ## Update Unified Leaderboard
-
-# COMMAND ----------
-
 _LB = "dataops_olympics.default.olympics_leaderboard"
 _RT = "dataops_olympics.default.registered_teams"
 spark.sql(f"CREATE TABLE IF NOT EXISTS {_LB} (team STRING, event STRING, category STRING, points DOUBLE, max_points DOUBLE, scored_at TIMESTAMP)")
 spark.sql(f"CREATE TABLE IF NOT EXISTS {_RT} (team STRING)")
 
-from datetime import datetime as _dt
-_now = _dt.now()
 _event = "Event 1: Data Engineering"
 
-# Use MERGE to prevent duplicates (idempotent scoring)
 for r in results:
     _t = r["team"]
-    # Register team
     spark.sql(f"MERGE INTO {_RT} USING (SELECT '{_t}' AS team) src ON {_RT}.team = src.team WHEN NOT MATCHED THEN INSERT (team) VALUES (src.team)")
 
-    # Merge each category score
+    _is_sdp = r["path"] == "SDP"
     for cat, pts, mx in [
-        ("Bronze", r["bronze"], 10), ("Silver", r["silver"], 15),
-        ("Gold", r["gold"], 15), ("DQ", r["dq"], 5),
-        ("Governance", r["governance"], 5), ("Bonus", r["bonus"], 5),
+        ("Bronze", r["bronze"], 10),
+        ("Silver", r["silver"], 15 if _is_sdp else 8),
+        ("Gold", r["gold"], 15 if _is_sdp else 8),
+        ("DQ", r["dq"], 5 if _is_sdp else 2),
+        ("Governance", r["governance"], 5 if _is_sdp else 3),
+        ("Bonus", r["bonus"], 5),
     ]:
         spark.sql(f"""
             MERGE INTO {_LB} AS target
@@ -484,4 +614,4 @@ for r in results:
             WHEN NOT MATCHED THEN INSERT (team, event, category, points, max_points, scored_at) VALUES (source.team, source.event, source.category, source.points, source.max_points, source.scored_at)
         """)
 
-print(f"Leaderboard updated: {len(results)} teams (MERGE - no duplicates)")
+print(f"Leaderboard updated: {len(results)} teams")

@@ -198,13 +198,19 @@ display(spark.table(f"{CATALOG}.default.heart_gold_correct"))
 # MAGIC # BENCHMARK RACE (12 minutes)
 # MAGIC
 # MAGIC The organizer will announce **8 questions** one at a time.
+# MAGIC Each question has a **single answer** — one number or one word.
+# MAGIC The question will tell you the exact format expected.
 # MAGIC
 # MAGIC ### Rules
 # MAGIC - Answer via **SQL** (write below) = **2 pts** per correct answer
 # MAGIC - Answer via **Genie** (type in your Genie space) = **3 pts** per correct answer
 # MAGIC - **First team** with the correct answer = **+1 speed bonus**
 # MAGIC - Wrong answer = 0 pts, you can retry
-# MAGIC - **Raise your hand** when you have an answer!
+# MAGIC
+# MAGIC ### Genie Proof Requirement
+# MAGIC
+# MAGIC > **To claim Genie points (3 pts), you MUST post a screenshot of the Genie answer
+# MAGIC > in the MS Teams channel.** No screenshot = SQL points (2 pts) only.
 # MAGIC
 # MAGIC ### Strategy
 # MAGIC - Simple lookups → Genie is faster (if well-configured)
@@ -311,6 +317,12 @@ display(spark.table(f"{CATALOG}.default.heart_gold_correct"))
 # MAGIC notebook reads this table automatically. **No manual reporting needed!**
 # MAGIC
 # MAGIC You can submit multiple times per question — only the latest answer counts.
+# MAGIC
+# MAGIC ### Genie Screenshot Proof
+# MAGIC
+# MAGIC > If you answered via Genie, you **must also post a screenshot** of the Genie result
+# MAGIC > in the **MS Teams channel** with the format: `Team XX - Q1 - Genie`.
+# MAGIC > **No screenshot = scored as SQL (2 pts instead of 3 pts).**
 
 # COMMAND ----------
 

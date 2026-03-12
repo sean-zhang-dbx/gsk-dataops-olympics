@@ -35,7 +35,8 @@ spark.sql(f"""
 """)
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS event_submissions (
-        team STRING, event STRING, submitted_at TIMESTAMP, notes STRING
+        team_name STRING, event_name STRING, submission_type STRING,
+        asset_reference STRING, submitted_at TIMESTAMP, submitted_by STRING
     )
 """)
 
@@ -420,10 +421,20 @@ standings = spark.sql(f"""
     WITH best AS (
         SELECT team, event, category, MAX(points) AS points
         FROM {LB} GROUP BY team, event, category
+    ),
+    totals AS (
+        SELECT team, ROUND(SUM(points), 1) AS total,
+               COUNT(DISTINCT event) AS events
+        FROM best GROUP BY team
+    ),
+    last_sub AS (
+        SELECT team_name, MAX(submitted_at) AS last_submitted
+        FROM {ES} GROUP BY team_name
     )
-    SELECT team, ROUND(SUM(points), 1) AS total,
-           COUNT(DISTINCT event) AS events
-    FROM best GROUP BY team ORDER BY total DESC
+    SELECT t.team, t.total, t.events, ls.last_submitted
+    FROM totals t
+    LEFT JOIN last_sub ls ON t.team = ls.team_name
+    ORDER BY t.total DESC, ls.last_submitted ASC
 """).toPandas()
 
 all_teams = spark.sql(f"SELECT DISTINCT team FROM {RT} ORDER BY team").toPandas()["team"].tolist()
@@ -436,12 +447,20 @@ scored_teams = set(standings["team"].tolist())
 rank = 1
 for _, row in standings.iterrows():
     medal = {1: "[GOLD]  ", 2: "[SILVER]", 3: "[BRONZE]"}.get(rank, "        ")
-    print(f"  {rank}. {medal} {row['team']:12s} | {row['total']:6.1f} pts | {int(row['events'])} events")
+    ts = str(row.get('last_submitted', ''))[:19] if row.get('last_submitted') else "N/A"
+    print(f"  {rank}. {medal} {row['team']:12s} | {row['total']:6.1f} pts | {int(row['events'])} events | last submit: {ts}")
     rank += 1
 
 for t in all_teams:
     if t not in scored_teams:
-        print(f"  {rank}. {'        '} {t:12s} |    0.0 pts | 0 events")
+        print(f"  {rank}. {'        '} {t:12s} |    0.0 pts | 0 events | last submit: N/A")
         rank += 1
 
+print("-" * 60)
+print("  Tiebreaker: equal points → earliest last submission wins")
 print("=" * 60)
+
+if len(standings) > 0:
+    winner = standings.iloc[0]
+    print(f"\n  WINNER: {winner['team']} with {winner['total']:.1f} points!")
+    print(f"  {'=' * 58}")
