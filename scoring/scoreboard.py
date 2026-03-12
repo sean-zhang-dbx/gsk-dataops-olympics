@@ -341,7 +341,7 @@ serialized = json.dumps({
         {"name": "scoreboard", "displayName": "Scoreboard", "pageType": "PAGE_TYPE_CANVAS", "layout": page1},
         {"name": "organizer", "displayName": "Organizer", "pageType": "PAGE_TYPE_CANVAS", "layout": page2},
     ],
-    "datasets": [{"name": d["name"], "displayName": d["displayName"], "queryLines": [d["query"]]} for d in datasets],
+    "datasets": [{"name": d["name"], "displayName": d["displayName"], "queryLines": [d["query"] + "\n"]} for d in datasets],
     "uiSettings": {"theme": {"widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"}, "applyModeEnabled": False},
 })
 print(f"Dashboard: {len(serialized)} chars, Page 1: {len(page1)} widgets, Page 2: {len(page2)} widgets, {len(datasets)} datasets")

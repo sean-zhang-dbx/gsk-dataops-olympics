@@ -1,0 +1,142 @@
+[
+  {
+    "patient_id": "PT-0001",
+    "note_type": "Discharge Summary",
+    "department": "Endocrinology",
+    "date": "2024-03-15",
+    "text": "Patient is a 65-year-old male with history of type 2 diabetes mellitus and hypertension. HbA1c elevated at 8.2%. Recommend increasing metformin dosage and adding lifestyle modifications. Follow-up in 3 months."
+  },
+  {
+    "patient_id": "PT-0002",
+    "note_type": "Progress Note",
+    "department": "Cardiology",
+    "date": "2024-05-22",
+    "text": "72-year-old female presenting with chest pain and shortness of breath. ECG shows ST elevation in leads II, III, aVF. Troponin elevated. Diagnosis: Acute inferior MI. Started on dual antiplatelet therapy."
+  },
+  {
+    "patient_id": "PT-0003",
+    "note_type": "Consultation",
+    "department": "Cardiology",
+    "date": "2024-01-08",
+    "text": "45-year-old male with newly diagnosed hypertension. BP 155/95 mmHg. BMI 32. No end-organ damage. Starting amlodipine 5mg daily. Lifestyle counseling provided. Recheck in 4 weeks."
+  },
+  {
+    "patient_id": "PT-0004",
+    "note_type": "Progress Note",
+    "department": "Oncology",
+    "date": "2024-07-11",
+    "text": "58-year-old female with breast cancer stage IIA. Completed 4 cycles of AC chemotherapy. Tolerating well with manageable nausea. Scheduled for surgery next month. Continue current antiemetic regimen."
+  },
+  {
+    "patient_id": "PT-0005",
+    "note_type": "Consultation",
+    "department": "Endocrinology",
+    "date": "2024-02-19",
+    "text": "30-year-old male with type 1 diabetes on insulin pump. Frequent hypoglycemic episodes noted. CGM data shows glucose variability. Adjusting basal rates and carb ratios. Diabetes educator referral placed."
+  },
+  {
+    "patient_id": "PT-0006",
+    "note_type": "Lab Report",
+    "department": "Cardiology",
+    "date": "2024-09-03",
+    "text": "68-year-old female with atrial fibrillation on warfarin. INR 3.8, above therapeutic range. Hold warfarin for 2 days, recheck INR. Counsel on dietary consistency with vitamin K foods."
+  },
+  {
+    "patient_id": "PT-0007",
+    "note_type": "Discharge Summary",
+    "department": "General Medicine",
+    "date": "2024-04-27",
+    "text": "55-year-old male with COPD exacerbation. FEV1 45% predicted. Started on prednisone taper and azithromycin. Nebulizer treatments every 4 hours. Smoking cessation counseling reinforced."
+  },
+  {
+    "patient_id": "PT-0008",
+    "note_type": "Consultation",
+    "department": "Neurology",
+    "date": "2024-06-14",
+    "text": "40-year-old female with migraine headaches, 4-5 episodes per month. Starting topiramate for prophylaxis. Sumatriptan for acute episodes. Headache diary recommended. MRI brain normal."
+  },
+  {
+    "patient_id": "PT-0009",
+    "note_type": "Progress Note",
+    "department": "Neurology",
+    "date": "2024-08-30",
+    "text": "75-year-old male with Parkinson disease, Hoehn and Yahr stage 3. Motor fluctuations with wearing-off phenomena. Adding rasagiline to levodopa regimen. Physical therapy referral for gait training."
+  },
+  {
+    "patient_id": "PT-0010",
+    "note_type": "Consultation",
+    "department": "General Medicine",
+    "date": "2024-11-05",
+    "text": "50-year-old female with rheumatoid arthritis inadequately controlled on methotrexate. DAS28 score 4.2. Adding adalimumab. TB screening negative. Hepatitis B/C screening negative. Vaccinations updated."
+  },
+  {
+    "patient_id": "PT-0011",
+    "note_type": "Lab Report",
+    "department": "General Medicine",
+    "date": "2024-10-18",
+    "text": "62-year-old male with chronic kidney disease stage 3b. eGFR 38. Proteinuria 500mg/day. On ACE inhibitor. BP at goal. Avoid nephrotoxins. Renal diet counseling. Follow-up with nephrology in 3 months."
+  },
+  {
+    "patient_id": "PT-0012",
+    "note_type": "Progress Note",
+    "department": "General Medicine",
+    "date": "2024-12-01",
+    "text": "35-year-old female with generalized anxiety disorder. PHQ-9 score 12 (moderate). Starting sertraline 50mg. Cognitive behavioral therapy referral. Follow-up in 2 weeks for medication titration."
+  },
+  {
+    "patient_id": "PT-0013",
+    "note_type": "Discharge Summary",
+    "department": "Cardiology",
+    "date": "2024-03-28",
+    "text": "80-year-old male with heart failure with reduced ejection fraction (EF 30%). NYHA class III. Optimizing GDMT: uptitrating sacubitril/valsartan. Adding dapagliflozin. Salt restriction counseled."
+  },
+  {
+    "patient_id": "PT-0014",
+    "note_type": "Consultation",
+    "department": "Neurology",
+    "date": "2024-07-22",
+    "text": "28-year-old male with new-onset seizure. EEG shows left temporal spike-wave discharges. MRI brain with left hippocampal sclerosis. Starting levetiracetam. Driving restrictions discussed. Neurology follow-up."
+  },
+  {
+    "patient_id": "PT-0015",
+    "note_type": "Lab Report",
+    "department": "Endocrinology",
+    "date": "2024-05-09",
+    "text": "48-year-old female with hypothyroidism on levothyroxine. TSH 8.2, above target. Increasing dose from 75mcg to 100mcg. Take on empty stomach 30-60 minutes before breakfast. Recheck TSH in 6 weeks."
+  },
+  {
+    "patient_id": "PT-0016",
+    "note_type": "Progress Note",
+    "department": "General Medicine",
+    "date": "2024-02-14",
+    "text": "70-year-old male post total knee replacement day 2. Pain well controlled with multimodal analgesia. Physical therapy started. DVT prophylaxis with enoxaparin. Wound clean and dry. Anticipated discharge day 3."
+  },
+  {
+    "patient_id": "PT-0017",
+    "note_type": "Discharge Summary",
+    "department": "General Medicine",
+    "date": "2024-08-06",
+    "text": "55-year-old female with liver cirrhosis (Child-Pugh B). New-onset ascites. Starting spironolactone and furosemide. Sodium restriction to 2g/day. Diagnostic paracentesis shows SAAG >1.1. No SBP."
+  },
+  {
+    "patient_id": "PT-0018",
+    "note_type": "Consultation",
+    "department": "General Medicine",
+    "date": "2024-11-20",
+    "text": "42-year-old male with sleep apnea. AHI 32 on sleep study (severe). BMI 35. CPAP initiated at 12 cmH2O. Mask fitting completed. Follow-up in 1 month. Weight loss counseling provided."
+  },
+  {
+    "patient_id": "PT-0019",
+    "note_type": "Lab Report",
+    "department": "Endocrinology",
+    "date": "2024-06-30",
+    "text": "60-year-old female with osteoporosis. T-score -2.8 at lumbar spine. FRAX 10-year hip fracture risk 4.5%. Starting alendronate 70mg weekly. Calcium and vitamin D supplementation. Fall prevention counseling."
+  },
+  {
+    "patient_id": "PT-0020",
+    "note_type": "Progress Note",
+    "department": "General Medicine",
+    "date": "2024-09-15",
+    "text": "38-year-old male with Crohn disease flare. Increased abdominal pain and diarrhea (6-8 stools/day). CRP elevated at 45. Starting budesonide. Colonoscopy scheduled. Consider biologic escalation if no improvement."
+  }
+]
